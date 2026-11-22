@@ -10,7 +10,9 @@ errors, mount deformations, freeforms), ruled diffraction gratings on plane
 or curved surfaces (`GratingSurface`, one order per trace), rotationally
 symmetric diffractive surfaces with a phase polynomial (`DiffractiveSurface`:
 kinoforms and hybrid refractive-diffractive lenses, with their power, Seidel
-sums, colour and efficiency) and `CoordinateBreak` elements. Surfaces can be decentred and
+sums, colour and efficiency), toroidal and biconic surfaces with different
+curvatures in x and y (`ToroidalSurface`, `BiconicSurface`: cylinder and
+toric lenses, anamorphic optics) and `CoordinateBreak` elements. Surfaces can be decentred and
 tilted. Rays are traced exactly (exact intersections, vector law of refraction and
 reflection); paraxial marginal and chief rays, the pupils, the powers of
 the system, its surfaces and elements, the Seidel sums of every surface, the
@@ -138,8 +140,8 @@ Units: all lengths (radii, thicknesses, wavelength) share one unit, set by
 wavelength to nm for the dispersion of materials.
 
 Limitations: monochromatic traces (build systems at several wavelengths for
-colour), uniform pupil amplitude in the PSF, surfaces of revolution (no
-toroids) apart from the Zernike departures of `ZernikeSurface`, paraxial data only for the nominal centred system,
+colour), uniform pupil amplitude in the PSF, paraxial data only for the
+nominal centred system (of the y-z section for toroidal and biconic surfaces),
 no ray splitting in birefringent media (see `materials`).
 
 References
@@ -849,6 +851,272 @@ class ZernikeSurface(Surface):
         N = np.stack([-gx, -gy, np.ones(len(Q))], axis=-1)
 
         return N/_norm(N)[:, None]
+
+
+def _dslope_over_r(c, K, aspheric, r2):
+    """d/d(r2) of (dz/dr)/r of the rotationally symmetric sag (conic and
+    even aspheric terms)."""
+
+    with np.errstate(invalid="ignore", divide="ignore"):
+        ds = (1 + K)*c**3/(2*(1 - (1 + K)*c**2*r2)**1.5)
+    for j, A in enumerate(aspheric):
+        ds = ds + 2*(j + 2)*(j + 1)*A*r2**j
+
+    return ds
+
+
+class _AnamorphicSurface(Surface):
+    """Base of surfaces with different curvatures in x and y
+    (`ToroidalSurface`, `BiconicSurface`): exact sag z(x, y), its analytic
+    gradient and Hessian, intersections by Newton steps from a quadric
+    that osculates the surface at its vertex.
+
+    The parameters of `Surface` (R, conic, aspheric) describe the y-z
+    section, so that the paraxial data, Seidel sums, ``sag(r2)`` and
+    draw() of the meridional section are those of this section.
+    """
+
+    def sag(self, r2):
+        """Sag of the y-z section at y**2 = r2 (the section that the
+        paraxial trace and the meridional drawing use)."""
+
+        return super().sag(r2)
+
+    def _c_x(self):
+        return 0.0 if np.isinf(self.R_x) else 1.0/self.R_x
+
+    def sag_xy(self, x, y):
+        """Sag z(x, y)."""
+
+        return self._sag_derivatives(np.asarray(x, float), np.asarray(y, float), 0)[0]
+
+    def _gradient(self, x, y):
+        """Analytic dz/dx and dz/dy."""
+
+        z, zx, zy = self._sag_derivatives(np.asarray(x, float), np.asarray(y, float), 1)
+
+        return zx, zy
+
+    def hessian_xy(self, x, y):
+        """Analytic second derivatives (z_xx, z_xy, z_yy) of the sag."""
+
+        return self._sag_derivatives(np.asarray(x, float), np.asarray(y, float), 2)[3:]
+
+    def intersect(self, P, d):
+        """Distance along the rays to the surface: from the quadric with the
+        vertex curvatures of the surface by Newton steps on the exact sag
+        (NaN for rays that miss it)."""
+
+        cx, cy = self._c_x(), self.c
+        c = cx if abs(cx) >= abs(cy) else cy
+        x, y, z = P.T
+        dx, dy, dz = d.T
+        a = cx*dx**2 + cy*dy**2 + c*dz**2
+        b = 2*(cx*x*dx + cy*y*dy + c*z*dz - dz)
+        C = cx*x**2 + cy*y**2 + c*z**2 - 2*z
+        with np.errstate(invalid="ignore", divide="ignore"):
+            D = b**2 - 4*a*C
+            t = -2*C/(b + np.where(b >= 0, 1.0, -1.0)*np.sqrt(D))
+        t = np.where(np.isfinite(t), t, -z/dz)
+        for _ in range(60):
+            Q = P + t[:, None]*d
+            with np.errstate(invalid="ignore", divide="ignore"):
+                G, gx, gy = self._sag_derivatives(Q[:, 0], Q[:, 1], 1)
+                step = (Q[:, 2] - G)/(dz - gx*dx - gy*dy)
+            t = t - step
+            with np.errstate(invalid="ignore"):
+                if np.all(~np.isfinite(step) | (np.abs(step) < 1e-14*(1 + np.abs(t)))):
+                    break
+        Q = P + t[:, None]*d
+        with np.errstate(invalid="ignore"):
+            ok = np.isfinite(self.sag_xy(Q[:, 0], Q[:, 1]))
+
+        return np.where(ok, t, np.nan)
+
+    def normal(self, Q):
+        """Unit normals (pointing into +z) at the points Q relative to the vertex."""
+
+        with np.errstate(invalid="ignore"):
+            gx, gy = self._gradient(Q[:, 0], Q[:, 1])
+        N = np.stack([-gx, -gy, np.ones(len(Q))], axis=-1)
+
+        return N/_norm(N)[:, None]
+
+    def paraxial_power_x(self, n1, n2):
+        """Paraxial power in the x-z section, c_x (n2 - n1) (the paraxial
+        trace of `System` uses the y-z section, `paraxial_power()`)."""
+
+        return self._c_x()*(n2 - n1)
+
+
+class ToroidalSurface(_AnamorphicSurface):
+    """Toroidal surface: a curve in the y-z plane rotated about an axis
+    parallel to y (as Zemax's "Toroidal" surface).
+
+    The curve is the sag of `Surface` in y,
+
+        z_y(y) = c y**2/(1 + sqrt(1 - (1 + K) c**2 y**2)) + A4 y**4 + A6 y**6 + ...,
+
+    (c = 1/R, the conic and the aspheric terms of the y-z section). It is
+    rotated about the axis x = 0, z = R_x, so that every section y = const is
+    a circular arc and the vertex radius of the x-z section is R_x ::
+
+        z(x, y) = z_y + c_x x**2/(u + sqrt(u**2 - c_x**2 x**2)),   u = 1 - c_x z_y,
+
+    with c_x = 1/R_x. Spheres are R = R_x, cylinders R_x = inf (power in
+    y, the cylinder axis along x) or R = inf (power in x, axis along y);
+    R_x = R with a conic or aspheric terms is not an asphere of revolution
+    but a "barrel". A rotation of the cylinder axis is a tilt
+    ``(0, 0, a_z)``. The x-z section is an exact circle, so it is a
+    torus of revolution for a circular y curve: a toric spectacle or
+    contact lens, the cornea of an astigmatic eye, a cylinder lens.
+
+    Sign: like R, R_x > 0 if the centre of curvature lies in +z.
+
+    The paraxial data, Seidel sums and the meridional drawing use the y-z
+    section (R, conic, aspheric). Real rays see the exact surface (Newton
+    iterations from the osculating quadric; analytic normals). The
+    compiled kernel does not cover it (NumPy trace); `ray_derivatives`
+    differentiates it analytically (`lens_optimization.CurvatureX`).
+
+    Parameters
+    ----------
+    R : number, optional
+        Vertex radius of the y-z section.
+    thickness : number, optional
+    R_x : number, optional
+        Radius of rotation, the vertex radius of the x-z section
+        (np.inf: a cylinder with power in y only).
+    **kwargs :
+        As for `Surface` (conic and aspheric describe the y curve).
+    """
+
+    def __init__(self, R=np.inf, thickness=0.0, R_x=np.inf, **kwargs):
+        super().__init__(R, thickness, **kwargs)
+        self.R_x = R_x
+
+    def __repr__(self):
+        return ("ToroidalSurface(R={}, thickness={}, R_x={}, n_after={}, material={}, conic={}, "
+                "aspheric={}, semi_diameter={})".format(self.R, self.thickness, self.R_x,
+                                                        self.n_after, self.material, self.conic,
+                                                        self.aspheric, self.semi_diameter))
+
+    def _sag_derivatives(self, x, y, order):
+        cx = self._c_x()
+        y2 = y**2
+        with np.errstate(invalid="ignore", divide="ignore"):
+            zy = Surface.sag(self, y2)
+            u = 1 - cx*zy
+            S = np.sqrt(u**2 - cx**2*x**2)
+            z = zy + cx*x**2/(u + S)
+            if order == 0:
+                return (np.where(u > 0, z, np.nan),)
+            s = Surface._slope_over_r(self, y2)
+            zy1 = y*s                                  # dz_y/dy
+            gx = cx*x/S
+            gy = u*zy1/S
+            out = (np.where(u > 0, z, np.nan), gx, gy)
+            if order == 1:
+                return out
+            zy2 = s + 2*y2*_dslope_over_r(self.c, self.conic, self.aspheric, y2)
+            S3 = S**3
+            zxx = cx*u**2/S3
+            zxy = cx**2*x*u*zy1/S3
+            zyy = (u*zy2 - cx*zy1**2)/S + cx*u**2*zy1**2/S3
+
+        return out + (zxx, zxy, zyy)
+
+
+class BiconicSurface(_AnamorphicSurface):
+    """Biconic surface (as Zemax's "Biconic" surface, with even polynomial
+    terms in x and in y):
+
+        z = (c_x x**2 + c y**2)/(1 + sqrt(1 - (1 + K_x) c_x**2 x**2 - (1 + K) c**2 y**2))
+            + sum_j A_j y**(2j + 4) + sum_j B_j x**(2j + 4),
+
+    with c = 1/R, K = conic and A_j = aspheric of the y-z section (as for
+    `Surface`) and c_x = 1/R_x, K_x = conic_x and B_j = aspheric_x of the
+    x-z section. Both sections are conics; with R = R_x, K = K_x and no
+    polynomial terms it is the surface of revolution of `Surface`.
+    Anamorphic lenses, laser diode collimators and off-axis segments of
+    conic mirrors are biconics. Tracing and derivatives as for
+    `ToroidalSurface`.
+
+    Parameters
+    ----------
+    R : number, optional
+        Vertex radius of the y-z section.
+    thickness : number, optional
+    R_x : number, optional
+        Vertex radius of the x-z section.
+    conic_x : number, optional
+        Conic constant of the x-z section.
+    aspheric_x : sequence, optional
+        Coefficients of x**4, x**6, ...
+    **kwargs :
+        As for `Surface` (conic and aspheric of the y-z section).
+    """
+
+    def __init__(self, R=np.inf, thickness=0.0, R_x=np.inf, conic_x=0.0, aspheric_x=(),
+                 **kwargs):
+        super().__init__(R, thickness, **kwargs)
+        self.R_x = R_x
+        self.conic_x = conic_x
+        self.aspheric_x = tuple(aspheric_x)
+
+    def __repr__(self):
+        return ("BiconicSurface(R={}, thickness={}, R_x={}, conic={}, conic_x={}, aspheric={}, "
+                "aspheric_x={}, n_after={}, material={}, semi_diameter={})".format(
+                    self.R, self.thickness, self.R_x, self.conic, self.conic_x, self.aspheric,
+                    self.aspheric_x, self.n_after, self.material, self.semi_diameter))
+
+    def _sag_derivatives(self, x, y, order):
+        cx, cy = self._c_x(), self.c
+        px, py = (1 + self.conic_x)*cx**2, (1 + self.conic)*cy**2
+        x2, y2 = x**2, y**2
+        f = cx*x2 + cy*y2
+        B = 1 - px*x2 - py*y2
+        with np.errstate(invalid="ignore", divide="ignore"):
+            S = np.sqrt(B)
+            g = 1 + S
+            z = f/g
+            for j, A in enumerate(self.aspheric):
+                z = z + A*y2**(j + 2)
+            for j, A in enumerate(self.aspheric_x):
+                z = z + A*x2**(j + 2)
+            if order == 0:
+                return (z,)
+            fx, fy = 2*cx*x, 2*cy*y
+            gx, gy = -px*x/S, -py*y/S                  # S_x = B_x/(2 S)
+            zx = (fx*g - f*gx)/g**2
+            zy = (fy*g - f*gy)/g**2
+            pa = [(j, A) for j, A in enumerate(self.aspheric)]
+            pb = [(j, A) for j, A in enumerate(self.aspheric_x)]
+            for j, A in pa:
+                zy = zy + 2*(j + 2)*A*y*y2**(j + 1)
+            for j, A in pb:
+                zx = zx + 2*(j + 2)*A*x*x2**(j + 1)
+            if order == 1:
+                return z, zx, zy
+            # S_ij = B_ij/(2 S) - B_i B_j/(4 S**3), B_x = -2 px x, B_xx = -2 px
+            S3 = S**3
+            gxx = -px/S - px**2*x2/S3
+            gyy = -py/S - py**2*y2/S3
+            gxy = -px*py*x*y/S3
+            g2, g3 = g**2, g**3
+
+            def second(fi, fj, fij, gi, gj, gij):
+                return (fij*g + fi*gj - fj*gi - f*gij)/g2 - 2*(fi*g - f*gi)*gj/g3
+
+            zxx = second(fx, fx, 2*cx, gx, gx, gxx)
+            zyy = second(fy, fy, 2*cy, gy, gy, gyy)
+            zxy = second(fx, fy, 0.0, gx, gy, gxy)
+            for j, A in pa:
+                zyy = zyy + 2*(j + 2)*(2*j + 3)*A*y2**(j + 1)
+            for j, A in pb:
+                zxx = zxx + 2*(j + 2)*(2*j + 3)*A*x2**(j + 1)
+
+        return z, zx, zy, zxx, zxy, zyy
 
 
 class GratingSurface(Surface):
@@ -3783,6 +4051,11 @@ class System:
             q = np.stack([0*yy, yy, zz] if a == 1 else [yy, 0*yy, zz], axis=-1) @ R.T + o
             return q[..., 2], q[..., a]
 
+        def section(s, yy):
+            if isinstance(s, _AnamorphicSurface):  # the drawn section of x and y
+                return s.sag_xy(0*yy, yy) if a == 1 else s.sag_xy(yy, 0*yy)
+            return s.sag(yy**2)
+
         heights = []
         for i, s in enumerate(self.surfaces):
             h = s.semi_diameter if s.semi_diameter is not None else 1.05*r_max[i]
@@ -3793,7 +4066,7 @@ class System:
                 yy, zz = s.section(h)
             else:
                 yy = np.linspace(-h, h, 101)
-                zz = s.sag(yy**2)
+                zz = section(s, yy)
             ax.plot(*to_global(i, yy, zz), color="k", lw=2.5 if s.mirror else 1.2)
         # lens edges between surfaces in glass (not in air or the background gas):
         for i in range(len(self.surfaces) - 1):
@@ -3802,8 +4075,8 @@ class System:
                 # rims joined by a flat bevel on the smaller surface:
                 h1, h2 = heights[i], heights[i + 1]
                 for sgn in (-1, 1):
-                    z1, y1 = to_global(i, np.array([sgn*h1]), s1.sag(np.array([h1**2])))
-                    z2, y2 = to_global(i + 1, np.array([sgn*h2]), s2.sag(np.array([h2**2])))
+                    z1, y1 = to_global(i, np.array([sgn*h1]), section(s1, np.array([sgn*h1])))
+                    z2, y2 = to_global(i + 1, np.array([sgn*h2]), section(s2, np.array([sgn*h2])))
                     corner = (z2, y1) if h1 > h2 else (z1, y2)
                     ax.plot([z1[0], corner[0][0], z2[0]], [y1[0], corner[1][0], y2[0]], color="k",
                             lw=1.2)

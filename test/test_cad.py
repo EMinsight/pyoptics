@@ -23,7 +23,8 @@ def doublet():
 
 def test_doublet_volumes_lands_and_bevels(tmp_path):
     rc, rm, b = 11.5, 12.7, 0.3
-    model = cad.system_model(doublet(), n_rays=5, mechanics=cad.Mechanics(margin=1.2, bevel=b))
+    model = cad.system_model(doublet(), n_rays=5,
+                             mechanics=cad.Mechanics(margin=1.2, bevel=b, land="flat"))
     assert [s.label for s in model.lenses] == ["L1a", "L1b"]
     # front slab: lens volume inside the clear aperture, a flat land out to
     # the rim and a 45 degree bevel on the air side only:
@@ -92,9 +93,10 @@ def test_mirror_substrate_and_too_thin_edge():
                              mechanics=cad.Mechanics(margin=1.0, mirror_thickness=3.0))
     (m,) = model.lenses
     assert m.label == "M1"
-    # flat back 3 mm behind the rim; the concave face is thinner in the middle:
-    r = np.linspace(0, 6.0, 20001)
-    dish = np.trapezoid(2*np.pi*r*(_sag(-100.0, r) - _sag(-100.0, 6.0)), r)
+    # the sphere goes on to the rim, the flat back lies 3 mm behind it; the
+    # concave face is thinner in the middle:
+    r = np.linspace(0, 7.0, 20001)
+    dish = np.trapezoid(2*np.pi*r*(_sag(-100.0, r) - _sag(-100.0, 7.0)), r)
     assert m.volume == pytest.approx(np.pi*7**2*3.0 - dish, rel=1e-6)
     thin = cad.Mechanics(semi_diameter=12.0, margin=0.0)
     lens = rt.System([rt.Surface(20.0, 2.0, n_after=1.5, semi_diameter=11.0),
@@ -109,7 +111,8 @@ def test_flat_land_and_bevels_on_a_freeform_plate():
     system = rt.System([rt.Surface(np.inf, 2.0, semi_diameter=8.0), zern,
                         rt.Surface(np.inf, 10.0, n_after=1.0, semi_diameter=8.0)], 0, 550e-6)
     rm, b = 9.5, 0.3
-    model = cad.system_model(system, rays=None, mechanics=cad.Mechanics(margin=1.5, bevel=b))
+    model = cad.system_model(system, rays=None,
+                             mechanics=cad.Mechanics(margin=1.5, bevel=b, land="flat"))
     (plate,) = model.lenses
     assert plate.is_valid
     # the land lies at the rim point of the freeform farthest towards air:
@@ -167,7 +170,7 @@ def test_mount_parts_touch_but_do_not_overlap():
          rt.Surface(-16.7, 43.0, n_after=1.0, semi_diameter=5.4)]
     system = rt.System(S, 4, 550e-6, field_angle=np.radians(10)).at_paraxial_focus()
     model = cad.system_model(system, n_rays=5, mount=cad.Mount(),
-                             mechanics=cad.Mechanics(margin=1.5, bevel=0.2))
+                             mechanics=cad.Mechanics(margin=1.0, bevel=0.1))
     labels = [p.label for p in model.mount]
     assert labels[0] == "barrel" and "ring_front" in labels and "ring_back" in labels
     assert "stop" in labels and any(x.startswith("spacer_1") for x in labels)
@@ -212,3 +215,62 @@ def test_plot_3d_and_gltf(tmp_path):
     path = tmp_path/"doublet.glb"
     cad.export_gltf(model, path)
     assert path.read_bytes()[:4] == b"glTF"
+
+
+def test_spheres_continue_to_the_rim():
+    """The default land: the spheres go on to the rim (one SPHERE face per
+    side, no flat land), bevels at 45 degrees from the continued surface."""
+
+    rc, rm, b = 11.5, 12.7, 0.3
+    model = cad.system_model(doublet(), n_rays=3, mechanics=cad.Mechanics(margin=1.2))
+    lens = model.lenses[0]
+    r = np.linspace(0, rm, 20001)
+    thick = 4.0 + _sag(-45.7, r) - _sag(62.8, r)
+    assert lens.volume == pytest.approx(np.trapezoid(2*np.pi*r*thick, r), rel=1e-6)
+    assert {f.geom_type.name for f in lens.faces()} == {"SPHERE", "CYLINDER"}
+    assert len([f for f in lens.faces() if f.geom_type.name == "SPHERE"]) == 2
+    # with a bevel the front sphere ends at rm - b, the chamfer runs at 45
+    # degrees from there to the rim:
+    bev = cad.system_model(doublet(), n_rays=3, mechanics=cad.Mechanics(margin=1.2, bevel=b))
+    assert bev.lenses[0].is_valid
+    zb = _sag(62.8, rm - b)
+    cut = np.trapezoid(2*np.pi*r*np.clip((zb + (r - rm + b)) - _sag(62.8, r), 0, None)
+                       * (r >= rm - b), r)
+    assert bev.lenses[0].volume == pytest.approx(lens.volume - cut, rel=1e-6)
+
+
+def test_aspheres_continue_as_their_best_fit_sphere():
+    s1 = rt.Surface(30.0, 6.0, n_after=1.5, conic=-0.8, aspheric=(-2e-6, 1e-9), semi_diameter=10)
+    s2 = rt.Surface(-80.0, 50.0, n_after=1.0, semi_diameter=10)
+    system = rt.System([s1, s2], 0, 550e-6)
+    model = cad.system_model(system, rays=None, image_plane=False,
+                             mechanics=cad.Mechanics(margin=2.0), tolerance=1e-5)
+    lens = model.lenses[0]
+    z_rim = float(s1.sag(np.array([100.0]))[0])
+    R_bfs = (100 + z_rim**2)/(2*z_rim)
+    for r in (5.0, 9.5, 10.5, 11.5):  # asphere inside, best fit sphere outside
+        z = float(s1.sag(np.array([r**2]))[0]) if r < 10 else _sag(R_bfs, r)
+        assert lens.distance_to(build123d.Vector(0.0, r, z)) < 2e-5
+    kinds = [f.geom_type.name for f in lens.faces()]
+    assert kinds.count("SPHERE") == 2 and "REVOLUTION" in kinds  # B-spline revolved
+
+
+def test_toric_lens_continues_as_a_torus():
+    tor = rt.ToroidalSurface(40.0, 4.0, R_x=25.0, n_after=1.5, semi_diameter=8.0)
+    system = rt.System([tor, rt.Surface(-60.0, 40.0, n_after=1.0, semi_diameter=8.0)], 0,
+                       550e-6)
+    model = cad.system_model(system, rays=None, image_plane=False,
+                             mechanics=cad.Mechanics(margin=1.0, bevel=0.2))
+    (lens,) = model.lenses
+    assert lens.is_valid
+    # points of the torus inside the clear aperture and beyond it, up to the bevel:
+    for x, y in ((0.0, 0.0), (5.0, 3.0), (0.0, 8.5), (8.5, 0.0), (6.0, -6.0)):
+        z = float(tor.sag_xy(np.array([x]), np.array([y]))[0])
+        assert lens.distance_to(build123d.Vector(x, y, z)) < 2e-3
+    r = np.linspace(0, 9.0, 1201)
+    p = np.linspace(0, 2*np.pi, 721, endpoint=False)
+    Rg, Pg = np.meshgrid(r, p)
+    thick = 4.0 + _sag(-60.0, Rg) - tor.sag_xy(Rg*np.cos(Pg), Rg*np.sin(Pg))
+    V = np.trapezoid(np.mean(thick, axis=0)*2*np.pi*r, r)
+    V -= 2*2*np.pi*(9.0 - 0.2/3)*0.2**2/2  # the two bevels
+    assert lens.volume == pytest.approx(V, rel=2e-4)

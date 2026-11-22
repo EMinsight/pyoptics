@@ -416,10 +416,12 @@ What each module does and how mature it is. Planned work is listed in
   optics simulations (notebook 87, speckle reduction)
 - `cad`: new, tested: export of `raytrace.System` lens systems to STEP with
   build123d; lenses and mirror substrates as solids (spheres and planes
-  exact, aspheres as B-spline sections, Fresnel facets and risers, freeforms
-  and displaced slabs cut from a cylinder by B-spline faces, freeform
-  mirrors), cemented groups as touching solids, a mechanical diameter beyond
-  the clear aperture with flat lands, 45 degree bevels on rim edges in air,
+  exact, aspheres as B-spline sections, Fresnel facets and risers, toric
+  and cylinder lenses, freeforms and displaced slabs cut from a cylinder by
+  B-spline faces, freeform mirrors), cemented groups as touching solids, a
+  mechanical diameter beyond the clear aperture with the surfaces continued
+  as they are polished (spheres and toroids as themselves, aspheres as their
+  best fit sphere) or flat lands, 45 degree bevels on rim edges in air,
   edge thickness checks, a barrel with retaining rings, spacers and a stop
   plate cut to the lenses, ray fans as wires or tubes, names and colours,
   a section plot, a 3D plot and glTF export; checked against analytic volumes, the traced rays
@@ -572,7 +574,11 @@ What each module does and how mature it is. Planned work is listed in
   sensitivities of its elements (`with_axial_shift()`), a water immersion
   ArF lens and a KrF REMA objective and zoom-axicon from patents; cones
   (`Axicon`), surfaces with a Fringe Zernike departure (`ZernikeSurface`:
-  figure errors, mount deformations, freeforms), x-z sections in `draw()`; polarization ray
+  figure errors, mount deformations, freeforms), toroidal and biconic
+  surfaces (`ToroidalSurface`, `BiconicSurface`: toric spectacle lenses,
+  cylinder lenses, anamorphic optics; exact intersections and analytic
+  derivatives for the optimizer, notebook 129, progressive spectacle lenses), x-z
+  sections in `draw()`; polarization ray
   trace with energy (`System.trace_polarization()`, Chipman's 3x3 matrices):
   Fresnel refraction and reflection through thin film coatings on any
   surface (`coatings.Coating`, `coatings.Layer`) with layer thickness
