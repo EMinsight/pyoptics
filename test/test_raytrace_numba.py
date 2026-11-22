@@ -30,12 +30,49 @@ def _mixed_system():
     return rt.System(surfaces, 0, 0.5e-3, field_angle=0.02)
 
 
+def _anamorphic_system():
+    # rotated toric surface, biconic with x and y polynomials, decentred cylinder
+    surfaces = [rt.ToroidalSurface(40.0, 4.0, R_x=60.0, conic=-0.5, aspheric=(2e-6,),
+                                   n_after=1.5168, semi_diameter=8.0, tilt=(0.0, 0.0, 0.3)),
+                rt.BiconicSurface(-120.0, 10.0, R_x=-70.0, conic=0.3, conic_x=-1.2,
+                                  aspheric=(1e-6,), aspheric_x=(-1e-6, 1e-9), n_after=1.0,
+                                  semi_diameter=8.5),
+                rt.ToroidalSurface(np.inf, 3.0, R_x=30.0, n_after=1.6, semi_diameter=8.0,
+                                   decenter=(0.2, 0.0)),
+                rt.Surface(np.inf, 60.0, n_after=1.0, semi_diameter=8.0)]
+    return rt.System(surfaces, 0, 0.55e-3, field_angle=0.03)
+
+
+def _q_system():
+    from pyoptics import qaspheres as qa
+
+    surfaces = [qa.QbfsSurface(50.0, 5.0, q=(1e-3, -2e-4, 5e-5), norm_radius=10.0, n_after=1.5,
+                               semi_diameter=10.0),
+                qa.QconSurface(-60.0, 10.0, q=(2e-4, 1e-4), conic=-0.8, norm_radius=10.0,
+                               n_after=1.0, semi_diameter=10.0),
+                qa.Q2DSurface(-200.0, -40.0, cos={(0, 0): 1e-3, (2, 0): 5e-4, (3, 1): 2e-4,
+                                                  (1, 0): 1e-4},
+                              sin={(2, 1): 3e-4, (4, 0): 1e-4}, norm_radius=12.0, mirror=True,
+                              semi_diameter=12.0),
+                rt.Surface(np.inf, -20.0)]
+    return rt.System(surfaces, 0, 0.55e-3, field_angle=0.02)
+
+
 SYSTEMS = {
     "zeiss_arfi": rt.zeiss_arfi_lens,  # aspheres, high NA
     "caldwell_krf": rt.caldwell_krf_lens,  # finite object
     "zoom_axicon": lambda: rt.zeiss_zoom_axicon(axicon_gap=20.0),
     "mixed": _mixed_system,
+    "anamorphic": _anamorphic_system,  # toroidal and biconic surfaces
+    "q_types": _q_system,  # Q-bfs, Q-con and a Q2D freeform mirror
 }
+
+
+@pytest.mark.parametrize("name", ["anamorphic", "q_types"])
+def test_kernel_covers_toroidal_biconic_and_q_surfaces(name):
+    system = SYSTEMS[name]()
+    kinds = [_raytrace_numba.surface_kind(s, rt._kernel_types()) for s in system.surfaces]
+    assert None not in kinds
 
 
 @pytest.mark.parametrize("name", list(SYSTEMS))

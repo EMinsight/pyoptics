@@ -753,8 +753,8 @@ class Q2DSurface(Surface):
     terms, m = 2 astigmatism-like ones (a cylinder departure), m = 3
     trefoil, and so on. The paraxial data use the vertex curvature of the
     rotationally symmetric part (as for `QbfsSurface`); the other terms only
-    enter the real ray trace, which is done with NumPy (Newton steps on the
-    full sag).
+    enter the real ray trace (Newton steps on the full sag, in NumPy or in
+    the compiled kernel of `raytrace.System.trace()`).
 
     Parameters
     ----------
