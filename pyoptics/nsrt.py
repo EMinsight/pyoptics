@@ -731,7 +731,7 @@ class SagFace(Face):
 
 
 class Rectangle(Face):
-    """Rectangle |x| <= width/2, |y| <= height/2 in the local plane z = 0,
+    """Rectangle abs(x) <= width/2, abs(y) <= height/2 in the local plane z = 0,
     normal +z.
 
     Parameters
@@ -1321,7 +1321,7 @@ class Target(object):
 
     def hit(self, Q, d):
         """Whether the rays (Q, d) cross the disk, and the solid angle
-        density dist**2/(area |cos|) at the crossing."""
+        density dist**2/(area abs(cos)) at the crossing."""
 
         with np.errstate(divide="ignore", invalid="ignore"):
             cos = d @ self.normal

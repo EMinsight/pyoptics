@@ -5,29 +5,29 @@
 
 The models are written in direction cosine space: a direction leaving a
 surface is described by beta, the projection of its unit vector onto the
-tangent plane of the surface (|beta| = sin of the angle to the normal), and
+tangent plane of the surface (abs(beta) = sin of the angle to the normal), and
 the specular direction by beta_0. Scattering then shifts beta away from
 beta_0, and the projected solid angle is the area element in that plane,
 cos(theta_s) d(omega) = d^2 beta. The total integrated scatter (TIS), the
 scattered fraction of the incident power, is the integral of the BSDF over
-the unit disk |beta| <= 1 ::
+the unit disk abs(beta) <= 1 ::
 
     TIS(beta_0) = integral over |beta| <= 1 of BSDF(beta - beta_0) d^2 beta
 
 All models here are shift invariant and isotropic (the BSDF depends only on
-|beta - beta_0|), which is the form of Harvey's linear systems formulation
+abs(beta - beta_0)), which is the form of Harvey's linear systems formulation
 of surface scatter and of the ABg model used by commercial stray light
 software:
 
 - `Lambertian`: BSDF = rho/pi, a perfectly diffuse surface of reflectance
   rho (an exception: centred on the normal rather than on beta_0),
-- `Gaussian`: BSDF = A exp(-|beta - beta_0|**2/(2 sigma**2)), a lobe
+- `Gaussian`: BSDF = A exp(-abs(beta - beta_0)**2/(2 sigma**2)), a lobe
   around the specular direction, given by its TIS at normal incidence,
-- `ABg`: BSDF = A/(B + |beta - beta_0|**g), the fit of measured scatter of
+- `ABg`: BSDF = A/(B + abs(beta - beta_0)**g), the fit of measured scatter of
   polished optics (g between 1 and 3) and of black coatings,
 - `Mixture`: a sum of models, e.g. a diffuse floor plus a specular lobe.
 
-Each model gives its value (`bsdf()`), its TIS as a function of |beta_0|
+Each model gives its value (`bsdf()`), its TIS as a function of abs(beta_0)
 (`tis()`), samples of beta distributed in proportion to the BSDF over the
 unit disk (`sample()`), and the probability density of those samples
 (`pdf()`, needed for importance sampling in `pyoptics.nsrt`). Near grazing
@@ -130,7 +130,7 @@ class BSDF(object):
         raise NotImplementedError
 
     def tis(self, b0):
-        """Total integrated scatter for |beta_0| = b0 (array)."""
+        """Total integrated scatter for abs(beta_0) = b0 (array)."""
 
         raise NotImplementedError
 
@@ -187,7 +187,7 @@ class Lambertian(BSDF):
 
 
 class _ShiftInvariant(BSDF):
-    """BSDF f(|beta - beta_0|) with tabulated radial sampling and TIS."""
+    """BSDF f(abs(beta - beta_0)) with tabulated radial sampling and TIS."""
 
     n_rho = 2048
     n_b0 = 129
@@ -245,7 +245,7 @@ class _ShiftInvariant(BSDF):
 
 class Gaussian(_ShiftInvariant):
     """Gaussian lobe around the specular direction,
-    BSDF = A exp(-|beta - beta_0|**2/(2 sigma**2)).
+    BSDF = A exp(-abs(beta - beta_0)**2/(2 sigma**2)).
 
     Parameters
     ----------
@@ -273,7 +273,7 @@ class Gaussian(_ShiftInvariant):
 
 
 class ABg(_ShiftInvariant):
-    """Harvey's ABg model, BSDF = A/(B + |beta - beta_0|**g).
+    """Harvey's ABg model, BSDF = A/(B + abs(beta - beta_0)**g).
 
     Parameters
     ----------
