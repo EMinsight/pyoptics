@@ -136,6 +136,32 @@ def _aabb_hit(px, py, pz, ix, iy, iz, lo, hi, tmax):
     return True
 
 
+@_jit()
+def _aabb_entry(px, py, pz, ix, iy, iz, lo, hi, tmax):
+    """Distance at which the ray enters the box (0 if it starts inside),
+    inf if it misses the box or enters beyond tmax."""
+
+    t0, t1 = 0.0, tmax
+    for k in range(3):
+        o = px if k == 0 else (py if k == 1 else pz)
+        inv = ix if k == 0 else (iy if k == 1 else iz)
+        ta = (lo[k] - o)*inv
+        tb = (hi[k] - o)*inv
+        if ta > tb:
+            ta, tb = tb, ta
+        if ta != ta:
+            ta = -np.inf
+        if tb != tb:
+            tb = np.inf
+        if ta > t0:
+            t0 = ta
+        if tb < t1:
+            t1 = tb
+        if t0 > t1:
+            return np.inf
+    return t0
+
+
 if available:
     @numba.njit(parallel=True, cache=True)
     def primitives_nearest(P, d, kinds, origins, R, params, lo, hi, eps):
@@ -174,9 +200,10 @@ if available:
 
     @numba.njit(parallel=True, cache=True)
     def bvh_nearest(P, d, V0, E1, E2, node_lo, node_hi, node_a, node_b, node_leaf, order,
-                    eps):
-        """Nearest hits (t, triangle) of rays on a triangle mesh with a BVH.
-        Nodes: leaf -> triangles order[a:b]; inner -> children a, b."""
+                    eps, tmax):
+        """Nearest hits (t, triangle) of rays on a triangle mesh with a BVH,
+        closer than tmax per ray (inf, -1 if none). Nodes: leaf -> triangles
+        order[a:b]; inner -> children a, b, visited nearer box first."""
 
         n = P.shape[0]
         t_out = np.full(n, np.inf)
@@ -188,15 +215,15 @@ if available:
             iy = 1.0/ey if ey != 0.0 else np.inf
             iz = 1.0/ez if ez != 0.0 else np.inf
             stack = np.empty(128, dtype=np.int64)
-            sp = 0
             stack[0] = 0
             sp = 1
-            best = np.inf
+            best = tmax[i]
             bt = -1
             while sp > 0:
                 sp -= 1
                 nd = stack[sp]
-                if not _aabb_hit(px, py, pz, ix, iy, iz, node_lo[nd], node_hi[nd], best):
+                # re-test: best may have shrunk since the node was pushed
+                if _aabb_entry(px, py, pz, ix, iy, iz, node_lo[nd], node_hi[nd], best) == np.inf:
                     continue
                 if node_leaf[nd]:
                     for k in range(node_a[nd], node_b[nd]):
@@ -222,14 +249,26 @@ if available:
                         if v < 0.0 or u + v > 1.0:
                             continue
                         t = f*(e2x*qx + e2y*qy + e2z*qz)
-                        if t > eps and t < best:
+                        # ties (rays through shared edges) go to the lowest
+                        # triangle index, independent of the tree, as in numpy
+                        if t > eps and (t < best or (t == best and 0 <= j < bt)):
                             best = t
                             bt = j
-                else:
-                    if sp + 2 <= stack.shape[0]:
-                        stack[sp] = node_a[nd]
-                        stack[sp + 1] = node_b[nd]
-                        sp += 2
-            t_out[i] = best
-            tri_out[i] = bt
+                elif sp + 2 <= stack.shape[0]:
+                    c0, c1 = node_a[nd], node_b[nd]
+                    t0 = _aabb_entry(px, py, pz, ix, iy, iz, node_lo[c0], node_hi[c0], best)
+                    t1 = _aabb_entry(px, py, pz, ix, iy, iz, node_lo[c1], node_hi[c1], best)
+                    if t0 > t1:
+                        c0, c1 = c1, c0
+                        t0, t1 = t1, t0
+                    # push the farther child first, so the nearer one is popped next
+                    if t1 < np.inf:
+                        stack[sp] = c1
+                        sp += 1
+                    if t0 < np.inf:
+                        stack[sp] = c0
+                        sp += 1
+            if bt >= 0:
+                t_out[i] = best
+                tri_out[i] = bt
         return t_out, tri_out

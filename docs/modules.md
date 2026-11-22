@@ -459,7 +459,8 @@ What each module does and how mature it is. Planned work is listed in
 - `nsrt`: new, tested: non-sequential ray tracing; oriented faces with a
   medium on each side (conics and `raytrace` sag surfaces, rectangles,
   cylinders, cones, spheres, boxes) and triangle meshes with a bounding
-  volume hierarchy (STL, STEP and build123d solids tessellated, properties
+  volume hierarchy built by the surface area heuristic and searched
+  nearest box first, up to the nearest hit on the analytic faces (STL, STEP and build123d solids tessellated, properties
   assigned per solid or per face by label, prefix pattern or function),
   `FaceProperty` with Fresnel, fixed or angle dependent R and T, thin-film
   coatings and BRDF/BTDF scatter, bulk absorption, a deterministic

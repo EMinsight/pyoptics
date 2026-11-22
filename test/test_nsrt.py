@@ -175,6 +175,40 @@ def test_mesh_matches_analytic_sphere(kernel):
     assert np.array_equal(tri[hit], tri2[hit])
 
 
+
+def test_mesh_bvh_and_stop_distance(kernel):
+    """The BVH search (SAH tree, nearer box first, stop distance) finds the
+    same nearest triangle as brute force, from inside and outside, and
+    respects tmax."""
+
+    V, T = _icosphere(3)
+    # two shells and a displaced copy: rays cross several surfaces
+    V2 = np.r_[10*V, 6*V, 4*V + [9.0, 0, 0]]
+    T2 = np.r_[T, T + len(V), T + 2*len(V)]
+    mesh = nsrt.Mesh(V2, T2)
+    rng = np.random.default_rng(7)
+    P = rng.uniform(-12, 12, (2000, 3))
+    d = nsrt._unit(rng.normal(size=(2000, 3)))
+    t_ref, tri_ref = mesh._intersect_numpy(P, d, 1e-9)
+    t, tri = mesh.intersect(P, d, 1e-9)
+    assert np.isfinite(t_ref).sum() > 800
+    assert np.array_equal(np.isfinite(t), np.isfinite(t_ref))
+    f = np.isfinite(t_ref)
+    assert np.allclose(t[f], t_ref[f], rtol=1e-12)
+    assert np.array_equal(tri[f], tri_ref[f])
+    # a stop distance keeps only the closer hits
+    tmax = rng.uniform(0, 25, 2000)
+    t3, tri3 = mesh.intersect(P, d, 1e-9, tmax)
+    closer = t_ref < tmax
+    assert np.array_equal(np.isfinite(t3), closer)
+    assert np.allclose(t3[closer], t_ref[closer], rtol=1e-12)
+    assert np.all(tri3[~closer] == -1)
+    # the SAH tree is a proper partition of the triangles
+    lo, hi, a, b, leaf, order = mesh.bvh
+    assert np.array_equal(np.sort(order), np.arange(len(T2)))
+    assert np.all(b[leaf] - a[leaf] <= 4)
+
+
 def _icosphere(k):
     p = (1 + 5**0.5)/2
     V = np.array([[-1, p, 0], [1, p, 0], [-1, -p, 0], [1, -p, 0], [0, -1, p], [0, 1, p],

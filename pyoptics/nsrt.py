@@ -959,9 +959,17 @@ def box(size, position=(0.0, 0.0, 0.0), rotation=None, property=None, media=None
 
 # --- meshes ------------------------------------------------------------------
 
-def _build_bvh(lo_t, hi_t, leaf_size=4):
-    """Bounding volume hierarchy over boxes (lo_t, hi_t) of triangles:
-    median splits along the longest axis of the centroids."""
+def _box_area(lo, hi):
+    e = np.maximum(hi - lo, 0.0)
+    return 2.0*(e[..., 0]*e[..., 1] + e[..., 1]*e[..., 2] + e[..., 2]*e[..., 0])
+
+
+def _build_bvh(lo_t, hi_t, leaf_size=4, n_bins=16):
+    """Bounding volume hierarchy over boxes (lo_t, hi_t) of triangles,
+    split by the binned surface area heuristic (SAH): of n_bins - 1
+    candidate planes per axis, the one with the smallest sum of child box
+    area times triangle count. Falls back to a median split where the
+    centroids coincide."""
 
     n = len(lo_t)
     cen = 0.5*(lo_t + hi_t)
@@ -986,10 +994,35 @@ def _build_bvh(lo_t, hi_t, leaf_size=4):
             node_a[k], node_b[k], leaf[k] = s, e, True
             continue
         c = cen[idx]
-        axis = int(np.argmax(c.max(0) - c.min(0)))
-        sub = np.argsort(c[:, axis], kind="stable")
-        order[s:e] = idx[sub]
-        m = s + (e - s)//2
+        best_cost, left = np.inf, None
+        for axis in range(3):
+            c0, c1 = c[:, axis].min(), c[:, axis].max()
+            if not c1 > c0:
+                continue
+            b = np.minimum(((c[:, axis] - c0)/(c1 - c0)*n_bins).astype(np.int64), n_bins - 1)
+            count = np.bincount(b, minlength=n_bins)
+            blo = np.full((n_bins, 3), np.inf)
+            bhi = np.full((n_bins, 3), -np.inf)
+            for q in range(3):
+                np.minimum.at(blo[:, q], b, lo_t[idx, q])
+                np.maximum.at(bhi[:, q], b, hi_t[idx, q])
+            area_l = _box_area(np.minimum.accumulate(blo, 0), np.maximum.accumulate(bhi, 0))
+            area_r = _box_area(np.minimum.accumulate(blo[::-1], 0)[::-1],
+                               np.maximum.accumulate(bhi[::-1], 0)[::-1])
+            n_l = np.cumsum(count)
+            n_r = n_l[-1] - n_l
+            cost = area_l[:-1]*n_l[:-1] + area_r[1:]*n_r[:-1]
+            cost[(n_l[:-1] == 0) | (n_r[:-1] == 0)] = np.inf
+            m = int(np.argmin(cost))
+            if cost[m] < best_cost:
+                best_cost, left = cost[m], b <= m
+        if left is None:
+            axis = int(np.argmax(c.max(0) - c.min(0)))
+            order[s:e] = idx[np.argsort(c[:, axis], kind="stable")]
+            m = s + (e - s)//2
+        else:
+            order[s:e] = np.concatenate([idx[left], idx[~left]])
+            m = s + int(left.sum())
         stack.append((m, e, k, 1))
         stack.append((s, m, k, 0))
     return (np.array(node_lo), np.array(node_hi), np.array(node_a, dtype=np.int64),
@@ -1061,15 +1094,27 @@ class Mesh(object):
     def bounds(self):
         return self.vertices.min(0), self.vertices.max(0)
 
-    def intersect(self, P, d, eps):
-        """Nearest hits (t, triangle index), inf and -1 for misses."""
+    def intersect(self, P, d, eps, tmax=None):
+        """Nearest hits (t, triangle index) closer than tmax (per ray; default:
+        no limit), inf and -1 for misses. A scene passes the nearest hit
+        on its other faces as tmax, which ends the search early."""
 
+        n = len(P)
+        tmax = np.full(n, np.inf) if tmax is None else np.asarray(tmax, float)
         if use_numba and _nsrt_numba.available:
             lo, hi, a, b, leaf, order = self.bvh
             return _nsrt_numba.bvh_nearest(np.ascontiguousarray(P), np.ascontiguousarray(d),
                                            self.V0, self.E1, self.E2, lo, hi, a, b, leaf,
-                                           order, eps)
-        return self._intersect_numpy(P, d, eps)
+                                           order, eps, np.ascontiguousarray(tmax))
+        best = np.full(n, np.inf)
+        bt = np.full(n, -1, np.int64)
+        m = _aabb_mask(P, d, *self.bounds(), tmax)
+        if np.any(m):
+            t, tri = self._intersect_numpy(P[m], d[m], eps)
+            closer = t < tmax[m]
+            sel = np.nonzero(m)[0][closer]
+            best[sel], bt[sel] = t[closer], tri[closer]
+        return best, bt
 
     def _intersect_numpy(self, P, d, eps, chunk=256):
         n = len(P)
@@ -2010,7 +2055,7 @@ class Scene(object):
             t[sel] = tk[better]
             fid[sel] = k
         for mesh, f0 in self.meshes:
-            tk, tr = mesh.intersect(P, d, self.eps)
+            tk, tr = mesh.intersect(P, d, self.eps, t)
             better = tk < t
             t[better] = tk[better]
             fid[better] = f0 + mesh.groups[tr[better]]
