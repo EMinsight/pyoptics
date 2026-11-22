@@ -198,3 +198,17 @@ def test_plot_section():
     ax = cad.plot_section(model, plt.figure().gca())
     assert len(ax.patches) == 2
     plt.close("all")
+
+
+def test_plot_3d_and_gltf(tmp_path):
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    model = cad.system_model(doublet(), n_rays=3, mechanics=cad.Mechanics(margin=1.0, bevel=0.2))
+    ax = cad.plot_3d(model)
+    assert len(ax.collections) == 2
+    plt.close("all")
+    path = tmp_path/"doublet.glb"
+    cad.export_gltf(model, path)
+    assert path.read_bytes()[:4] == b"glTF"

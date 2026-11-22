@@ -898,6 +898,104 @@ def plot_section(model, ax=None, plane="yz", rays=True, lw=0.5):
     return ax
 
 
+def plot_3d(model, ax=None, elev=20.0, azim=-60.0, rays=True, alpha=0.3, tolerance=0.05,
+            lw=0.5, axes=False, zoom=1.0):
+    """Draw a Model in 3D with matplotlib: the tessellated lens solids
+    (translucent, with their edges), the mount parts and the rays. The
+    optical axis z is drawn horizontally.
+
+    Parameters
+    ----------
+    model : Model
+    ax : matplotlib 3D axis, optional
+        Default: a new figure.
+    elev, azim : numbers, optional
+        View angles in degrees (azim -90: looking along -y onto the y-z
+        section).
+    rays : bool, optional
+        Draw the rays.
+    alpha : number, optional
+        Opacity of the lenses.
+    tolerance : number, optional
+        Tessellation tolerance in mm.
+    lw : number, optional
+        Line width of the rays.
+    axes : bool, optional
+        Draw the axes, panes and grid.
+    zoom : number, optional
+        Zoom of the axes box.
+
+    Returns
+    -------
+    ax : matplotlib 3D axis
+    """
+
+    import matplotlib.pyplot as plt
+    from mpl_toolkits.mplot3d.art3d import Poly3DCollection
+
+    if ax is None:
+        ax = plt.figure(figsize=(10, 6)).add_subplot(projection="3d")
+    order = [2, 0, 1]  # draw z, x, y on the axes x, y, z
+    points = []
+
+    def solid(shape, color, a):
+        verts, tris = shape.tessellate(tolerance, 0.2)
+        v = np.array([tuple(p) for p in verts])[:, order]
+        points.append(v)
+        ax.add_collection3d(Poly3DCollection(v[np.array(tris)], facecolor=color, alpha=a,
+                                             edgecolor="none"))
+        for e in shape.edges():
+            if e.geom_type.name == "LINE" and len(shape.edges()) > 12:
+                continue  # seams
+            pts = np.array([tuple(e.position_at(t)) for t in np.linspace(0, 1, 48)])[:, order]
+            ax.plot(*pts.T, color="0.25", lw=0.4, alpha=0.8)
+
+    for part in model.mount:
+        solid(part, (0.62, 0.62, 0.65), 0.6)
+    for lens in model.lenses:
+        solid(lens, tuple(lens.color)[:3] if lens.color else (0.55, 0.75, 0.95), alpha)
+    if rays:
+        for ray in model.rays:
+            color = tuple(ray.color)[:3]
+            for e in ray.edges():
+                p = np.array([tuple(e.start_point()), tuple(e.end_point())])[:, order]
+                points.append(p)
+                ax.plot(*p.T, color=color, lw=lw)
+    if points:
+        P = np.vstack(points)
+        lo, hi = np.nanmin(P, axis=0), np.nanmax(P, axis=0)
+        ax.set_xlim(lo[0], hi[0])
+        ax.set_ylim(lo[1], hi[1])
+        ax.set_zlim(lo[2], hi[2])
+        ax.set_box_aspect(tuple(np.maximum(hi - lo, 1e-6)), zoom=zoom)
+    ax.view_init(elev, azim)
+    ax.set_proj_type("ortho")
+    if axes:
+        ax.set_xlabel("z [mm]")
+        ax.set_ylabel("x [mm]")
+        ax.set_zlabel("y [mm]")
+    else:
+        ax.set_axis_off()
+
+    return ax
+
+
+def export_gltf(model, filename, tolerance=0.05):
+    """Write a Model (or any build123d shape) as binary glTF (.glb) for
+    viewers and web pages: tessellated with the given tolerance (mm), with
+    names and colours. glTF is y-up and in metres; the file holds the
+    model's z-up millimetre coordinates converted to that."""
+
+    import build123d as bd
+
+    shape = model.compound() if isinstance(model, Model) else model
+    if isinstance(model, Model) and model.rays:  # wires do not tessellate
+        shape = bd.Compound(children=[c for c in shape.children if c.label != "rays"],
+                            label=shape.label)
+    return bd.export_gltf(shape, str(filename), binary=True, linear_deflection=tolerance,
+                          angular_deflection=0.2)
+
+
 def export_step(model, filename):
     """Write a Model (or any build123d shape) to a STEP file in mm."""
 

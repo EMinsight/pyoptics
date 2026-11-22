@@ -422,7 +422,7 @@ What each module does and how mature it is. Planned work is listed in
   the clear aperture with flat lands, 45 degree bevels on rim edges in air,
   edge thickness checks, a barrel with retaining rings, spacers and a stop
   plate cut to the lenses, ray fans as wires or tubes, names and colours,
-  and a section plot; checked against analytic volumes, the traced rays
+  a section plot, a 3D plot and glTF export; checked against analytic volumes, the traced rays
   and overlaps of the parts (notebook 162, CAD export of lens systems)
 - `freeform`: new, tested: beam shaping by ray mapping; the radial ray map
   from equal enclosed power, Fermi–Dirac flat tops, the two-lens Gaussian
