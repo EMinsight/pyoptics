@@ -9,8 +9,8 @@ round trip, up to a complex factor gamma: ::
     K E = gamma E,
 
 with K the round-trip operator (free space, mirrors, apertures, lenses,
-gain or loss elements). |gamma|**2 is the power left after one round trip
-(the loss per round trip is 1 - |gamma|**2) and the phase of gamma beyond
+gain or loss elements). ``|gamma|**2`` is the power left after one round trip
+(the loss per round trip is ``1 - |gamma|**2``) and the phase of gamma beyond
 the plane wave phase 2 k L is the Gouy phase shift that splits the
 frequencies of the transverse modes. The round trip is a
 `fieldtrace.Chain`; this module finds its eigenmodes:
@@ -18,7 +18,7 @@ frequencies of the transverse modes. The round trip is a
 - `fox_li()`: the original method of Fox and Li (1961): start with any
   field and go round until it stops changing (power iteration). The field
   converges to the mode with the lowest loss, at a rate set by the ratio of
-  the two largest |gamma|.
+  the two largest ``|gamma|``.
 - `eigenmodes()`: several modes at once with the Arnoldi method
   (scipy.sparse.linalg.eigs) applied to the round-trip operator, which is
   a linear map on the samples of the field in the reference plane.
@@ -87,7 +87,7 @@ class ResonatorMode(namedtuple("ResonatorMode", ["gamma", "field", "phase"])):
 
     @property
     def loss(self):
-        """Power loss per round trip, 1 - |gamma|**2."""
+        """Power loss per round trip, ``1 - |gamma|**2``."""
         return 1 - abs(self.gamma)**2
 
     def __repr__(self):
@@ -310,7 +310,7 @@ def fox_li(chain, x, y=None, wavelength=None, n=1.0, n_iter=300, start=None, tol
     -------
     mode : ResonatorMode
     losses : array (if history)
-        1 - |gamma_i|**2 after round trip i, gamma_i = <E_i, K E_i>/<E_i, E_i>.
+        ``1 - |gamma_i|**2`` after round trip i, ``gamma_i = <E_i, K E_i>/<E_i, E_i>``.
     """
     chain = chain if isinstance(chain, _ft.Chain) else _ft.Chain(chain)
     if start is None:
@@ -346,7 +346,7 @@ def fox_li(chain, x, y=None, wavelength=None, n=1.0, n_iter=300, start=None, tol
 
 def eigenmodes(chain, x, y=None, wavelength=None, n=1.0, n_modes=4, alpha_ref=None, start=None,
                solver="auto", dense_limit=2048, tol=1E-9, polarization="x", ncv=None,
-               maxiter=None):
+               maxiter=None, runs=2):
     """The lowest-loss transverse modes of a resonator (Arnoldi method).
 
     The round trip is a linear map on the field samples in the reference
@@ -379,6 +379,11 @@ def eigenmodes(chain, x, y=None, wavelength=None, n=1.0, n_modes=4, alpha_ref=No
     polarization : optional
     ncv, maxiter : optional
         Passed to eigs.
+    runs : int, optional
+        Arnoldi runs with different start vectors (each new one orthogonal
+        to the modes found before). The Krylov space of a single start
+        vector contains only one mode of an exactly degenerate set (TEM01
+        and TEM10 of a round resonator); a second run finds the partners.
 
     Returns
     -------
@@ -410,19 +415,49 @@ def eigenmodes(chain, x, y=None, wavelength=None, n=1.0, n_modes=4, alpha_ref=No
         v0 = (Ex*np.conj(op.jones[0]) + Ey*np.conj(op.jones[1])).ravel()
         if ncv is None:
             ncv = int(min(N, max(4*k, 2*k + 1, 24)))
-        try:
-            vals, vecs = eigs(A, k=k, which="LM", v0=v0, tol=tol, ncv=ncv, maxiter=maxiter)
-        except ArpackNoConvergence as err:
-            if len(err.eigenvalues) == 0:
-                raise
-            warnings.warn("eigenmodes: only {} of {} modes converged".format(
-                len(err.eigenvalues), k), RuntimeWarning)
-            vals, vecs = err.eigenvalues, err.eigenvectors
+        rng = np.random.default_rng(0)
+        vals, vecs = [], []
+        for run in range(max(1, int(runs))):
+            if run > 0:
+                # a new start, orthogonal to the modes found so far: the
+                # Krylov space of one start vector holds only one direction
+                # of an exactly degenerate pair (TEM01/TEM10)
+                v0 = rng.standard_normal(N) + 1j*rng.standard_normal(N)
+                Q, _ = np.linalg.qr(np.array(vecs).T)
+                v0 = v0 - Q @ (Q.conj().T @ v0)
+            try:
+                w, V = eigs(A, k=k, which="LM", v0=v0, tol=tol, ncv=ncv, maxiter=maxiter)
+            except ArpackNoConvergence as err:
+                if len(err.eigenvalues) == 0:
+                    raise
+                warnings.warn("eigenmodes: only {} of {} modes converged".format(
+                    len(err.eigenvalues), k), RuntimeWarning)
+                w, V = err.eigenvalues, err.eigenvectors
+            vals.extend(w)
+            vecs.extend(V.T)
+        vals, vecs = _distinct(np.array(vals), np.array(vecs))
     else:
         raise ValueError("solver must be 'auto', 'dense' or 'arnoldi'")
     order = np.argsort(-np.abs(vals))
     modes = [_mode(op, vecs[:, i], vals[i]) for i in order[:k]]
     return modes
+
+
+def _distinct(vals, vecs, tol=1E-6):
+    """Eigenpairs from several Arnoldi runs without repeats: a vector is
+    kept if it is not (nearly) in the span of the kept vectors."""
+    order = np.argsort(-np.abs(vals))
+    keep_v, keep_w = [], []
+    for i in order:
+        v = vecs[i]/np.linalg.norm(vecs[i])
+        if keep_v:
+            Q, _ = np.linalg.qr(np.array(keep_v).T)
+            r = v - Q @ (Q.conj().T @ v)
+            if np.linalg.norm(r) < 1E-3:
+                continue
+        keep_v.append(v)
+        keep_w.append(vals[i])
+    return np.array(keep_w), np.array(keep_v).T
 
 
 def frequency_offsets(modes, L, n=1.0):
@@ -439,10 +474,11 @@ def frequency_offsets(modes, L, n=1.0):
     Returns
     -------
     array
-        Offsets in units of the free spectral range, wrapped to [0, 1).
+        Offsets in units of the free spectral range, wrapped to
+        [-1/2, 1/2) (an offset is defined modulo one FSR).
     """
     phases = np.array([m.phase for m in modes])
-    return np.mod(-phases/(2*np.pi), 1.0)
+    return np.mod(-phases/(2*np.pi) + 0.5, 1.0) - 0.5
 
 
 # --------------------------------------------------------------------------
@@ -464,7 +500,7 @@ def confocal_strip_eigenvalues(N, n_modes=4, n_quad=None):
         sigma u(x) = sqrt(c/(2 pi)) e^(-i pi/4) int_-1^1 exp(i c x x') u(x') dx',   c = 2 pi N,
 
     whose eigenfunctions are the prolate spheroidal functions and whose
-    eigenvalues |sigma_n|**2 are the energy concentrations of Slepian and
+    eigenvalues ``|sigma_n|**2`` are the energy concentrations of Slepian and
     Pollak. Computed here by Gauss-Legendre quadrature.
 
     Parameters
@@ -479,7 +515,7 @@ def confocal_strip_eigenvalues(N, n_modes=4, n_quad=None):
     -------
     sigma : complex array
         Eigenvalues sorted by decreasing modulus; the round-trip loss of
-        mode j is 1 - |sigma_j|**4.
+        mode j is ``1 - |sigma_j|**4``.
     """
     c = 2*np.pi*N
     if n_quad is None:
@@ -529,7 +565,7 @@ def gouy_round_trip(L, R1, R2, l=0, m=0, circular_p=None):
         Mode orders (m None: one-dimensional strip mode, factor l + 1/2).
     circular_p : int, optional
         Radial order p of a Laguerre-Gaussian mode LG_pl instead (factor
-        2p + |l| + 1).
+        ``2p + |l| + 1``).
 
     Returns
     -------
@@ -549,7 +585,7 @@ def gouy_round_trip(L, R1, R2, l=0, m=0, circular_p=None):
 
 
 def unstable_magnification(L, R1, R2):
-    """Round-trip magnification of an unstable resonator (|M| > 1),
+    """Round-trip magnification of an unstable resonator (``|M| > 1``),
     M = 2 g1 g2 - 1 +- 2 sqrt(g1 g2 (g1 g2 - 1)) (positive branch
     g1 g2 > 1: M > 1; negative branch g1 g2 < 0: M < -1)."""
     g1, g2 = 1 - L/R1, 1 - L/R2
@@ -563,7 +599,7 @@ def unstable_magnification(L, R1, R2):
 
 def geometric_loss(M, dims=2):
     """Geometric output coupling of an unstable resonator per round trip,
-    1 - 1/|M|**dims (dims = 1: strip, 2: circular mirrors)."""
+    ``1 - 1/|M|**dims`` (dims = 1: strip, 2: circular mirrors)."""
     return 1 - 1/abs(M)**dims
 
 

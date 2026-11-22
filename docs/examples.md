@@ -214,6 +214,7 @@ Sequential and polarization ray tracing, from rays to waves, glass catalogues, l
 - {doc}`162 CAD export of lens systems <notebooks/162_cad_export_lens_systems>`
 - {doc}`166 Non-sequential ray tracing <notebooks/166_non_sequential_ray_tracing>`
 - {doc}`167 Stray light in Caldwell's lens <notebooks/167_stray_light_caldwell_lens>`
+- {doc}`169 Source models in field tracing <notebooks/169_source_models_field_tracing>`
 
 ```{toctree}
 :hidden:
@@ -246,6 +247,7 @@ notebooks/159_phone_camera_lens_forbes_q
 notebooks/162_cad_export_lens_systems
 notebooks/166_non_sequential_ray_tracing
 notebooks/167_stray_light_caldwell_lens
+notebooks/169_source_models_field_tracing
 ```
 
 ## Interferometry, holography and wavefront sensing
@@ -630,8 +632,9 @@ notebooks/141_acousto_optics
 
 How a laser works and what limits it: gain and saturation, the threshold
 and the best output coupler, the modes of the resonator and the width of a
-single one, relaxation oscillations, Q-switched and mode-locked pulses, and
-the laser diode of every fibre link with its chirp and noise. Related: the
+single one, relaxation oscillations, Q-switched and mode-locked pulses, the
+laser diode of every fibre link with its chirp and noise, and the
+transverse modes of real resonators with finite mirrors (Fox and Li). Related: the
 resonator in {doc}`08 ABCD matrices <notebooks/08_abcd_matrices>`, pulses
 in {doc}`81 Ultrashort pulses <notebooks/81_ultrashort_pulses_lenses>`, and
 the directly modulated laser of {doc}`120 Fibre link <notebooks/120_fibre_link>`.
@@ -639,6 +642,7 @@ the directly modulated laser of {doc}`120 Fibre link <notebooks/120_fibre_link>`
 - {doc}`142 Laser fundamentals <notebooks/142_laser_fundamentals>`
 - {doc}`143 Q-switching and mode-locking <notebooks/143_q_switching_mode_locking>`
 - {doc}`144 Laser diodes <notebooks/144_laser_diodes>`
+- {doc}`170 Laser resonator modes <notebooks/170_laser_resonator_modes>`
 
 ```{toctree}
 :hidden:
@@ -647,6 +651,7 @@ the directly modulated laser of {doc}`120 Fibre link <notebooks/120_fibre_link>`
 notebooks/142_laser_fundamentals
 notebooks/143_q_switching_mode_locking
 notebooks/144_laser_diodes
+notebooks/170_laser_resonator_modes
 ```
 
 ## Nonlinear optics

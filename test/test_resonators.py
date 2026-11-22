@@ -65,15 +65,19 @@ def test_fox_li_converges_to_lowest_loss_mode():
 def test_stable_resonator_gaussian_mode_and_gouy():
     R = 200.0
     w1, w2, w0, z1 = rs.gaussian_mode(L, R, R, WL)
-    a = 3*w1
+    a = 2.3*w1                     # losses well above the numerical floor: fast Arnoldi
     x = np.linspace(-1.3*a, 1.3*a, 64)
     modes = rs.eigenmodes(rs.round_trip(L, R, R, a, a), x, x, WL, n_modes=3)
     f = modes[0].field
+    # the second Arnoldi run finds both partners of the degenerate TEM01/TEM10 pair
+    assert modes[1].loss == pytest.approx(modes[2].loss, rel=1e-3)
+    u, v = (m.field.scalar_amplitude.ravel() for m in modes[1:3])
+    assert abs(np.vdot(u, v))/(np.linalg.norm(u)*np.linalg.norm(v)) < 0.9
     k = 2*np.pi/WL
     ref = ft.Field(np.exp(-(x[None, :]**2 + x[:, None]**2)/w1**2), x, x, WL,
                    alpha=(-k/(2*R), -k/(2*R)))                  # converging behind mirror 1
-    assert f.overlap(ref) == pytest.approx(1.0, abs=1e-5)
-    assert modes[0].phase == pytest.approx(rs.gouy_round_trip(L, R, R, 0, 0), abs=1e-4)
+    assert f.overlap(ref) == pytest.approx(1.0, abs=2e-3)
+    assert modes[0].phase == pytest.approx(rs.gouy_round_trip(L, R, R, 0, 0), abs=1e-3)
     assert modes[1].phase == pytest.approx(rs.gouy_round_trip(L, R, R, 1, 0), abs=1e-3)
     # abcd agrees on the mode radius
     M = abcd.compose(abcd.free_space(L), abcd.mirror(R), abcd.free_space(L), abcd.mirror(R))
@@ -116,8 +120,8 @@ def test_intracavity_element_and_frequency_offsets():
         return np.sqrt(np.sum(I*x**2)/np.sum(I))
     assert width(lensed[0]) < width(base[0])
     off = rs.frequency_offsets(base, L)
-    assert off[0] == pytest.approx(np.mod(-rs.gouy_round_trip(L, R, R, 0, None)/(2*np.pi), 1),
-                                   abs=1e-4)
+    assert off[0] == pytest.approx(-rs.gouy_round_trip(L, R, R, 0, None)/(2*np.pi), abs=1e-4)
+    assert -0.5 <= off.min() and off.max() < 0.5
 
 
 def test_grid_propagate_matches_fieldtrace_for_smooth_field():

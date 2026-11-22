@@ -341,7 +341,7 @@ class EnsembleResult(object):
         return self.ensemble.power*self.ensemble.weights
 
     def irradiance(self, name, x=None, y=None, include_z=False):
-        """Summed irradiance sum_j w_j |E_j|**2 at detector `name` (times the
+        """Summed irradiance ``sum_j w_j |E_j|**2`` at detector `name` (times the
         source power), on the given or the common grid.
 
         Parameters
@@ -444,15 +444,18 @@ class PulseResult(EnsembleResult):
 
     def _spectral_phase(self, name, point):
         """Absolute phase of every traced spectral field at a point: the
-        analytic constant gamma_j (absolute, never wrapped) plus the wrapped
-        rest, unwrapped along the frequencies."""
+        analytic phase psi_j (evaluated exactly, never wrapped) plus the
+        phase of the sampled amplitude, unwrapped along the frequencies."""
         px, py = (point, 0.0) if np.ndim(point) == 0 else point
         base, rest = [], []
         for rec in self.records(name):
             f = rec.field
-            Ex, Ey = field_at(f._with(f._A, gamma=0.0), np.array([px]), np.array([py]))
+            g = f._with(f._A, alpha=(0.0, 0.0), beta=(0.0, 0.0), gamma=0.0)
+            Ex, Ey = field_at(g, np.array([px]), np.array([py]))
             rest.append(np.angle(Ex[0] if abs(Ex[0]) >= abs(Ey[0]) else Ey[0]))
-            base.append(f.gamma)
+            yy = 0.0 if f.one_d else py
+            base.append(f.alpha[0]*px**2 + f.alpha[1]*yy**2 + f.beta[0]*px + f.beta[1]*yy
+                        + f.gamma)
         base, rest = np.array(base), np.array(rest)
         order = np.argsort(self.ensemble.omegas)
         un = np.empty_like(rest)

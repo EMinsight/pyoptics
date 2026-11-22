@@ -16,6 +16,7 @@ Propagation
    pyoptics.tilted
    pyoptics.analytic_phase
    pyoptics.fieldtrace
+   pyoptics.source_modes
    pyoptics.wpm
    pyoptics.fft
 
@@ -224,6 +225,7 @@ Lasers
    :toctree: generated
 
    pyoptics.lasers
+   pyoptics.resonators
 
 Nonlinear optics
 ----------------
