@@ -216,6 +216,7 @@ Sequential and polarization ray tracing, from rays to waves, glass catalogues, l
 - {doc}`166 Non-sequential ray tracing <notebooks/166_non_sequential_ray_tracing>`
 - {doc}`167 Stray light in Caldwell's lens <notebooks/167_stray_light_caldwell_lens>`
 - {doc}`169 Source models in field tracing <notebooks/169_source_models_field_tracing>`
+- {doc}`175 Polishing errors <notebooks/175_polishing_errors>`
 
 ```{toctree}
 :hidden:
@@ -250,6 +251,7 @@ notebooks/162_cad_export_lens_systems
 notebooks/166_non_sequential_ray_tracing
 notebooks/167_stray_light_caldwell_lens
 notebooks/169_source_models_field_tracing
+notebooks/175_polishing_errors
 ```
 
 ## Interferometry, holography and wavefront sensing

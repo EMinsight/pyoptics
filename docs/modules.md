@@ -478,6 +478,17 @@ What each module does and how mature it is. Planned work is listed in
   integrated scatter against the incidence angle, sampling and pdfs;
   checked against numerical integration
   (notebook 166, non-sequential ray tracing)
+- `polishing`: new, tested: surface errors of grinding and polishing as
+  maps for the ray tracer: the ripple of a Gaussian tool on raster and
+  spiral paths (Poisson sum, checked against the direct sum of the tracks),
+  turned-down edges, Gaussian random surfaces with an isotropic PSD (power
+  laws), the radial PSD and band limited RMS of a map, Zernike removal, the
+  specular fraction (1 - TIS) of rough surfaces in reflection and
+  transmission and pixelated dig and scratch maps (notebook 175,
+  polishing errors); the maps go into `raytrace.MapSurface` (gridded sag departure on
+  any base surface, spline normals, covered by the differential ray trace)
+  and ``energy_map`` (gridded transmittance or reflectance of any surface,
+  pupil apodization of the PSF and part of the polarization ray trace)
 - `freeform`: new, tested: beam shaping by ray mapping; the radial ray map
   from equal enclosed power, Fermi–Dirac flat tops, the two-lens Gaussian
   to flat-top shaper (Kreuzer, Hoffnagle–Jefferson) from equal optical path

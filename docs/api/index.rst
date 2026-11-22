@@ -95,6 +95,7 @@ Imaging and ray tracing
    pyoptics.radiometry
    pyoptics.speckle
    pyoptics.freeform
+   pyoptics.polishing
    pyoptics.photography
    pyoptics.sensor
    pyoptics.restoration

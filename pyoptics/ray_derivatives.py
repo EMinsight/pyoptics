@@ -50,7 +50,7 @@ differentiated analytically; paraxial operands (`seidel()`,
 `paraxial_target()`, `clearances()`...) by `Linearization.derivative()`;
 other operands, parameters that change something the
 differential trace does not cover (wavelength, field, surfaces other than
-`raytrace.Surface`, Q-bfs, Q-con, Zernike, toroidal and biconic surfaces
+`raytrace.Surface`, Q-bfs, Q-con, Zernike, map, toroidal and biconic surfaces
 and coordinate breaks)
 and constraints get central differences of `Linearization.jacobian()`.
 Rays are traced without vignetting (clip=False), as by the operands.
@@ -85,7 +85,7 @@ biconic surfaces), `Thickness`, `AirSpace`, `ObjectDistance`
 (`GlassIndex`, `GlassAbbe`, through the derivatives of the indices) are
 analytic, with the paraxial solves applied. Parameters that change
 the wavelength, the field or the object space index, and surfaces other
-than `raytrace.Surface`, Q-bfs, Q-con, Zernike, toroidal and biconic
+than `raytrace.Surface`, Q-bfs, Q-con, Zernike, map, toroidal and biconic
 surfaces and coordinate breaks (ideal lenses, gratings, diffractive surfaces, axicons, tabulated
 surfaces), get central differences column by column
 (`Linearization.unsupported` lists them). Rays are traced without
@@ -186,7 +186,7 @@ dopl : (V, N) array
 # attributes of a surface that are not its shape:
 _FRAME = {"thickness", "decenter", "tilt"}
 _INDEX = {"n_after", "material", "index_offset"}
-_IGNORED = {"label", "coating", "semi_diameter"}
+_IGNORED = {"label", "coating", "semi_diameter", "energy_map"}
 _NOT_SHAPE = _FRAME | _INDEX | _IGNORED | {"mirror"}
 # system attributes that the derivatives cover:
 _SYSTEM_OK = {"object_distance", "image_decenter", "image_tilt", "background"}
@@ -195,8 +195,8 @@ _SYSTEM_OK = {"object_distance", "image_decenter", "image_tilt", "background"}
 def _shape_types():
     from .qaspheres import QbfsSurface, QconSurface
 
-    return (rt.Surface, QbfsSurface, QconSurface, rt.ZernikeSurface, rt.ToroidalSurface,
-            rt.BiconicSurface)
+    return (rt.Surface, QbfsSurface, QconSurface, rt.ZernikeSurface, rt.MapSurface,
+            rt.ToroidalSurface, rt.BiconicSurface)
 
 
 def _differs(a, b):
@@ -233,7 +233,7 @@ def _hessian(s, x, y, scale):
     """Second derivatives (z_xx, z_xy, z_yy) of the sag: rotationally
     symmetric part from a central difference of the slope over r in r**2,
     the Zernike departure from central differences of its analytic
-    gradient; toroidal and biconic surfaces analytically."""
+    gradient, the map of a MapSurface from its spline; toroidal and biconic surfaces analytically."""
 
     if isinstance(s, rt._AnamorphicSurface):
         return s.hessian_xy(x, y)
@@ -242,15 +242,9 @@ def _hessian(s, x, y, scale):
     sr = s._slope_over_r(r2)
     ds = (s._slope_over_r(r2 + h2) - s._slope_over_r(r2 - h2))/(2*h2)
     zxx, zxy, zyy = sr + 2*x**2*ds, 2*x*y*ds, sr + 2*y**2*ds
-    if isinstance(s, rt.ZernikeSurface) and s.zernike:
-        h = 1e-5*s.norm_radius
-        gxp, gyp = s.departure_gradient(x + h, y)
-        gxm, gym = s.departure_gradient(x - h, y)
-        zxx = zxx + (gxp - gxm)/(2*h)
-        zxy = zxy + (gyp - gym)/(2*h)
-        gxp, gyp = s.departure_gradient(x, y + h)
-        gxm, gym = s.departure_gradient(x, y - h)
-        zyy = zyy + (gyp - gym)/(2*h)
+    if isinstance(s, rt.ZernikeSurface) and s._has_departure():
+        hxx, hxy, hyy = s.departure_hessian(x, y)
+        zxx, zxy, zyy = zxx + hxx, zxy + hxy, zyy + hyy
 
     return zxx, zxy, zyy
 
