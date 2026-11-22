@@ -202,6 +202,7 @@ Sequential and polarization ray tracing, from rays to waves, glass catalogues, l
 - {doc}`notebooks/102_sine_herschel_lagrange`
 - {doc}`notebooks/109_field_tracing`
 - {doc}`notebooks/112_field_tracing_applications`
+- {doc}`166 Local plane interface approximation <notebooks/166_local_plane_interface_approximation>`
 - {doc}`notebooks/127_zoom_lenses`
 - {doc}`notebooks/128_forbes_q_aspheres`
 - {doc}`notebooks/129_progressive_lenses`
@@ -232,6 +233,7 @@ notebooks/77_grin_optics
 notebooks/102_sine_herschel_lagrange
 notebooks/109_field_tracing
 notebooks/112_field_tracing_applications
+notebooks/166_local_plane_interface_approximation
 notebooks/127_zoom_lenses
 notebooks/128_forbes_q_aspheres
 notebooks/129_progressive_lenses

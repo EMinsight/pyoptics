@@ -723,9 +723,9 @@ def test_lpia_reports_steps_tir_and_caustics():
     h = lambda X: a - np.sqrt(np.clip(a**2 - X**2, 0, None))
     out = ft.Chain([ft.LocalPlaneInterface(h, n, distance=100.0)]).run(src)   # focus at ~75
     assert "rays cross" in " ".join(out.log[0]["notes"])
-    out = ft.Chain([ft.LocalPlaneInterface(h, n, distance="front")]).run(src)
+    out = ft.Chain([ft.LocalPlaneInterface(h, n, distance=0.0)]).run(src)
     assert "rays cross" not in " ".join(out.log[0]["notes"])
-    assert 0 <= out.field.z < 1E-3                 # the vertex
+    assert out.field.z == 0.0
 
 
 def test_lpia_height_as_array_and_errors():
@@ -740,4 +740,16 @@ def test_lpia_height_as_array_and_errors():
     with pytest.raises(ValueError):
         ft.ThinElement(h, 1.5, method="rcwa")
     with pytest.raises(ValueError):
-        ft.LocalPlaneInterface(h, 1.5, distance="middle").apply(src, {})
+        ft.LocalPlaneInterface(h, 1.5, distance="front").apply(src, {})
+
+
+@pytest.mark.parametrize("method", ["spw", "fresnel"])
+def test_one_dimensional_vector_field_propagates(method):
+    x = np.linspace(-1, 1, 256)
+    u = np.exp(-(x/0.3)**2)
+    vec = ft.Field(np.stack([0.6*u, 0.8j*u], -1), x, None, WL)
+    sca = ft.Field(u, x, None, WL, jones=(0.6, 0.8j))
+    a = ft.Chain([ft.Propagate(20.0, method=method)]).run(vec, polarization="vector").field
+    b = ft.Chain([ft.Propagate(20.0, method=method)]).run(sca).field
+    for ea, eb in zip(a.E(), b.resample(a.x).E()):
+        assert rel(ea, eb) < 1E-4

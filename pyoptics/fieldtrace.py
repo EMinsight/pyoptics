@@ -92,10 +92,24 @@ Free-space operators and their automatic selection
 Components
 ----------
 `ThinLens` (analytic: changes alpha only), `ThinElement` (thin element
-approximation for a height profile between two media), `PhaseScreen`,
+approximation for a height profile between two media, or with
+method="lpia" the local plane interface approximation), `PhaseScreen`,
 `Aperture`, `Interface` (plane interface into another medium), `Jones`
 (constant or spatially varying Jones matrix), `Function` (any callable on a
 Field) and `Detector` (records the field and derived quantities).
+
+Curved and structured interfaces
+--------------------------------
+`LocalPlaneInterface(h, n_after)` takes the field through an interface
+z = h(x, y) in the local plane interface approximation (LPIA): every sample
+is a local plane wave, refracted and transmitted (Fresnel matrix, vectorial)
+at the tangent plane of the surface where it meets it, and the field is
+collected again by ray field summation in an output plane near the
+surface. Unlike the thin element approximation it includes the refraction
+inside the profile, the angle dependence of the phase and of the Fresnel
+transmission, and the polarization; it holds for facets and radii of
+curvature of a few wavelengths and more. Comparisons with RCWA and exact
+solutions: notebook 166 (local plane interface approximation).
 
 Lens systems
 ------------
@@ -382,7 +396,7 @@ class Field(object):
         base = qs[0]
         As = [base.amplitude]
         for q in qs[1:]:
-            As.append(_rebase(q, base))
+            As.append(_rebase(q, base, template.one_d))
         A = np.stack(As, axis=2)
         out = template._with(A, x=base.x, y=(None if template.one_d else base.y),
                              alpha=base.alpha, beta=base.beta, gamma=base.gamma)
@@ -602,13 +616,22 @@ def _interp1(A, x, x_new):
     return out
 
 
-def _rebase(q, base):
+def _rebase(q, base, one_d=False):
     """Amplitude of the QuadraticPhaseField q on the grid and analytic phase of
-    base."""
+    base. For one-dimensional fields (identical rows) only x is resampled."""
+    same_x = len(q.x) == len(base.x) and np.allclose(q.x, base.x)
+    if one_d:
+        if not same_x:
+            A = _interp1(q.amplitude[1], q.x, base.x)
+            q = QuadraticPhaseField(np.repeat(A[None, :], len(base.y), axis=0), base.x, base.y,
+                                    q.wavelength, q.alpha, q.beta, q.gamma, q.n)
+        elif not (len(q.y) == len(base.y) and np.allclose(q.y, base.y)):
+            q = QuadraticPhaseField(q.amplitude, base.x, base.y, q.wavelength, q.alpha, q.beta,
+                                    q.gamma, q.n)
+        return q.amplitude*np.exp(1j*(q.phase() - base.phase()))
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", RuntimeWarning)
-        if not (len(q.x) == len(base.x) and np.allclose(q.x, base.x)
-                and len(q.y) == len(base.y) and np.allclose(q.y, base.y)):
+        if not (same_x and len(q.y) == len(base.y) and np.allclose(q.y, base.y)):
             q = q.resample(base.x, base.y)
     return q.amplitude*np.exp(1j*(q.phase() - base.phase()))
 
@@ -1957,13 +1980,11 @@ def _lpia_step_(field, surfaces, media, distance, fresnel, oversample, n_rays, x
     info = {"bright": L.I.reshape(-1) > 1E-4*L.I.max()}
     P, D, S, E, valid = _lpia_trace(P0, D0, L.S.reshape(-1), L.E.reshape(-1, 3), surfaces,
                                     media, field.wavelength, fresnel, L.shape, info)
-    hits = np.where(valid & (L.I.reshape(-1) > 1E-6*L.I.max()), P[:, 2], np.nan)
+    hits = np.where(valid, P[:, 2], np.nan)
     if distance is None or distance == "behind":
         distance = float(np.nanmax(hits))
-    elif distance == "front":
-        distance = float(np.nanmin(hits))
     elif isinstance(distance, str):
-        raise ValueError("distance must be a number, 'behind' or 'front'")
+        raise ValueError("distance must be a number or 'behind'")
     n_out = media[-1]
     s = (distance - P[:, 2])/D[:, 2]
     S = S + np.real(n_out)*s + extra_opl
@@ -1999,8 +2020,8 @@ def _lpia_step_(field, surfaces, media, distance, fresnel, oversample, n_rays, x
         fold |= bool(np.any((dP*dQ <= 0) & both))
     if fold:
         notes.append("rays cross between the interface and the output plane (caustic): put the "
-                     "output plane closer to the interface (distance='front') and propagate "
-                     "with wave optics")
+                     "output plane in front of the interface (e.g. distance=0, back to the "
+                     "input plane) and propagate with wave optics")
     window = None
     if keep_window:
         window = (field.x[0], field.x[-1], field._y[0], field._y[-1])
@@ -2056,15 +2077,17 @@ class LocalPlaneInterface(Step):
     gradient : callable, optional
         (h_x, h_y) = gradient(x, y) (h_x = gradient(x) in 1D). Default:
         central differences (callable) or spline derivatives (array).
-    distance : number or str, optional
-        Output plane relative to the field's plane: "behind" (default, the
-        largest height met by the light, just behind the interface),
-        "front" (the smallest: the field behind the interface is propagated
-        back geometrically to the plane where the light first meets the
-        interface) or a number. The geometrical propagation between the
-        interface and the output plane misses diffraction and fails if rays
-        cross there (focusing surfaces, reported): keep it short, and use
-        "front" with a following Propagate for strongly focusing surfaces.
+    distance : number or "behind", optional
+        Output plane relative to the field's plane. "behind" (default): the
+        largest height met by the light, just behind the interface. A
+        smaller value puts the output plane in front of (parts of) the
+        interface: the transmitted field is propagated back geometrically
+        (a virtual field). The geometrical propagation between the
+        interface and the output plane misses diffraction and fails where
+        rays cross (focusing surfaces; reported). For strongly focusing
+        surfaces use distance=0 (the transmitted field taken back to the
+        input plane, where the backward rays diverge) and a following
+        Propagate, which carries it through the caustic.
     fresnel : bool, optional
         Fresnel transmission (default); False for a lossless interface.
     oversample : int, optional
