@@ -104,6 +104,12 @@ Setup sketches for the other example notebooks:
   thermal_lens_resonator(): plane mirrors and a rod with a thermal lens;
   unstable_resonator(): a positive-branch confocal unstable resonator and
   its output beam (notebook 170, laser resonator modes).
+- eyepiece_layout(): an eyepiece behind a telescope objective, the
+  eyepiece traced backwards from the eye pupil, and the exit pupil with
+  pupil aberration (notebook 171, eyepieces).
+- binocular_layout(): a Keplerian telescope, a Porro binocular and a roof
+  prism binocular with its Schmidt–Pechan prism
+  (notebook 172, binoculars and erecting prisms).
 - diode_collimator(), fibre_coupling(): an astigmatic laser diode with an
   aspheric collimator and a focusing lens, and a Gaussian beam focused into
   a single-mode fibre by a spherical lens or an asphere (notebook 112, field tracing applications).
@@ -388,7 +394,8 @@ __all__ = ["lens", "stop", "plane", "prism", "mirror", "detector", "point_source
            "structured_light_layout", "crystal_optics_layout", "modulator_layout", "laser_layout",
            "hybrid_lens_layout", "litho_stochastics_layout", "mode_decomposition",
            "multimode_fibre", "led_behind_collimator", "young_broadband", "fox_li_unfolded",
-           "aperture_selection", "thermal_lens_resonator", "unstable_resonator", "text_scale"]
+           "aperture_selection", "thermal_lens_resonator", "unstable_resonator", "eyepiece_layout",
+           "binocular_layout", "text_scale"]
 
 
 GLASS = "#cfe3f3"
@@ -13031,8 +13038,8 @@ def eyepiece_layout(ax, kind="telescope", title=None):
 
 
 def binocular_layout(ax, kind="porro", title=None):
-    """Sketches of the two kinds of binoculars (notebook 172, binoculars
-    and erecting prisms).
+    """Sketches of the two kinds of binoculars
+    (notebook 172, binoculars and erecting prisms).
 
     Parameters
     ----------

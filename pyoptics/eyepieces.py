@@ -35,8 +35,8 @@ two equal plano-convex lenses at two thirds of their focal length) with
 lenses of real thickness, the spacing adjusted to bring the first order
 lateral colour (Huygens) or the field stop (Ramsden) to the intended place.
 The Kellner, Plössl and Erfle eyepieces were optimized for pyoptics with
-damped least squares from first order layouts in N-BAK4 and N-SF2 (the
-Plössl kept symmetric: two identical cemented doublets, crowns facing each
+damped least squares from first order layouts in N-BAK4 crown with N-SF6
+(Kellner, Erfle) or N-SF2 flint (the Plössl, kept symmetric: two identical cemented doublets, crowns facing each
 other), for a 4 mm eye pupil, the objective 250 mm behind the field stop
 and the apparent fields of the type; they show the behaviour of each type,
 they are not copies of particular commercial designs.
@@ -330,7 +330,7 @@ def _from_table(name, table, apparent_field):
 
 def kellner(focal_length=25.0):
     """Kellner eyepiece: a Ramsden with a cemented achromatic eye lens
-    (N-BAK4 crown towards the eye, N-SF2 flint) and a plano-convex field
+    (N-BAK4 crown towards the eye, N-SF6 flint) and a plano-convex field
     lens. Apparent field 45 degrees."""
 
     return _from_table("Kellner", DESIGNS["kellner"], 45.0).scaled(focal_length)
@@ -346,7 +346,7 @@ def ploessl(focal_length=25.0):
 
 def erfle(focal_length=25.0):
     """Erfle eyepiece: cemented doublet, biconvex singlet and cemented
-    doublet (N-BAK4 and N-SF2). Apparent field 65 degrees."""
+    doublet (N-BAK4 and N-SF6). Apparent field 65 degrees."""
 
     return _from_table("Erfle", DESIGNS["erfle"], 65.0).scaled(focal_length)
 

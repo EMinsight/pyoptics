@@ -11,8 +11,8 @@ each ray enters a prism through the face it meets first, is reflected
 inside by total internal reflection (TIR) or by a mirror coating until it
 meets a face below the critical angle, and leaves through it. Every event
 multiplies the 3 x 3 polarization ray tracing matrix of the ray (Chipman's
-P, as in `raytrace.System.trace_polarization()`, notebook 20 (polarization
-ray tracing)): Fresnel or thin film (`coatings.Coating`) transmission at the
+P, as in `raytrace.System.trace_polarization()` of notebook 20
+(polarization ray tracing)): Fresnel or thin film (`coatings.Coating`) transmission at the
 entrance and exit faces, TIR or the coated reflection inside. The phase of
 TIR depends on the polarization, ::
 
@@ -755,16 +755,17 @@ def porro_system(D=1.0, material=None, margin=0.1, gap=None):
     """Porro prism system of the first kind: two Porro prisms with their
     sections at 90 degrees.
 
-    The first prism turns the beam back and shifts it by H = D (1 + margin)
-    in -y... the second, rotated by 90 degrees about z, turns it forward
-    again and shifts it in x. The axis of the output beam is parallel to
-    the input, displaced by (H, -H)... in x and y.
+    The first prism (section in the y-z plane) turns the beam back and
+    shifts it by H = D (1 + margin) in +y; the second, rotated by 90 degrees
+    about z (section in the x-z plane), turns it forward again and shifts
+    it by H in -x. The output beam is parallel to the input, along +z,
+    displaced by (-H, +H) and turned by 180 degrees about its axis. The
+    input axis is x = y = 0; the hypotenuse of the first prism is at z = 0,
+    that of the second at z = -gap.
 
     Returns
     -------
-    prisms : list of Prism
-    axis_in, axis_out : ((3,), (3,)) the input point (z = -2 H) and the
-        output axis point and direction behind the system.
+    list of Prism
     """
 
     material = _bak4() if material is None else material
@@ -1117,7 +1118,10 @@ def phase_coating(material=None, angle=None, wavelengths=(450e-6, 550e-6, 650e-6
 def tir_retardance(n, angle):
     """Retardance phi_p - phi_s (radians) of a bare TIR reflection inside a
     glass of index n at the angle of incidence (radians), in the field
-    ratio convention of `thin_films` (zero at the critical angle)."""
+    ratio convention of `thin_films`, where r_p carries the opposite sign
+    of the Born and Wolf convention: the retardance is pi minus the
+    textbook delta with tan(delta/2) = cos(theta) sqrt(sin^2 theta - 1/n^2)
+    / sin^2 theta, pi at the critical angle and at grazing incidence."""
 
     c = Coating((), substrate=1.0)
     angle = np.atleast_1d(angle)
