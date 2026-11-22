@@ -95,7 +95,12 @@ What each module does and how mature it is. Planned work is listed in
   parts are added at the detector; operator "fresnel_ft" (single-FT
   Fresnel) for small, strongly diffracting fields; `Field.overlap(mode)`
   and the detector quantity "coupling" give the power coupling efficiency
-  into a mode (e.g. of a single-mode fibre)
+  into a mode (e.g. of a single-mode fibre); `LocalPlaneInterface` and
+  `ThinElement(method="lpia")`: curved and structured interfaces in the
+  local plane interface approximation (local law of refraction, Fresnel
+  matrix at the local angle of incidence, vectorial polarization, ray field
+  summation), with a report of steps, total internal reflection, narrow
+  facets and caustics (notebook 168, local plane interface approximation)
 - `polygons`: new, tested: polygons as (N, 2) vertex arrays: signed area,
   centroid and second moments, the exact Fourier transform of any polygon
   (Lee and Mittra's edge sum, with a Taylor series near k = 0 and vertices
