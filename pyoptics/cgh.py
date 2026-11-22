@@ -204,6 +204,7 @@ fit_residual : number
     RMS of the Zernike fit residual in waves (of the phase, i.e. of the
     wavefront of one pass in the design order).
 norm_radius : number
+    Normalization radius of the Zernike fit.
 """
 
 
@@ -653,7 +654,7 @@ def binary_orders(orders, duty=0.5, depth=pi):
         t_m = (exp(i*depth) - 1)*sin(pi*m*D)/(pi*m)*exp(-i*pi*m*D)   (m != 0)
 
     for lines starting at the origin; centred on it, as `binary_mask()`
-    draws them, the last factor drops out. The efficiencies are |t_m|**2:
+    draws them, the last factor drops out. The efficiencies are ``abs(t_m)**2``:
     for D = 1/2 and depth = pi, 40.5 % in each first order, no zeroth
     and no even orders. The phase of every order m != 0 is
     depth/2 + pi/2 (+ pi where the sine changes sign), so a depth error that

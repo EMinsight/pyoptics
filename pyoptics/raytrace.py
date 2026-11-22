@@ -1690,7 +1690,7 @@ class ZernikePhaseSurface(Surface):
         return gx, gy
 
     def local_period(self, x, y):
-        """Local period 2*pi/|grad phi| of the fringes (infinite where the
+        """Local period ``2*pi/abs(grad phi)`` of the fringes (infinite where the
         phase is stationary); its smallest value over the aperture decides
         whether the hologram can be written."""
 
