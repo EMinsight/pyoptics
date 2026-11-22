@@ -380,10 +380,11 @@ def eigenmodes(chain, x, y=None, wavelength=None, n=1.0, n_modes=4, alpha_ref=No
     ncv, maxiter : optional
         Passed to eigs.
     runs : int, optional
-        Arnoldi runs with different start vectors (each new one orthogonal
-        to the modes found before). The Krylov space of a single start
-        vector contains only one mode of an exactly degenerate set (TEM01
-        and TEM10 of a round resonator); a second run finds the partners.
+        Arnoldi runs; each later run works on the operator with the modes
+        found so far deflated. The Krylov space of a single start vector
+        contains only one mode of an exactly degenerate set (TEM01 and
+        TEM10 of a round resonator); a second run finds the partners. The
+        modes of all runs are combined by a Rayleigh-Ritz step.
 
     Returns
     -------
@@ -416,26 +417,38 @@ def eigenmodes(chain, x, y=None, wavelength=None, n=1.0, n_modes=4, alpha_ref=No
         if ncv is None:
             ncv = int(min(N, max(4*k, 2*k + 1, 24)))
         rng = np.random.default_rng(0)
-        vals, vecs = [], []
+        vecs = []
         for run in range(max(1, int(runs))):
-            if run > 0:
-                # a new start, orthogonal to the modes found so far: the
-                # Krylov space of one start vector holds only one direction
-                # of an exactly degenerate pair (TEM01/TEM10)
+            if run == 0:
+                B = A
+            else:
+                # Schur deflation: with Q spanning the modes found so far
+                # (an invariant subspace), (1 - QQ^H) A (1 - QQ^H) keeps the
+                # other eigenvalues and sends the found ones to zero. One
+                # Krylov space holds only one direction of an exactly
+                # degenerate pair (TEM01/TEM10); the deflated run finds the
+                # partner.
+                Q = _orthonormal(np.array(vecs).T)
+                if Q.shape[1] >= N - 2:
+                    break
+
+                def deflated(v, Q=Q):
+                    v = v - Q @ (Q.conj().T @ v)
+                    u = op.apply(v)
+                    return u - Q @ (Q.conj().T @ u)
+                B = LinearOperator((N, N), matvec=deflated, dtype=complex)
                 v0 = rng.standard_normal(N) + 1j*rng.standard_normal(N)
-                Q, _ = np.linalg.qr(np.array(vecs).T)
                 v0 = v0 - Q @ (Q.conj().T @ v0)
             try:
-                w, V = eigs(A, k=k, which="LM", v0=v0, tol=tol, ncv=ncv, maxiter=maxiter)
+                w, V = eigs(B, k=k, which="LM", v0=v0, tol=tol, ncv=ncv, maxiter=maxiter)
             except ArpackNoConvergence as err:
                 if len(err.eigenvalues) == 0:
                     raise
                 warnings.warn("eigenmodes: only {} of {} modes converged".format(
                     len(err.eigenvalues), k), RuntimeWarning)
                 w, V = err.eigenvalues, err.eigenvectors
-            vals.extend(w)
-            vecs.extend(V.T)
-        vals, vecs = _distinct(np.array(vals), np.array(vecs))
+            vecs.extend(V.T[np.abs(w) > 0])
+        vals, vecs = _rayleigh_ritz(op.apply, np.array(vecs).T)
     else:
         raise ValueError("solver must be 'auto', 'dense' or 'arnoldi'")
     order = np.argsort(-np.abs(vals))
@@ -443,21 +456,31 @@ def eigenmodes(chain, x, y=None, wavelength=None, n=1.0, n_modes=4, alpha_ref=No
     return modes
 
 
-def _distinct(vals, vecs, tol=1E-6):
-    """Eigenpairs from several Arnoldi runs without repeats: a vector is
-    kept if it is not (nearly) in the span of the kept vectors."""
-    order = np.argsort(-np.abs(vals))
-    keep_v, keep_w = [], []
-    for i in order:
-        v = vecs[i]/np.linalg.norm(vecs[i])
-        if keep_v:
-            Q, _ = np.linalg.qr(np.array(keep_v).T)
-            r = v - Q @ (Q.conj().T @ v)
-            if np.linalg.norm(r) < 1E-3:
-                continue
-        keep_v.append(v)
-        keep_w.append(vals[i])
-    return np.array(keep_w), np.array(keep_v).T
+def _orthonormal(V, rtol=1E-8):
+    """Orthonormal basis of the span of the columns of V (rank revealing)."""
+    U, sv, _ = np.linalg.svd(V, full_matrices=False)
+    return U[:, sv > rtol*sv[0]]
+
+
+def _rayleigh_ritz(apply, V, tol=1E-7):
+    """Eigenpairs of a linear map restricted to the span of V: exact when
+    the span is an invariant subspace, and free of repeats when several
+    Arnoldi runs found the same mode."""
+    Q = _orthonormal(V)
+    AQ = np.column_stack([apply(q) for q in Q.T])
+    w, S = np.linalg.eig(Q.conj().T @ AQ)
+    V = Q @ S
+    # a degenerate set comes out as an arbitrary, possibly near-parallel
+    # basis of its eigenspace: orthonormalize it
+    done = np.zeros(len(w), bool)
+    for i in np.argsort(-np.abs(w)):
+        if done[i]:
+            continue
+        group = np.flatnonzero(~done & (np.abs(w - w[i]) <= tol*np.abs(w).max()))
+        done[group] = True
+        if len(group) > 1:
+            V[:, group] = np.linalg.qr(V[:, group])[0]
+    return w, V
 
 
 def frequency_offsets(modes, L, n=1.0):

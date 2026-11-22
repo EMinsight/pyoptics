@@ -69,10 +69,10 @@ def test_stable_resonator_gaussian_mode_and_gouy():
     x = np.linspace(-1.3*a, 1.3*a, 64)
     modes = rs.eigenmodes(rs.round_trip(L, R, R, a, a), x, x, WL, n_modes=3)
     f = modes[0].field
-    # the second Arnoldi run finds both partners of the degenerate TEM01/TEM10 pair
+    # the deflated second Arnoldi run finds the partner of the degenerate TEM01/TEM10 pair
     assert modes[1].loss == pytest.approx(modes[2].loss, rel=1e-3)
     u, v = (m.field.scalar_amplitude.ravel() for m in modes[1:3])
-    assert abs(np.vdot(u, v))/(np.linalg.norm(u)*np.linalg.norm(v)) < 0.9
+    assert abs(np.vdot(u, v))/(np.linalg.norm(u)*np.linalg.norm(v)) < 1e-6
     k = 2*np.pi/WL
     ref = ft.Field(np.exp(-(x[None, :]**2 + x[:, None]**2)/w1**2), x, x, WL,
                    alpha=(-k/(2*R), -k/(2*R)))                  # converging behind mirror 1
