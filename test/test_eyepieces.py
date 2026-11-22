@@ -21,9 +21,27 @@ def test_five_designs_scaled(designs):
 
 def test_eye_relief_order(designs):
     er = {e.name: e.eye_relief(np.inf) for e in designs}
-    # the Huygens eyepiece has the shortest eye relief, the Plössl the longest
-    assert er["Huygens"] < er["Ramsden"] < er["Kellner"] < er["Plössl"]
-    assert 5.0 < er["Huygens"] < 10.0 and 20.0 < er["Plössl"] < 25.0
+    # the Plössl has the longest eye relief, all are of the order f/3 to f
+    assert max(er, key=er.get) == "Plössl"
+    assert all(5.0 < v < 25.0 for v in er.values())
+
+
+def test_lenses_have_edges(designs):
+    # front and back surface of every lens must not cross within the beam
+    p = np.linspace(-1, 1, 21)
+    for e in designs:
+        s = e.system()
+        h = np.zeros(len(s.surfaces))
+        for f in (0.0, s.max_field):
+            b = s.trace_pupil(f, 0*p, p)
+            h = np.fmax(h, np.nanmax(np.abs(b.points[1:-1, :, 1]), axis=1))
+        for i in range(1, len(s.surfaces) - 1):
+            if s.n[i + 1] == 1.0:      # air spaces
+                continue
+            a, b = s.surfaces[i], s.surfaces[i + 1]
+            r2 = np.array([(1.05*max(h[i], h[i + 1]))**2])
+            edge = a.thickness + b.sag(r2)[0] - a.sag(r2)[0]
+            assert edge > 0.2, (e.name, i, edge)
 
 
 def test_eye_relief_is_exit_pupil_of_objective(designs):

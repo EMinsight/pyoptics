@@ -36,9 +36,11 @@ lenses of real thickness, the spacing adjusted to bring the first order
 lateral colour (Huygens) or the field stop (Ramsden) to the intended place.
 The Kellner, Plössl and Erfle eyepieces were optimized for pyoptics with
 damped least squares from first order layouts in N-BAK4 crown with N-SF6
-(Kellner, Erfle) or N-SF2 flint (the Plössl, kept symmetric: two identical cemented doublets, crowns facing each
-other), for a 4 mm eye pupil, the objective 250 mm behind the field stop
-and the apparent fields of the type; they show the behaviour of each type,
+(Kellner, Erfle) or N-SF10 flint (the Plössl, kept symmetric: two
+identical cemented doublets, crowns facing each other), for a 4 mm eye
+pupil, the objective 250 mm behind the field stop and the apparent fields
+of the type, with edge thicknesses of at least 1.5 mm (glass) and 0.5 mm
+(air) at the rim of the real beams; they show the behaviour of each type,
 they are not copies of particular commercial designs.
 
 Sign conventions are those of `raytrace` along the reversed path: light
@@ -307,13 +309,13 @@ def ramsden(focal_length=25.0):
 # (R, thickness, glass) from the eye side, f = 25 mm (scaled exactly by the
 # builders); glass None: air behind the surface
 DESIGNS = {
-    "kellner": [(128.867, 5.0, "N-BAK4"), (-10.642, 1.5, "N-SF6"), (-20.412, 13.237, None),
-                (21.816, 4.0, "N-BK7"), (np.inf, 0.0, None)],
-    "ploessl": [(-287.5, 1.5, "N-SF2"), (28.7, 6.0, "N-BAK4"), (-24.5, 0.3, None),
-                (24.5, 6.0, "N-BAK4"), (-28.7, 1.5, "N-SF2"), (287.5, 0.0, None)],
-    "erfle": [(201.204, 1.5, "N-SF6"), (29.540, 8.0, "N-BAK4"), (-50.132, 0.5, None),
-              (104.170, 7.0, "N-BAK4"), (-40.266, 0.5, None),
-              (62.221, 8.0, "N-BAK4"), (-29.688, 1.5, "N-SF6"), (-50.914, 0.0, None)],
+    "kellner": [(27.161, 12.0, "N-BAK4"), (-11.181, 2.865, "N-SF6"), (-29.652, 12.836, None),
+                (18.375, 7.178, "N-BK7"), (np.inf, 0.0, None)],
+    "ploessl": [(303.921, 1.586, "N-SF10"), (30.339, 13.743, "N-BAK4"), (-25.899, 0.317, None),
+                (25.899, 13.743, "N-BAK4"), (-30.339, 1.586, "N-SF10"), (-303.921, 0.0, None)],
+    "erfle": [(201.668, 1.534, "N-SF6"), (29.608, 8.289, "N-BAK4"), (-50.248, 0.511, None),
+              (104.41, 7.417, "N-BAK4"), (-40.359, 0.511, None),
+              (62.364, 11.466, "N-BAK4"), (-29.756, 1.534, "N-SF6"), (-51.031, 0.0, None)],
 }
 
 
@@ -338,7 +340,7 @@ def kellner(focal_length=25.0):
 
 def ploessl(focal_length=25.0):
     """Plössl (symmetrical) eyepiece: two identical cemented doublets
-    (N-SF2 flint outside, N-BAK4 crown inside), crowns facing each other
+    (N-SF10 flint outside, N-BAK4 crown inside), crowns facing each other
     across a small air gap. Apparent field 50 degrees."""
 
     return _from_table("Plössl", DESIGNS["ploessl"], 50.0).scaled(focal_length)

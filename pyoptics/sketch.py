@@ -12477,7 +12477,7 @@ def mode_decomposition(ax, kind="incoherent", title=None):
 
     - "incoherent": the coherent modes of a partially coherent beam
       (Hermite-Gaussians with the weights w_j); each is traced through the
-      chain, and the detector adds the irradiances w_j |E_j|^2.
+      chain, and the detector adds the irradiances w_j abs(E_j)^2.
     - "pulse": the spectral components of a pulse at the frequencies
       omega_j; the detector adds the fields with their complex amplitudes
       a_j, and the sum is a short pulse.
@@ -12905,7 +12905,7 @@ def unstable_resonator(ax, M=2.0, title=None):
     (notebook 170, laser resonator modes). A large concave mirror and a small convex
     mirror share their focal point F (behind the small mirror). A
     collimated ray that hits the small mirror seems to come from F, and the
-    large mirror sends it back collimated, M = R1/|R2| times further from
+    large mirror sends it back collimated, M = R1/abs(R2) times further from
     the axis. Rays that pass the edge of the small mirror leave the cavity
     as an annular (for strips: two-strip) output beam; the geometric output
     coupling is 1 - 1/M for strips and 1 - 1/M^2 for round mirrors.
