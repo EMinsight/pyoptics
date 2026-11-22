@@ -287,7 +287,12 @@ What each module does and how mature it is. Planned work is listed in
   the ABCD law (also in media), mode matching efficiency; resonator
   stability, eigenmodes and round trip Gouy phase; `collins()` propagates any
   field through an ABCD system (Collins integral, separate x and y matrices
-  for astigmatic systems)
+  for astigmatic systems); general astigmatism with 4x4 matrices: rotated
+  elements and cylindrical lenses, symplectic check, the complex beam
+  matrix Q of Arnaud and Kogelnik with its ABCD law, intensity and phase
+  ellipses of twisted Gaussian beams, and `collins_4x4()` for any field
+  through a 4x4 system (checked against the Q law and element by element
+  propagation; notebook 08, ABCD matrices, sections 11 and 12)
 - `unwrap`: 2D phase unwrapping, tested: least squares unwrapping with a
   DCT Poisson solver (Ghiglia-Romero), weighted least squares with
   modulation or amplitude weights and masks (conjugate gradients
@@ -734,7 +739,17 @@ What each module does and how mature it is. Planned work is listed in
   `galvo_xy()`; an F-theta lens and a telecentric scan lens designed with
   `lens_optimization` (notebook 149, scan lenses)
 - `beam_quality`: beam widths, azimuth and M² after ISO 11146 (second
-  moments, iterated integration window, caustic fit), tested
+  moments, iterated integration window, caustic fit), tested; all ten
+  second moments of a field (ISO 11146-2, general astigmatic beams), the
+  effective and intrinsic M², the intrinsic astigmatism and the twist
+  (orbital angular momentum), checked against HG and LG modes and the 4x4
+  ABCD law (notebook 07, beam quality, section 4)
+- `ince`: new, tested: Ince-Gaussian beams (Bandres and Gutiérrez-Vega
+  2004); Ince polynomials as a finite Fourier eigenproblem, elliptic
+  coordinates, even, odd and helical IG modes normalized to unit power, their
+  exact HG and LG coefficients by Gauss-Hermite quadrature; checked against
+  the Ince equation, orthonormality, the LG and HG limits, Fresnel
+  propagation and the ABCD law (notebook 163, Ince-Gaussian beams)
 - `modes`: mode analysis and fibres, tested: decomposition of any field into
   Hermite-Gaussian or Laguerre-Gaussian modes (given or fitted waist,
   curvature and centre; power fractions, reconstruction error, propagation

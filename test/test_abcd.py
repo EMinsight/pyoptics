@@ -286,3 +286,90 @@ def test_collins_imaging_plane(grid):
     expected = -np.exp(-((X + 50)**2 + (Y - 30)**2)/30**2)*np.exp(1j*np.pi/WL*M[1, 0]/M[0, 0]*(X**2 + Y**2))
     inner = (np.abs(X) < 350) & (np.abs(Y) < 350)
     assert np.allclose(E_out[inner], expected[inner], atol=2E-3)
+
+
+# general astigmatism:
+def _twisting_system():
+    return abcd.compose(abcd.to_4x4(abcd.free_space(3000.0)),
+                        abcd.cylindrical_lens(4000.0, 0.3),
+                        abcd.to_4x4(abcd.free_space(2500.0)),
+                        abcd.cylindrical_lens(-6000.0, 1.1),
+                        abcd.to_4x4(abcd.free_space(2000.0)))
+
+
+def test_4x4_elements_symplectic():
+    assert abcd.is_symplectic(abcd.cylindrical_lens(50.0, 0.4))
+    assert abcd.is_symplectic(abcd.rotate(abcd.mirror(100.0, 0.2), 0.7))
+    assert abcd.is_symplectic(_twisting_system())
+    assert not abcd.is_symplectic(np.diag([2.0, 1.0, 1.0, 1.0]))
+
+
+def test_rotated_cylindrical_lens():
+    M = abcd.cylindrical_lens(10.0, np.pi/2)
+    assert np.allclose(M, abcd.to_4x4(np.eye(2), abcd.thin_lens(10.0)))
+    # two crossed cylinders of equal power make a spherical lens:
+    M = abcd.compose(abcd.cylindrical_lens(10.0, 0.3), abcd.cylindrical_lens(10.0, 0.3 + np.pi/2))
+    assert np.allclose(M, abcd.to_4x4(abcd.thin_lens(10.0)))
+
+
+def test_transform_Q_reduces_to_q():
+    q_x, q_y = abcd.q_from_waist(30.0, -100.0, WL), abcd.q_from_waist(50.0, 40.0, WL)
+    M_x = abcd.compose(abcd.free_space(200.0), abcd.thin_lens(150.0), abcd.free_space(90.0))
+    M_y = abcd.compose(abcd.free_space(200.0), abcd.free_space(90.0))
+    Q = abcd.transform_Q(abcd.to_4x4(M_x, M_y), abcd.Q_from_q(q_x, q_y))
+    assert np.allclose(np.diag(Q), [abcd.transform_q(M_x, q_x), abcd.transform_q(M_y, q_y)])
+    assert abs(Q[0, 1]) < 1E-9
+
+
+def test_gaussian_field_Q():
+    x, y, _, _ = grid2d(-200, 200, -200, 200, 256)
+    q_x, q_y = abcd.q_from_waist(30.0, 500.0, WL), abcd.q_from_waist(50.0, -200.0, WL)
+    E = abcd.gaussian_field_Q(x, y, abcd.Q_from_q(q_x, q_y), WL)
+    assert np.allclose(E, abcd.gaussian_field(x, y, q_x, WL, q_y=q_y))
+    E = abcd.gaussian_field_Q(x, y, abcd.Q_from_q(q_x, q_y, 0.4), WL)
+    assert np.sum(np.abs(E)**2)*(x[1] - x[0])**2 == pytest.approx(1.0, rel=1E-9)
+    p = abcd.astigmatic_parameters(abcd.Q_from_q(q_x, q_y, 0.4), WL)
+    assert not p.twisted
+    assert p.theta_w == pytest.approx(0.4)
+    assert p.w == pytest.approx([abcd.beam_radius(q_x, WL), abcd.beam_radius(q_y, WL)])
+
+
+def test_collins_4x4_separable():
+    x, y, _, _ = grid2d(-300, 300, -300, 300, 256)
+    E_in = abcd.gaussian_field(x, y, abcd.q_from_waist(40.0, 0.0, WL), WL)*(1 + x[None, :]/50.0)
+    M_x = abcd.compose(abcd.thin_lens(2000.0), abcd.free_space(1500.0))
+    M_y = abcd.compose(abcd.thin_lens(-3000.0), abcd.free_space(1500.0))
+    E_ref = abcd.collins(E_in, x, y, M_x, WL, M_y=M_y)
+    E = abcd.collins_4x4(E_in, x, y, abcd.to_4x4(M_x, M_y), WL)
+    assert np.max(np.abs(E - E_ref)) < 1E-10*np.max(np.abs(E_ref))
+
+
+def test_collins_4x4_general():
+    """A twisted system (non-symmetric B): field against the Q law and
+    against propagating element by element."""
+    x, y, X, Y = grid2d(-400, 400, -400, 400, 384)
+    q = abcd.q_from_waist(60.0, 0.0, WL)
+    Q_in = abcd.Q_from_q(q, abcd.q_from_waist(40.0, 0.0, WL))
+    E_in = abcd.gaussian_field_Q(x, y, Q_in, WL)
+    M = _twisting_system()
+    B = M[:2, 2:]
+    assert not np.allclose(B, B.T)
+    E = abcd.collins_4x4(E_in, x, y, M, WL)
+    Q_out = abcd.transform_Q(M, Q_in)
+    E_ref = abcd.gaussian_field_Q(x, y, Q_out, WL)
+    assert abcd.astigmatic_parameters(Q_out, WL).twisted
+    dA = (x[1] - x[0])**2
+    overlap = np.sum(E*np.conj(E_ref))*dA
+    assert abs(overlap) == pytest.approx(1.0, abs=1E-5)
+    assert np.max(np.abs(np.abs(E) - np.abs(E_ref))) < 1E-4*np.max(np.abs(E_ref))
+
+    # element by element: free space with fresnel_TF, thin lenses as phases:
+    k = 2*np.pi/WL
+    def cyl(E, f, theta):
+        s = X*np.cos(theta) + Y*np.sin(theta)
+        return E*np.exp(-1j*k*s**2/(2*f))
+    E2 = fresnel_TF(E_in, x, y, 3000.0, WL)[0]
+    E2 = fresnel_TF(cyl(E2, 4000.0, 0.3), x, y, 2500.0, WL)[0]
+    E2 = fresnel_TF(cyl(E2, -6000.0, 1.1), x, y, 2000.0, WL)[0]
+    overlap = np.sum(E*np.conj(E2))*dA
+    assert abs(overlap) == pytest.approx(1.0, abs=1E-5)

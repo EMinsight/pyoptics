@@ -131,3 +131,41 @@ def test_iteration_with_camera_noise_and_offset():
 
     assert np.mean(d) == pytest.approx(24.0, rel=0.01)
     assert np.std(d) < 0.03*24.0
+
+
+# general astigmatic beams:
+def _moment_cases():
+    from pyoptics import abcd, modes
+    from pyoptics.utils import grid2d
+    x, y, X, Y = grid2d(-300, 300, -300, 300, 256)
+    w0 = 30.0
+    return x, y, {
+        "gauss": (abcd.gaussian_field(x, y, abcd.q_from_waist(w0, 0, 1.0), 1.0), (1, 1), 0.0),
+        "HG10": (modes.hg_mode(1, 0, x, y, w0, 1.0), (1, 3), 0.0),
+        "LG01": (modes.lg_mode(0, 1, x, y, w0, 1.0), (1, 3), 1.0),
+        "LG0-2": (modes.lg_mode(0, -2, x, y, w0, 1.0, z=500.0), (1, 5), -2.0),
+    }
+
+
+def test_intrinsic_parameters_of_modes():
+    from pyoptics.beam_quality import intrinsic_parameters, moment_matrix
+    x, y, cases = _moment_cases()
+    for name, (E, m2, oam) in cases.items():
+        r = intrinsic_parameters(moment_matrix(E, x, y, 1.0)[0], 1.0)
+        assert np.allclose(r.M2_intrinsic, m2, atol=1E-6), name
+        assert r.M2_eff == pytest.approx(np.sqrt(m2[0]*m2[1]), abs=1E-6)
+        assert r.t*2*np.pi == pytest.approx(oam, abs=1E-6), name
+
+
+def test_moment_matrix_transforms_with_abcd():
+    from pyoptics import abcd
+    from pyoptics.beam_quality import moment_matrix, intrinsic_parameters
+    x, y, cases = _moment_cases()
+    E = cases["HG10"][0]
+    M = abcd.compose(abcd.cylindrical_lens(20000.0, 0.5), abcd.to_4x4(abcd.free_space(4000.0)))
+    P0, _ = moment_matrix(E, x, y, 1.0)
+    P1, _ = moment_matrix(abcd.collins_4x4(E, x, y, M, 1.0), x, y, 1.0)
+    assert np.allclose(M @ P0 @ M.T, P1, atol=1E-8*np.abs(P1).max())
+    r0, r1 = intrinsic_parameters(P0, 1.0), intrinsic_parameters(P1, 1.0)
+    assert np.allclose(r0.M2_intrinsic, r1.M2_intrinsic)
+    assert abs(r1.t) > 1E-3 and r0.t == pytest.approx(0, abs=1E-12)
