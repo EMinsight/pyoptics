@@ -90,7 +90,7 @@ Setup sketches for the other example notebooks:
   plano-convex lens (notebook 168, local plane interface approximation).
 - polishing_layout(): a bonnet tool on an asphere and its removal spot,
   raster and spiral tool paths, the ripple of overlapping tracks and the
-  turned-down edge under an overhanging tool (notebook 164,
+  turned-down edge under an overhanging tool (notebook 175,
   polishing errors).
 - diode_collimator(), fibre_coupling(): an astigmatic laser diode with an
   aspheric collimator and a focusing lens, and a Gaussian beam focused into

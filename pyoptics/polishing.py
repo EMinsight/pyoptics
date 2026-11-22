@@ -59,7 +59,7 @@ The functions here build such errors on a grid, to be handed to
 - `defect_map()`: a pixelated transmittance map of digs and scratches
   (MIL-PRF-13830B, ISO 10110-7) for an energy map.
 
-Notebook 164 (polishing errors) puts them on a fast asphere and follows
+Notebook 175 (polishing errors) puts them on a fast asphere and follows
 them into the PSF and the MTF.
 
 Conventions: maps are sampled as ``Z[i, j]`` at (x[j], y[i]) (the image

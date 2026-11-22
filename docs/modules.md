@@ -466,7 +466,7 @@ What each module does and how mature it is. Planned work is listed in
   turned-down edges, Gaussian random surfaces with an isotropic PSD (power
   laws), the radial PSD and band limited RMS of a map, Zernike removal, the
   specular fraction (1 - TIS) of rough surfaces in reflection and
-  transmission and pixelated dig and scratch maps (notebook 164,
+  transmission and pixelated dig and scratch maps (notebook 175,
   polishing errors); the maps go into `raytrace.MapSurface` (gridded sag departure on
   any base surface, spline normals, covered by the differential ray trace)
   and ``energy_map`` (gridded transmittance or reflectance of any surface,

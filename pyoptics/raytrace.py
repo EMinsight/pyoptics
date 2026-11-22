@@ -1156,7 +1156,7 @@ class MapSurface(ZernikeSurface):
     frame (x, y) of the surface (after its decenter and tilt; the map is
     not shifted by `centre`). Use it for interferometric surface
     measurements and for figure, mid-spatial frequency and edge errors of
-    polishing (`pyoptics.polishing`, notebook 164,
+    polishing (`pyoptics.polishing`, notebook 175,
     polishing errors): the Zernikes hold the low orders, the map the rest.
 
     The rays are intersected by Newton steps on the full sag and refracted
