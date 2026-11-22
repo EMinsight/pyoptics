@@ -571,13 +571,16 @@ How fabs and optics shops measure surfaces and films: coherence scanning
 (white-light) interferometry for surface heights from nanometres to
 millimetres, spectroscopic ellipsometry and its model fits for film
 thicknesses and optical constants, scatterometry of line gratings too
-small to image, and phase measuring deflectometry for the shape and the
-ripples of specular freeforms.
+small to image, phase measuring deflectometry for the shape and the
+ripples of specular freeforms, and the null test of aspheres with a
+computer-generated hologram, from the hologram design to the surface form
+deviation.
 
 - {doc}`134 Coherence scanning interferometry (white light interferometry, WLI) <notebooks/134_coherence_scanning_interferometry>`
 - {doc}`135 Ellipsometry <notebooks/135_ellipsometry>`
 - {doc}`136 Scatterometry <notebooks/136_scatterometry>`
 - {doc}`137 Deflectometry <notebooks/137_deflectometry>`
+- {doc}`165 CGH null testing of aspheres <notebooks/165_cgh_null_testing_aspheres>`
 
 ```{toctree}
 :hidden:
@@ -587,6 +590,7 @@ notebooks/134_coherence_scanning_interferometry
 notebooks/135_ellipsometry
 notebooks/136_scatterometry
 notebooks/137_deflectometry
+notebooks/165_cgh_null_testing_aspheres
 ```
 
 ## Crystal optics and light modulators

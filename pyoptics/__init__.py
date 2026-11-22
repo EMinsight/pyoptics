@@ -14,6 +14,7 @@ from . import unwrap
 from . import interferometry
 from . import holography
 from . import raytrace
+from . import cgh
 from . import raywave
 from . import fresnel
 from . import microscopy

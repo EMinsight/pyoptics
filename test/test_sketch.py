@@ -53,6 +53,8 @@ def test_paraxial_ray_imaging():
     sketch.fpm_microscope,
     sketch.twyman_green,
     sketch.fizeau_interferometer,
+    sketch.cgh_null_test,
+    lambda ax: sketch.cgh_null_test(ax, show="zones"),
     sketch.shack_hartmann_sensor,
     sketch.phase_diversity_setup,
     sketch.holography_setup,

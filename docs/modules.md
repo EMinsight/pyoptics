@@ -599,7 +599,10 @@ What each module does and how mature it is. Planned work is listed in
   of the Sweatt model, checked with `System.sweatt_model()`, zone radii and
   local period, kinoform depth and scalar efficiency with
   `System.diffraction_efficiency()`, multi-order lenses; notebook 151,
-  hybrid diffractive lenses)
+  hybrid diffractive lenses); diffractive surfaces with a linear carrier and
+  a Zernike phase (`ZernikePhaseSurface`: computer-generated holograms
+  with a tilt carrier, any order, transmissive or reflective; notebook
+  165, CGH null testing of aspheres)
 - `delano`: Delano's y-ybar diagram, tested: the diagram of any centred
   `raytrace.System` (powers, spacings, magnification, NA, pupils and
   cardinal points agree with the paraxial trace and `abcd`), thin lens
@@ -1033,6 +1036,21 @@ What each module does and how mature it is. Planned work is listed in
   (`profile_scan()`); checked against the obliquity factor, the phase on
   reflection of metals, thick films at the optical thickness and flat
   profiles (notebook 134, coherence scanning interferometry)
+- `cgh`: new, tested: computer-generated holograms for null tests of
+  aspheres. Null phase from the normals of the test surface and the
+  traced incoming wave, exact without optimization (`null_phase()`),
+  alignment zones (`focus_phase()` for a cat's eye or fiducials,
+  `retro_phase()` for a Littrow ring), binary patterns; all order
+  combinations of the double pass traced against the interferometer's stop
+  (`order_paths()`, `InterferometerStop` as a surface for ray and field
+  tracing); binary grating orders in the thin element model and with RCWA
+  (`binary_orders()`, `binary_orders_rcwa()`), writer distortion
+  (`distortion_phase()`); reconstruction of the surface form deviation with
+  traced alignment sensitivities (`remove_alignment()`), the mapping onto
+  the surface (`surface_map()`) and Zernike fits of scattered data
+  (`zernike_fit()`); checked against the grating equation, exact nulls of
+  traced double passes, focusing and retroreflection, Parseval and a known
+  form error (notebook 165, CGH null testing of aspheres)
 - `ellipsometry`: new, tested: Psi and Delta of layered samples with
   `thin_films`, in the Nebraska conventions (`rho()`, `psi_delta()`,
   `rho_from_coefficients()`), the pseudo-dielectric function, Brewster

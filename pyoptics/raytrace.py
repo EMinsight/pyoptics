@@ -10,7 +10,9 @@ errors, mount deformations, freeforms), ruled diffraction gratings on plane
 or curved surfaces (`GratingSurface`, one order per trace), rotationally
 symmetric diffractive surfaces with a phase polynomial (`DiffractiveSurface`:
 kinoforms and hybrid refractive-diffractive lenses, with their power, Seidel
-sums, colour and efficiency), toroidal and biconic surfaces with different
+sums, colour and efficiency), diffractive surfaces with a linear carrier and
+a Zernike phase (`ZernikePhaseSurface`: computer-generated holograms, see
+`pyoptics.cgh`), toroidal and biconic surfaces with different
 curvatures in x and y (`ToroidalSurface`, `BiconicSurface`: cylinder and
 toric lenses, anamorphic optics) and `CoordinateBreak` elements. Surfaces can be decentred and
 tilted. Rays are traced exactly (exact intersections, vector law of refraction and
@@ -1546,6 +1548,194 @@ class DiffractiveSurface(Surface):
         side = np.sign(cos_i)*(-1.0 if self.mirror else 1.0)
         d2 = (t_out + (side*normal)[:, None]*N)/n_out
         dopl = mu*self.phase_at(np.sqrt(r2))
+
+        return d2, dopl
+
+
+class ZernikePhaseSurface(Surface):
+    """Diffractive surface with a linear carrier plus a Zernike phase
+    (computer-generated holograms, CGHs, for null tests).
+
+    A phase function ::
+
+        phi(x, y) = 2*pi*(f_x x + f_y y) + sum_j c_j Z_j((x - x0)/r_norm, (y - y0)/r_norm)
+
+    in radians on a refracting (or reflecting) base surface of `Surface`,
+    like Zemax's "Zernike Standard Phase" surface with an added grating
+    carrier of the spatial frequency (f_x, f_y) (cycles per length unit).
+    Unlike `DiffractiveSurface`, phi need not be rotationally symmetric: a
+    null hologram for an asphere is usually written with a tilt carrier
+    that sends the measuring order off axis, away from the other orders,
+    and the phase that compensates the asphere in that tilted geometry has
+    every Zernike term. A ray of vacuum wavelength lambda in the order m
+    leaves by the local grating equation on the tangent plane ::
+
+        n' d'_t = n d_t + m*lambda/(2*pi) grad_t(phi),
+
+    and the optical path gains m*lambda*phi/(2*pi) (sign of m flipped on
+    a mirror, as for `GratingSurface`), so ray maps and OPDs behind it are
+    those of the diffracted wave. One order is traced per trace
+    (`with_order()` for the others, `cgh.order_paths()` for all
+    combinations of a double pass).
+
+    The phase enters only the real ray trace; paraxial data, Seidel sums
+    and draw() treat the surface as its base surface (a Zernike defocus in
+    phi is not counted as power). The compiled kernel does not cover it.
+    Polarization ray tracing treats the surface as its base surface.
+
+    Parameters
+    ----------
+    R, thickness, ... : optional
+        As for `Surface` (all keyword arguments are passed on).
+    carrier : (f_x, f_y), optional
+        Spatial frequency of the linear carrier, in cycles per length unit
+        (e.g. (0, 50) for 50 lines/mm, the order m = +1 bent towards +y).
+    zernike : dict, optional
+        {j: c_j}, Zernike index in `ordering` and phase coefficient in
+        radians.
+    norm_radius : number, optional
+        Normalization radius r_norm of the Zernikes.
+    ordering : {"noll", "standard", "fringe"}, optional
+        Index ordering and normalization of the Zernikes (see
+        `ZernikeSurface`); Noll by default, since a null phase needs
+        high radial orders beyond the 37 Fringe terms in common use.
+    centre : (x0, y0), optional
+        Centre of the Zernikes in the local frame.
+    order : int, optional
+        Diffraction order m that is traced.
+    """
+
+    has_seidel = False
+
+    def __init__(self, R=np.inf, thickness=0.0, carrier=(0.0, 0.0), zernike=None,
+                 norm_radius=1.0, ordering="noll", centre=(0.0, 0.0), order=1, **kwargs):
+        super().__init__(R, thickness, **kwargs)
+        if not norm_radius > 0:
+            raise ValueError("norm_radius must be positive.")
+        self.carrier = (float(carrier[0]), float(carrier[1]))
+        self.norm_radius = float(norm_radius)
+        ordering = ordering.lower()
+        self.ordering = "noll" if ordering == "standard" else ordering
+        self.centre = (float(centre[0]), float(centre[1]))
+        self.order = int(order)
+        self.set_zernike(zernike or {}, replace=True)
+
+    def set_zernike(self, coefficients, replace=False):
+        """Change Zernike phase coefficients (in place).
+
+        Parameters
+        ----------
+        coefficients : dict
+            {j: c_j}, Zernike index in `ordering` and coefficient (radians).
+        replace : bool, optional
+            Replace all coefficients instead of updating them.
+        """
+
+        terms = {} if replace else dict(self.zernike)
+        terms.update({int(j): float(c) for j, c in coefficients.items()})
+        self.zernike = tuple(sorted(terms.items()))
+        self._terms = tuple((n, m, scale*c) for (n, m, scale), c in
+                            ((zernike_indices(j, self.ordering), c) for j, c in self.zernike))
+
+    def __repr__(self):
+        return ("ZernikePhaseSurface(R={}, thickness={}, carrier={}, {} Zernike terms, "
+                "norm_radius={}, ordering={!r}, order={})".format(
+                    self.R, self.thickness, self.carrier, len(self.zernike), self.norm_radius,
+                    self.ordering, self.order))
+
+    def with_order(self, order):
+        """Copy of the surface that diffracts into another order."""
+
+        other = copy.copy(self)
+        other.order = int(order)
+
+        return other
+
+    @property
+    def _sign(self):
+        return -1.0 if self.mirror else 1.0
+
+    def _normalized(self, x, y):
+        x0, y0 = self.centre
+
+        return ((np.asarray(x, dtype=float) - x0)/self.norm_radius,
+                (np.asarray(y, dtype=float) - y0)/self.norm_radius)
+
+    def phase_at(self, x, y, carrier=True):
+        """Phase phi(x, y) in radians (not wrapped) at points of the local
+        frame; carrier=False leaves out the linear carrier."""
+
+        u, v = self._normalized(x, y)
+        phi = np.zeros(np.broadcast(u, v).shape)
+        for n, m, c in self._terms:
+            phi = phi + c*zernike_nm(n, m, u, v)
+        if carrier:
+            phi = phi + 2*pi*(self.carrier[0]*np.asarray(x) + self.carrier[1]*np.asarray(y))
+
+        return phi
+
+    def phase_gradient(self, x, y, carrier=True):
+        """Analytic (dphi/dx, dphi/dy) in radians per length unit."""
+
+        u, v = self._normalized(x, y)
+        gx = np.zeros(np.broadcast(u, v).shape)
+        gy = np.zeros_like(gx)
+        for n, m, c in self._terms:
+            zx, zy = zernike_nm_gradient(n, m, u, v)
+            gx, gy = gx + c*zx, gy + c*zy
+        gx, gy = gx/self.norm_radius, gy/self.norm_radius
+        if carrier:
+            gx, gy = gx + 2*pi*self.carrier[0], gy + 2*pi*self.carrier[1]
+
+        return gx, gy
+
+    def local_period(self, x, y):
+        """Local period ``2*pi/abs(grad phi)`` of the fringes (infinite where the
+        phase is stationary); its smallest value over the aperture decides
+        whether the hologram can be written."""
+
+        gx, gy = self.phase_gradient(x, y)
+        with np.errstate(divide="ignore"):
+            return 2*pi/np.hypot(gx, gy)
+
+    def deflect(self, Q, d, n1, n2, wavelength=None):
+        """Diffract the directions d at the points Q into the order m.
+
+        Parameters
+        ----------
+        Q : (N, 3) array
+            Intersection points in the local frame of the surface.
+        d : (N, 3) array
+            Unit directions of the incident rays.
+        n1, n2 : numbers
+            Refractive indices in front of and behind the surface.
+        wavelength : number
+            Vacuum wavelength in the length unit of the system (passed by
+            `System.trace()`).
+
+        Returns
+        -------
+        d2 : array
+            New unit directions, NaN where the local order is evanescent.
+        dopl : array
+            Optical path m*lambda*phi/(2*pi) of the phase.
+        """
+
+        if wavelength is None:
+            raise ValueError("A diffractive surface needs the wavelength.")
+        N = self.normal(Q)
+        mu = self._sign*self.order*wavelength/(2*pi)
+        gx, gy = self.phase_gradient(Q[:, 0], Q[:, 1])
+        G = np.stack([gx, gy, np.zeros(len(Q))], axis=-1)
+        G_t = G - _dot(G, N)[:, None]*N
+        cos_i = _dot(d, N)
+        t_out = n1*(d - cos_i[:, None]*N) + mu*G_t
+        n_out = n1 if self.mirror else n2
+        with np.errstate(invalid="ignore"):
+            normal = np.sqrt(n_out**2 - _dot(t_out, t_out))
+        side = np.sign(cos_i)*(-1.0 if self.mirror else 1.0)
+        d2 = (t_out + (side*normal)[:, None]*N)/n_out
+        dopl = mu*self.phase_at(Q[:, 0], Q[:, 1])
 
         return d2, dopl
 
@@ -3409,7 +3599,7 @@ class System:
             opl = opl + n[i]*t
             if clip and s.semi_diameter is not None:
                 valid &= np.hypot(Q[:, 0], Q[:, 1]) <= s.semi_diameter*(1 + 1e-9)
-            if isinstance(s, (GratingSurface, DiffractiveSurface)):
+            if isinstance(s, (GratingSurface, DiffractiveSurface, ZernikePhaseSurface)):
                 d_l, dopl = s.deflect(Q, d_l, n[i], n[i + 1], self.wavelength)
             else:
                 d_l, dopl = s.deflect(Q, d_l, n[i], n[i + 1])
