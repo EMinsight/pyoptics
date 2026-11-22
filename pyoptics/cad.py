@@ -637,6 +637,7 @@ def system_model(system, fields=None, n_rays=7, pupil="y", mechanics=None, rays=
         s = surfaces[i]
         return s.semi_diameter if s.semi_diameter is not None else r_hit[i]
 
+    envelope = traced + (_trace(system, fields, 24, "ring", ray_start) if mount is not None else [])
     parts = []  # (solids, rim and clear semi-diameters) per element, for the mount
     for k, (first, last) in enumerate(system.elements()):
         mech = mechanics.get(k, default)
@@ -656,7 +657,12 @@ def system_model(system, fields=None, n_rays=7, pupil="y", mechanics=None, rays=
             continue
         if first == last:  # ideal lens: no geometry
             continue
-        parts.append(([], rm, r_clear))
+        # beam radius in the vertex planes of the first and last surface
+        # (before and behind the element), for the bore of the mount:
+        # behind a concave surface the beam spreads beyond the clear
+        # aperture before it reaches the vertex plane
+        parts.append(([], rm, r_clear, _beam_radius(envelope, first, system.vertex_z[first], True),
+                      _beam_radius(envelope, last, system.vertex_z[last], False)))
         slabs = [i for i in range(first, last) if not system._is_gap(n[i + 1])]
         for j, i in enumerate(slabs):
             s1, s2 = surfaces[i], surfaces[i + 1]
@@ -786,23 +792,29 @@ def _mount(parts, mount, stop_plate, scale):
         face = bd.Face(bd.Wire.make_polygon(pts, close=True))
         return bd.Solid.revolve(face, 360.0, bd.Axis.Z)
 
-    inner = [(p[2] + mount.spacer_clearance)*scale for p in parts]
+    # inner radii in front of and behind every element: the clear aperture
+    # or the beam, whichever is larger, plus the clearance
+    inner_in = [(max(p[2], p[3]) + mount.spacer_clearance)*scale for p in parts]
+    inner_out = [(max(p[2], p[4]) + mount.spacer_clearance)*scale for p in parts]
     bounds = [z_front] + centres + [z_back]
     for k in range(len(bounds) - 1):
         near = [parts[j] for j in (k - 1, k) if 0 <= j < len(parts)]
         z0, z1 = bounds[k], bounds[k + 1]
         if k == 0:
-            profile = [(z0, inner[0]), (z1, inner[0])]
+            profile = [(z0, inner_in[0]), (z1, inner_in[0])]
         elif k == len(bounds) - 2:
-            profile = [(z0, inner[-1]), (z1, inner[-1])]
+            profile = [(z0, inner_out[-1]), (z1, inner_out[-1])]
         else:
             # the bore follows the clear apertures: constant up to the back
             # of element k - 1 and from the front of element k, conical
             # between them
-            a, b = inner[k - 1], inner[k]
+            a, b = inner_out[k - 1], inner_in[k]
             za, zb = max(zmax[k - 1], z0), min(zmin[k], z1)
+            # (elements that overlap in z, e.g. nested menisci: a
+            # cylindrical bore outside both clear apertures, a cone would
+            # cut through the glass of the larger one)
             profile = [(z0, a), (za, a), (zb, b), (z1, b)] if zb > za else \
-                [(z0, a), (z1, b)]
+                [(z0, max(a, b)), (z1, max(a, b))]
         piece = bore_ring(profile)
         for p in near:
             for solid in p[0]:
@@ -825,6 +837,22 @@ def _mount(parts, mount, stop_plate, scale):
 
 
 # --- rays --------------------------------------------------------------------
+
+def _beam_radius(bundles, i, z, before):
+    """Largest ray radius in the plane z on the ray segments that reach
+    surface i (before=True) or leave it (system units; coaxial)."""
+
+    r = 0.0
+    for b in bundles:
+        A, B = (b.points[i], b.points[i + 1]) if before else (b.points[i + 1], b.points[i + 2])
+        with np.errstate(invalid="ignore", divide="ignore"):
+            t = np.clip((z - A[:, 2])/(B[:, 2] - A[:, 2]), 0.0, 1.0)
+            Q = A + np.where(np.isfinite(t), t, 0.0)[:, None]*(B - A)
+        rq = np.hypot(Q[:, 0], Q[:, 1])
+        if np.any(np.isfinite(rq)):
+            r = max(r, float(np.nanmax(rq)))
+    return r
+
 
 def _trace(system, fields, n_rays, pupil, ray_start):
     if fields is None:
