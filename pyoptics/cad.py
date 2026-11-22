@@ -31,7 +31,8 @@ out as traced. Lengths are converted to millimetres.
   refined until they deviate less than ``tolerance`` from it. Surfaces with
   a ``section()`` (`fresnel.FresnelSurface`) get a B-spline per facet and
   straight risers.
-- Surfaces with a ``sag_xy(x, y)`` (`raytrace.ZernikeSurface`,
+- Surfaces with a ``sag_xy(x, y)`` (`raytrace.ToroidalSurface`,
+  `raytrace.BiconicSurface`, `raytrace.ZernikeSurface`,
   `qaspheres.Q2DSurface`, `freeform.TabulatedSurface`) and slabs whose
   surfaces are decentred or tilted against each other are cut from a
   cylinder of the mechanical diameter along the axis of their first
@@ -42,13 +43,20 @@ Mechanical diameter, lands and bevels
 `Mechanics` sets, per element (the index into `System.elements()`), the
 mechanical semi-diameter (by default the largest clear semi-diameter of
 the element plus ``margin``), what happens between the clear aperture and
-the rim (``land="flat"``: a flat annulus perpendicular to the axis at the
-height of the clear aperture rim, for the seat of a mount; on a freeform at
-the rim point farthest towards air, joined by a short step; ``"extend"``:
-the optical surface goes on to the rim) and 45 degree protective bevels of
-face width ``bevel`` on the rim edges that face air. Cemented interfaces
-keep sharp edges. The edge between the optical face and a flat land is
-obtuse (180 degrees minus the slope angle) and needs no bevel. A slab
+the rim, and 45 degree protective bevels of face width ``bevel`` on the
+rim edges that face air. Between clear aperture and rim the surface is
+by default continued in a way that is polished together with the optical
+surface (``land="continue"``): a sphere goes on as the same sphere, a
+toroid as the same toroid, an asphere as its best fit sphere (through the
+vertex and the rim of the clear aperture, where it joins the asphere), a
+freeform as itself; a flat annulus next to a curved surface cannot be
+polished with it. Only a surface that cannot reach the rim (a sphere of
+smaller radius than the rim, a steep face of a thick meniscus) and Fresnel
+surfaces get a flat land. ``land="flat"`` gives the flat annulus perpendicular to
+the axis at the height of the clear aperture rim (on a freeform at the
+rim point farthest towards air, joined by a short step), e.g. for molded
+or diamond turned parts, ``"extend"`` the optical surface itself up to the
+rim, aspheres included. Cemented interfaces keep sharp edges. A slab
 whose edge would get thinner than ``min_edge_thickness`` raises a
 ValueError.
 
@@ -85,9 +93,14 @@ class Mechanics:
         clear semi-diameter of the element plus margin.
     margin : number, optional
         Added to the clear semi-diameter if semi_diameter is None.
-    land : {"flat", "extend"}, optional
-        Between clear aperture and rim: a flat annulus perpendicular to the
-        axis (default), or the continued optical surface.
+    land : {"continue", "flat", "extend"}, optional
+        Between clear aperture and rim: the surface continued so that it
+        can be polished in one piece with the optical surface (default:
+        spheres, planes, toroids, biconics and freeforms go on as
+        themselves, aspheres as their best fit sphere through the vertex
+        and the rim of the clear aperture, Fresnel surfaces flat), a flat
+        annulus perpendicular to the axis ("flat"), or the optical surface
+        itself, aspheres included ("extend").
     bevel : number or (front, back), optional
         Face width of the 45 degree bevels on the rim edges of the surfaces
         that face air (0: sharp edges).
@@ -100,7 +113,7 @@ class Mechanics:
 
     semi_diameter: Optional[float] = None
     margin: float = 1.0
-    land: str = "flat"
+    land: str = "continue"
     bevel: object = 0.0
     mirror_thickness: float = 5.0
     min_edge_thickness: float = 0.1
@@ -297,6 +310,60 @@ def _rim_sag(s, r):
     return float(s.sag(np.array([r**2]))[0])
 
 
+def _continuation(s, r_clear, land, rm=None):
+    """What carries a rotationally symmetric surface s on beyond its clear
+    semi-diameter r_clear: (surface, dz), whose sag plus dz continues it.
+
+    - land "continue": a sphere or plane goes on as itself; an asphere,
+      conic, Q-type asphere or axicon as its best fit sphere, the sphere
+      through the vertex and the rim of the clear aperture (so the
+      continuation joins the optical surface there); a Fresnel surface
+      (stepped section), or a sphere that does not reach the rim
+      semi-diameter rm, as the plane at its rim height,
+    - "flat": the plane perpendicular to the axis at the rim height,
+    - "extend": the surface itself.
+    """
+
+    if land == "extend":
+        return s, 0.0
+    z = _rim_sag(s, r_clear)
+    if land == "flat" or hasattr(s, "section"):
+        return rt.Surface(np.inf), z
+    if land != "continue":
+        raise ValueError("land must be 'continue', 'flat' or 'extend', not {!r}.".format(land))
+    if _sphere_or_plane(s) is not None:
+        cont = s
+    elif z == 0.0:
+        cont = rt.Surface(np.inf)
+    else:
+        cont = rt.Surface((r_clear**2 + z**2)/(2*z))
+    if rm is not None and not np.isfinite(_rim_sag(cont, rm)):
+        # a sphere smaller than the rim (a steep face with a small clear
+        # aperture on a large element) cannot go on: a flat land
+        return rt.Surface(np.inf), z
+    return cont, 0.0
+
+
+def _surface_edges(s, cont, dz, r_clear, r_end, z_offset, scale, tolerance):
+    """Section edges of s from the axis to r_clear and of its continuation
+    (cont, dz) from r_clear to r_end."""
+
+    if cont is s:
+        return _profile_edges(s, 0.0, r_end, z_offset, scale, tolerance)
+    return (_profile_edges(s, 0.0, r_clear, z_offset, scale, tolerance)
+            + _profile_edges(cont, r_clear, r_end, z_offset + dz, scale, tolerance))
+
+
+def _outer_rim_sags(s, r_clear, rm, land, n=181):
+    """Sag (local frame) around the rim of semi-diameter rm of the surface
+    as continued beyond r_clear (for flat lands on freeforms: at r_clear)."""
+
+    if _is_freeform(s):
+        return _rim_sags(s, r_clear if land == "flat" else rm, n)
+    cont, dz = _continuation(s, r_clear, land, rm)
+    return np.full(n, _rim_sag(cont, rm) + dz)
+
+
 # --- solids ------------------------------------------------------------------
 
 def _location(origin, R, scale):
@@ -315,10 +382,15 @@ def _revolved_slab(s1, s2, t, r1, r2, rm, land, bevels, scale, tolerance, min_ed
 
     sgn = 1.0 if t > 0 else -1.0  # glass lies in +z (sgn = 1) of s1
     b1, b2 = bevels
-    if land == "extend":
-        r1 = r2 = rm
-    z1 = _rim_sag(s1, r1)
-    z2 = t + _rim_sag(s2, r2)
+    (c1, dz1), (c2, dz2) = _continuation(s1, r1, land, rm), _continuation(s2, r2, land, rm)
+    # the continued surfaces end where the bevels begin:
+    e1, e2 = rm - b1, rm - b2
+    if e1 < r1 - 1e-12 or e2 < r2 - 1e-12:
+        raise ValueError("Bevels ({}, {}) reach into the clear aperture ({}, {}) at the rim "
+                         "semi-diameter {}.".format(b1, b2, r1, r2, rm))
+    e1, e2 = max(e1, r1), max(e2, r2)
+    z1 = _rim_sag(c1, e1) + dz1
+    z2 = t + _rim_sag(c2, e2) + dz2
     if not (np.isfinite(z1) and np.isfinite(z2)):
         raise ValueError("Surface sag undefined at the clear aperture or rim.")
     edge = sgn*(z2 - z1) - b1 - b2
@@ -329,14 +401,13 @@ def _revolved_slab(s1, s2, t, r1, r2, rm, land, bevels, scale, tolerance, min_ed
     def P(r, z):
         return bd.Vector(r*scale, 0.0, z*scale)
 
-    edges = _profile_edges(s1, 0.0, r1, 0.0, scale, tolerance)
-    # front land, bevel and rim:
-    pts = [P(r1, z1), P(rm - b1, z1), P(rm, z1 + sgn*b1), P(rm, z2 - sgn*b2), P(rm - b2, z2),
-           P(r2, z2)]
+    edges = _surface_edges(s1, c1, dz1, r1, e1, 0.0, scale, tolerance)
+    # front bevel, rim, back bevel:
+    pts = [P(e1, z1), P(rm, z1 + sgn*b1), P(rm, z2 - sgn*b2), P(e2, z2)]
     for a, b in zip(pts[:-1], pts[1:]):
         if (a - b).length > 1e-9:
             edges.append(bd.Edge.make_line(a, b))
-    back = _profile_edges(s2, 0.0, r2, t, scale, tolerance)
+    back = _surface_edges(s2, c2, dz2, r2, e2, t, scale, tolerance)
     edges += [e.reversed() for e in back[::-1]]
     edges.append(bd.Edge.make_line(P(0.0, t), P(0.0, 0.0)))
     face = bd.Face(bd.Wire(edges))
@@ -353,9 +424,11 @@ def _rim_sags(s, r, n=181):
     return np.full(n, _rim_sag(s, r))
 
 
-def _surface_face(s, rm, scale, tolerance, n_grid=41):
+def _surface_face(s, rm, scale, tolerance, r_clear=None, land="flat", n_grid=41):
     """Face of a surface in its local frame (mm), continued to beyond the
-    rim semi-diameter rm, to split solids with."""
+    rim semi-diameter rm, to split solids with (a rotationally symmetric
+    surface as `_continuation()` from r_clear on, except for flat lands,
+    which are cut separately)."""
 
     import build123d as bd
 
@@ -376,11 +449,18 @@ def _surface_face(s, rm, scale, tolerance, n_grid=41):
         pts = [[bd.Vector(X[i, j]*scale, Y[i, j]*scale, Z[i, j]*scale) for j in range(n_grid)]
                for i in range(n_grid)]
         return bd.Face.make_surface_from_array_of_points(pts, tol=1e-6, min_deg=3, max_deg=5)
-    # rotationally symmetric: revolve the section, continued flat beyond the rim
-    edges = _profile_edges(s, 0.0, rm, 0.0, scale, tolerance)
-    z = _rim_sag(s, rm)
-    edges.append(bd.Edge.make_line(bd.Vector(rm*scale, 0, z*scale),
-                                   bd.Vector(ext*scale, 0, z*scale)))
+    # rotationally symmetric: revolve the section, continued beyond the
+    # clear aperture and flat beyond the rim (or where the sag ends)
+    if land == "flat" or r_clear is None:
+        cont, dz, r_clear, r_end = s, 0.0, rm, rm
+    else:
+        cont, dz = _continuation(s, r_clear, land, rm)
+        r_end = ext if np.isfinite(_rim_sag(cont, ext)) else rm
+    edges = _surface_edges(s, cont, dz, r_clear, r_end, 0.0, scale, tolerance)
+    z = _rim_sag(cont, r_end) + dz
+    if r_end < ext:
+        edges.append(bd.Edge.make_line(bd.Vector(r_end*scale, 0, z*scale),
+                                       bd.Vector(ext*scale, 0, z*scale)))
     return bd.Face.revolve(bd.Wire(edges), 360.0, bd.Axis.Z) if hasattr(bd.Face, "revolve") \
         else bd.Shell.revolve(bd.Wire(edges), 360.0, bd.Axis.Z)
 
@@ -405,17 +485,17 @@ def _one_solid(shape):
 def _side(s, frame, axis, r_clear, rm, land, z_land, ref_in, ref_out, depth, scale,
           tolerance):
     """The part of the cylinder of semi-diameter rm about the axis frame on
-    the glass side of surface s (with a flat land from r_clear to rm at
-    the local height z_land), global, mm. ref_in, ref_out: points in the
+    the glass side of surface s (continued beyond r_clear, or with a flat
+    land from r_clear to rm at the local height z_land), global, mm. ref_in, ref_out: points in the
     glass inside the clear aperture and in the land annulus."""
 
     import build123d as bd
 
     loc = _location(*frame, scale)
     aloc = _location(*axis, scale)
-    face = loc*_surface_face(s, rm, scale, tolerance)
+    face = loc*_surface_face(s, rm, scale, tolerance, r_clear, land)
     plane = bd.Plane(origin=(0, 0, -depth*scale))
-    if land == "extend" or r_clear >= rm:
+    if land != "flat" or r_clear >= rm:
         cyl = aloc*bd.Solid.make_cylinder(rm*scale, 2*depth*scale, plane)
         return _pick(cyl.split(face, keep=bd.Keep.BOTH), ref_in)
     inner = aloc*bd.Solid.make_cylinder(r_clear*scale, 2*depth*scale, plane)
@@ -439,13 +519,13 @@ def _cut_slab(s1, f1, s2, f2, g, r1, r2, rm, mech, bevels, scale, tolerance):
     (o1, R1), (o2, _) = f1, f2
     land = mech.land
     t = float(R1[:, 2] @ (o2 - o1))  # axial distance of the vertices
-    rim1 = _rim_sags(s1, rm if land == "extend" else r1)
-    rim2 = _rim_sags(s2, rm if land == "extend" else r2)
+    rim1 = _outer_rim_sags(s1, r1, rm, land)
+    rim2 = _outer_rim_sags(s2, r2, rm, land)
     # flat lands flush with the rim point that lies farthest towards air:
     z1 = np.min(g*rim1)*g
     z2 = np.max(g*rim2)*g
     b1, b2 = bevels
-    edge = np.min(g*(t + rim2 - rim1)) if land == "extend" else g*(t + z2 - z1)
+    edge = g*(t + z2 - z1) if land == "flat" else np.min(g*(t + rim2 - rim1))
     edge -= b1 + b2
     if edge < mech.min_edge_thickness:
         raise ValueError("Edge thickness {:.3g} below {} at semi-diameter {} between {} and {}."
@@ -636,13 +716,13 @@ def system_model(system, fields=None, n_rays=7, pupil="y", mechanics=None, rays=
 
 
 def _mirror(system, i, r_clear, rm, mech, scale, tolerance, sigma_in):
-    """Mirror substrate: the mirror face, a land to the rim and a flat back
+    """Mirror substrate: the mirror face, continued (or a land) to the rim and a flat back
     mirror_thickness behind the rim (seen from the incoming light)."""
 
     s = system.surfaces[i]
     frame = system.frames()[0][i]
     back = rt.Surface(np.inf)
-    rim = _rim_sags(s, rm if mech.land == "extend" else r_clear)
+    rim = _outer_rim_sags(s, r_clear, rm, mech.land)
     # flat back mirror_thickness behind the rim point farthest behind:
     t = np.max(sigma_in*rim)*sigma_in + sigma_in*mech.mirror_thickness
     b1, _ = mech.bevels()

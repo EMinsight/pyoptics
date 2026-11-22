@@ -7,7 +7,8 @@ Two optimizers:
 
 - `DampedLeastSquares`, the classical lens design optimizer (see the section
   further down): `Variable` objects (`Curvature`, `Thickness`, `AirSpace`,
-  `Conic`, `Aspheric`, the phase coefficients of diffractive surfaces
+  `Conic`, `Aspheric`, `CurvatureX`/`ConicX` of toroidal and biconic
+  surfaces (toric and cylinder lenses), the phase coefficients of diffractive surfaces
   `DiffractivePhase` with `diffractive()`, freeform terms `ZernikeTerm`
   with `zernike_terms()`, `Tilt`, `Decenter` and `ImageTilt` of off-axis
   systems (notebook 155, off-axis mirrors and nodal aberrations), model glasses
@@ -1176,6 +1177,47 @@ class Curvature(Variable):
             return other
 
         return super().perturbed(system, h)
+
+
+class CurvatureX(Variable):
+    """Curvature 1/R_x of the x-z section of a `raytrace.ToroidalSurface`
+    or `raytrace.BiconicSurface` (cylinder and toric powers; the y-z
+    section is `Curvature`). Analytic with ``jac="analytic"``."""
+
+    def __init__(self, surface, bounds=(None, None)):
+        super().__init__(bounds)
+        self.surface = surface
+        self.name = "cx{}".format(surface)
+
+    def get(self, system):
+        R = system.surfaces[self.surface].R_x
+
+        return 0.0 if np.isinf(R) else 1/R
+
+    def set(self, system, value):
+        system.surfaces[self.surface].R_x = 1/value if value != 0 else np.inf
+
+    def typical(self, system):
+        return 1/_length_scale(system)
+
+
+class ConicX(Variable):
+    """Conic constant conic_x of the x-z section of a
+    `raytrace.BiconicSurface`."""
+
+    def __init__(self, surface, bounds=(None, None)):
+        super().__init__(bounds)
+        self.surface = surface
+        self.name = "Kx{}".format(surface)
+
+    def get(self, system):
+        return system.surfaces[self.surface].conic_x
+
+    def set(self, system, value):
+        system.surfaces[self.surface].conic_x = value
+
+    def typical(self, system):
+        return 1.0
 
 
 class Thickness(Variable):

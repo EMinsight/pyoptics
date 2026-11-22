@@ -50,7 +50,8 @@ differentiated analytically; paraxial operands (`seidel()`,
 `paraxial_target()`, `clearances()`...) by `Linearization.derivative()`;
 other operands, parameters that change something the
 differential trace does not cover (wavelength, field, surfaces other than
-`raytrace.Surface`, Q-bfs, Q-con and Zernike surfaces and coordinate breaks)
+`raytrace.Surface`, Q-bfs, Q-con, Zernike, toroidal and biconic surfaces
+and coordinate breaks)
 and constraints get central differences of `Linearization.jacobian()`.
 Rays are traced without vignetting (clip=False), as by the operands.
 
@@ -78,13 +79,14 @@ Operands and constraints of `lens_optimization` with ``jac="analytic"``:
   everything else, e.g. own functions and other constraints.
 
 Variables (`lens_optimization`): `Curvature`, `Conic`, `Aspheric`,
-`QCoefficient`, `ZernikeTerm`, `Thickness`, `AirSpace`, `ObjectDistance`
+`QCoefficient`, `ZernikeTerm`, `CurvatureX` and `ConicX` (toroidal and
+biconic surfaces), `Thickness`, `AirSpace`, `ObjectDistance`
 (finite objects), `Tilt`, `Decenter`, `ImageTilt` and the model glasses
 (`GlassIndex`, `GlassAbbe`, through the derivatives of the indices) are
 analytic, with the paraxial solves applied. Parameters that change
 the wavelength, the field or the object space index, and surfaces other
-than `raytrace.Surface`, Q-bfs, Q-con, Zernike surfaces and coordinate
-breaks (ideal lenses, gratings, diffractive surfaces, axicons, tabulated
+than `raytrace.Surface`, Q-bfs, Q-con, Zernike, toroidal and biconic
+surfaces and coordinate breaks (ideal lenses, gratings, diffractive surfaces, axicons, tabulated
 surfaces), get central differences column by column
 (`Linearization.unsupported` lists them). Rays are traced without
 vignetting (clip=False).
@@ -193,7 +195,8 @@ _SYSTEM_OK = {"object_distance", "image_decenter", "image_tilt", "background"}
 def _shape_types():
     from .qaspheres import QbfsSurface, QconSurface
 
-    return (rt.Surface, QbfsSurface, QconSurface, rt.ZernikeSurface)
+    return (rt.Surface, QbfsSurface, QconSurface, rt.ZernikeSurface, rt.ToroidalSurface,
+            rt.BiconicSurface)
 
 
 def _differs(a, b):
@@ -215,6 +218,8 @@ def _public(obj):
 def _sag_gradient(s, x, y):
     """Sag z and gradient (z_x, z_y) of a surface at local points."""
 
+    if isinstance(s, rt._AnamorphicSurface):
+        return s._sag_derivatives(x, y, 1)
     if isinstance(s, rt.ZernikeSurface):
         zx, zy = s._gradient(x, y)
         return s.sag_xy(x, y), zx, zy
@@ -228,8 +233,10 @@ def _hessian(s, x, y, scale):
     """Second derivatives (z_xx, z_xy, z_yy) of the sag: rotationally
     symmetric part from a central difference of the slope over r in r**2,
     the Zernike departure from central differences of its analytic
-    gradient."""
+    gradient; toroidal and biconic surfaces analytically."""
 
+    if isinstance(s, rt._AnamorphicSurface):
+        return s.hessian_xy(x, y)
     r2 = x**2 + y**2
     h2 = 1e-5*scale**2
     sr = s._slope_over_r(r2)

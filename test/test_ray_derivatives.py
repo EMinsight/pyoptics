@@ -353,3 +353,36 @@ def test_off_axis_operands_constraint_penalties_and_forward_differences():
     dls.jac = "analytic"
     J2 = dls.jacobian()[0]
     assert np.max(np.abs(J1 - J2)) < 1e-3*np.max(np.abs(J1))
+
+
+def toric_lens():
+    """A toric lens (toroidal front, rotated by 20 degrees about z, biconic
+    back) in front of a paraxial focus."""
+
+    S = [rt.ToroidalSurface(40.0, 4.0, R_x=60.0, conic=-0.5, aspheric=(2e-6,),
+                            n_after=1.5168, semi_diameter=8.0, tilt=(0.0, 0.0, np.radians(20))),
+         rt.BiconicSurface(-120.0, 60.0, R_x=-70.0, conic=0.3, conic_x=-1.2,
+                           aspheric_x=(-1e-6,), n_after=1.0)]
+    return rt.System(S, 0, 0.55e-3, field_angle=np.radians(2.0)).at_paraxial_focus()
+
+
+TORIC_VARIABLES = [lo.Curvature(0), lo.CurvatureX(0), lo.Conic(0), lo.Aspheric(0, 4, 8.0),
+                   lo.Curvature(1), lo.CurvatureX(1), lo.Conic(1), lo.ConicX(1),
+                   lo.Thickness(0), lo.Tilt(0, 2), lo.Decenter(1, 0)]
+
+
+@pytest.mark.parametrize("aim", [True, False])
+def test_toroidal_and_biconic_trace_derivatives(aim):
+    s = toric_lens()
+    s.ray_aiming = aim
+    dls = lo.DampedLeastSquares(s, TORIC_VARIABLES, [], solves=[lo.solve_paraxial_focus()])
+    lin = dls.linearization()
+    assert not np.any(lin.unsupported)
+    field = (np.radians(1.0), np.radians(1.5))
+    px, py = oa.pupil_rings((0.5, 1.0), 8)
+    rd = lin.trace(field, px, py)
+    f = image_rays(field, px, py)
+    assert np.allclose(np.concatenate([rd.I.ravel(), rd.D.ravel(), rd.opl, rd.d0.ravel()]),
+                       f(dls.system), rtol=0, atol=1e-9)
+    err = rel_errors(stacked(rd), lin.finite_difference(f))
+    assert np.all(err < 1e-5), dict(zip([v.name for v in TORIC_VARIABLES], err))
