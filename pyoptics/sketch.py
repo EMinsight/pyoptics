@@ -82,6 +82,12 @@ Setup sketches for the other example notebooks:
   of operators, what each free-space operator does, rays through a ball lens
   handing over to waves at the caustic, a Mach-Zehnder interferometer with
   a small defect, and Babinet's principle (notebook 109, field tracing).
+- lpia_principle(), relief_grating_orders(), rod_lens_lpia_chain(),
+  lpia_output_plane(), plano_convex_orientation(): a structured interface in
+  the thin element and in the local plane interface approximation, a relief
+  grating and its orders, the LPIA chain through a rod lens, where to put
+  the output plane behind a focusing surface, and the two orientations of a
+  plano-convex lens (notebook 168, local plane interface approximation).
 - diode_collimator(), fibre_coupling(): an astigmatic laser diode with an
   aspheric collimator and a focusing lens, and a Gaussian beam focused into
   a single-mode fibre by a spherical lens or an asphere (notebook 112, field tracing applications).
@@ -11965,3 +11971,320 @@ def euv_layout(ax, kind="multilayer", title=None):
         _finish(ax, (-0.45, 0.95), (-0.36, 0.36), title)
     else:
         raise ValueError("unknown kind {!r}".format(kind))
+
+
+# ------------------ notebook 168, local plane interface approximation
+
+
+def _surface_hits(h_fun, dh_fun, z0, y, d=np.array([1.0, 0.0]), n1=1.5, n2=1.0):
+    """Ray (z0, y) along d meets z = h_fun(y) (fixed point iteration);
+    returns the hit point, the unit normal (towards -z) and the refracted
+    direction."""
+    p = np.array([z0, y], dtype=float)
+    s = 0.0
+    for _ in range(50):
+        q = p + s*d
+        s = s + (h_fun(q[1]) - q[0])/(d[0] - dh_fun(q[1])*d[1])
+    q = p + s*d
+    nrm = np.array([-1.0, dh_fun(q[1])])
+    nrm = nrm/np.linalg.norm(nrm)
+    k = 1 - (n1/n2)**2*(1 - np.dot(nrm, d)**2)
+    d2 = _refract(d, nrm, n1, n2) if k > 0 else None
+    return q, nrm, d2
+
+
+def lpia_principle(ax, kind="lpia", title=None):
+    """Sketch of a structured interface (glass on the left, air on the
+    right, light along z) in the thin element approximation (kind="tea":
+    the rays cross the profile straight and get its optical thickness as a
+    phase in one plane) or in the local plane interface approximation
+    (kind="lpia": every local plane wave is refracted at the tangent plane
+    where it meets the surface, with the Fresnel coefficients of that
+    plane, and goes straight on to an output plane behind the profile).
+
+    Parameters
+    ----------
+    ax : matplotlib Axes
+    kind : {"lpia", "tea"}, optional
+    title : str, optional
+    """
+
+    mpatches = _patches()
+    P, d = 2.0, 0.55
+    h_fun = lambda y: d/2*(1 + np.cos(2*np.pi*y/P))
+    dh_fun = lambda y: -d/2*2*np.pi/P*np.sin(2*np.pi*y/P)
+    ys = np.linspace(-2.1, 2.1, 300)
+    z_in, z_out, z_end = -1.6, d + 0.05, 2.3
+    poly = np.r_[np.c_[np.full(2, z_in - 0.4), [-2.1, 2.1]][::-1], np.c_[h_fun(ys), ys]]
+    poly = np.r_[np.c_[h_fun(ys), ys], [[z_in - 0.4, 2.1], [z_in - 0.4, -2.1]]]
+    ax.add_patch(mpatches.Polygon(poly, closed=True, facecolor=GLASS, edgecolor="none", zorder=1))
+    ax.plot(h_fun(ys), ys, color=EDGE, lw=1.6, zorder=3)
+    label(ax, z_in - 0.15, -2.35, "glass, $n$", fontsize=9, ha="left")
+    label(ax, 1.9, -2.35, "air", fontsize=9)
+    y_rays = np.linspace(-1.75, 1.75, 9)
+    if kind == "tea":
+        ax.plot([0.0, 0.0], [-2.1, 2.1], color=FIELD_COLOR, lw=2.2, zorder=4)
+        label(ax, -0.2, 2.35, "one plane:\n$t = e^{ik_0(n-1)h}$", fontsize=8, color=FIELD_COLOR,
+              va="bottom")
+        for y in y_rays:
+            ax.plot([z_in, z_end - 0.1], [y, y], color=RAY_COLOR, lw=1.0, zorder=3)
+            ax.annotate("", xy=(z_end, y), xytext=(z_in, y),
+                        arrowprops=dict(arrowstyle="-|>", color=RAY_COLOR, lw=1.0), zorder=3)
+        label(ax, 1.45, -2.65, "no deflection,\nno angle dependence", fontsize=8, color="0.35",
+              va="top")
+    else:
+        for y in y_rays:
+            q, nrm, d2 = _surface_hits(h_fun, dh_fun, z_in, y)
+            t = np.array([-nrm[1], nrm[0]])
+            ax.plot([q[0] - 0.35*t[0], q[0] + 0.35*t[0]], [q[1] - 0.35*t[1], q[1] + 0.35*t[1]],
+                    color="0.25", lw=1.6, zorder=4)
+            ax.plot([z_in, q[0]], [y, y], color=RAY_COLOR, lw=1.0, zorder=3)
+            s = (z_end - q[0])/d2[0]
+            ax.annotate("", xy=q + s*d2, xytext=q,
+                        arrowprops=dict(arrowstyle="-|>", color=RAY_COLOR, lw=1.0), zorder=3)
+        ax.plot([z_out, z_out], [-2.1, 2.1], color="0.35", lw=1.0, ls="--", zorder=2)
+        label(ax, z_out + 0.05, 2.35, "output plane:\nray field summation", fontsize=8,
+              va="bottom", ha="left", color="0.3")
+        label(ax, -0.9, 2.35, "tangent planes:\nSnell, $t_s$, $t_p$", fontsize=8, va="bottom",
+              color="0.25")
+    ax.plot([z_in, z_in], [-2.1, 2.1], color="0.55", lw=0.8, ls=":", zorder=2)
+    label(ax, z_in, -2.6, "input field", fontsize=8, color="0.4")
+    _finish(ax, (z_in - 0.45, z_end + 0.15), (-2.8, 3.05), title)
+
+
+def lpia_output_plane(ax, plane="behind", title=None):
+    """Sketch of a strongly focusing interface (glass on the left) and two
+    choices of the output plane of the LPIA step. plane="behind": the
+    refracted rays are carried geometrically to a plane behind the surface
+    and cross on the way (geometrical optics fails at the caustic).
+    plane="input": the transmitted field is carried back to the input plane
+    (virtual rays that diverge backwards, nothing crosses), and the
+    spectrum of plane waves takes it forward through the caustic.
+
+    Parameters
+    ----------
+    ax : matplotlib Axes
+    plane : {"behind", "input"}, optional
+    title : str, optional
+    """
+
+    mpatches = _patches()
+    R, n = 1.6, 1.5
+    z_in = 0.0
+    zc = z_in + 0.25
+    h_fun = lambda y: zc + np.sqrt(np.maximum(R**2 - y**2, 0.0))
+    dh_fun = lambda y: -y/np.sqrt(np.maximum(R**2 - y**2, 1E-9))
+    ys = np.linspace(-1.35, 1.35, 200)
+    poly = np.r_[np.c_[h_fun(ys), ys], [[z_in - 0.3, 1.35], [z_in - 0.3, -1.35]]]
+    ax.add_patch(mpatches.Polygon(poly, closed=True, facecolor=GLASS, edgecolor="none", zorder=1))
+    ax.plot(h_fun(ys), ys, color=EDGE, lw=1.6, zorder=3)
+    z_v = zc + R
+    rays = []
+    for y in np.linspace(-0.9, 0.9, 9):
+        q, nrm, d2 = _surface_hits(h_fun, dh_fun, z_in, y, n1=n, n2=1.0)
+        rays.append((y, q, d2))
+        ax.plot([z_in, q[0]], [y, y], color=RAY_COLOR, lw=1.0, zorder=3)
+    if plane == "behind":
+        z_o = z_v + 2.0
+        for y, q, d2 in rays:
+            s = (z_o - q[0])/d2[0]
+            ax.plot([q[0], q[0] + s*d2[0]], [q[1], q[1] + s*d2[1]], color=RAY_COLOR, lw=1.0,
+                    zorder=3)
+        ax.plot([z_o, z_o], [-1.5, 1.5], color="0.35", lw=1.2, ls="--", zorder=4)
+        label(ax, z_o, 1.75, "output plane", fontsize=8, color="0.3")
+        # where the outermost rays cross the axis
+        y, q, d2 = rays[0]
+        s = -q[1]/d2[1]
+        zx = q[0] + s*d2[0]
+        ax.plot(zx, 0.0, "x", color=STRAY, ms=9, mew=2, zorder=5)
+        label(ax, zx, -1.75, "rays cross:\ngeometrical optics fails", fontsize=8, color=STRAY,
+              va="top")
+        z_lim = z_o + 0.4
+    else:
+        z_o = z_in
+        for y, q, d2 in rays:
+            s = (z_o - q[0])/d2[0]
+            ax.plot([q[0], q[0] + s*d2[0]], [q[1], q[1] + s*d2[1]], color=RAY_COLOR, lw=0.9,
+                    ls=":", zorder=3)
+            ax.plot([q[0], q[0] + 0.35/d2[0]*d2[0]], [q[1], q[1] + 0.35/d2[0]*d2[1]],
+                    color=RAY_COLOR, lw=1.0, zorder=3)
+        ax.add_patch(mpatches.Rectangle((z_o, -1.5), z_v + 2.4 - z_o, 3.0, facecolor=WAVE_COLOR,
+                                        alpha=0.08, edgecolor="none", zorder=0))
+        ax.plot([z_o, z_o], [-1.5, 1.5], color="0.35", lw=1.2, ls="--", zorder=4)
+        label(ax, z_o, 1.75, "output plane = input plane\n(virtual rays, dotted)", fontsize=8,
+              color="0.3", va="bottom")
+        label(ax, z_v + 1.3, -1.75, "Propagate (spectrum of plane\nwaves) through the caustic",
+              fontsize=8, color=WAVE_COLOR, va="top")
+        z_lim = z_v + 2.4
+    label(ax, z_in + 0.3, -1.2, "glass", fontsize=8, ha="left")
+    _finish(ax, (z_in - 0.35, z_lim), (-2.45, 2.35), title)
+
+
+def rod_lens_lpia_chain(ax, title=None):
+    """Sketch of the LPIA chain through a dielectric rod: the front surface
+    (LocalPlaneInterface, output plane just behind it), the spectrum of
+    plane waves through the glass to the axis, the back surface with its
+    output plane back on the axis, and the spectrum of plane waves through
+    the focus to the observation plane.
+
+    Parameters
+    ----------
+    ax : matplotlib Axes
+    title : str, optional
+    """
+
+    mpatches = _patches()
+    a, n = 1.0, 1.5
+    t = np.linspace(0, 2*np.pi, 200)
+    ax.add_patch(mpatches.Polygon(np.c_[a*np.cos(t), a*np.sin(t)], closed=True,
+                                  facecolor=GLASS, edgecolor=EDGE, lw=1.2, zorder=2))
+    z_obs = 2.1
+    for h in np.linspace(-0.6, 0.6, 9):
+        z1 = -np.sqrt(a**2 - h**2)
+        p1 = np.array([z1, h])
+        d1 = _refract(np.array([1.0, 0.0]), p1/a, 1.0, n)
+        s = -2*np.dot(p1, d1)
+        p2 = p1 + s*d1
+        d2 = _refract(d1, -p2/a, n, 1.0)
+        s3 = (z_obs - p2[0])/d2[0]
+        ax.plot([-1.6, z1], [h, h], color=RAY_COLOR, lw=0.9, zorder=3)
+        ax.plot([p1[0], p2[0]], [p1[1], p2[1]], color=RAY_COLOR, lw=0.9, zorder=3)
+        ax.plot([p2[0], p2[0] + s3*d2[0]], [p2[1], p2[1] + s3*d2[1]], color=RAY_COLOR, lw=0.9,
+                zorder=3)
+    z_f1 = -np.sqrt(a**2 - 0.6**2)
+    for z, text in ((-a, "input\n$z=-a$"), (z_f1 + 0.02, None), (0.0, "axis"),
+                    (z_obs, "observation\nplane")):
+        ax.plot([z, z], [-1.25, 1.25], color="0.4", lw=1.0, ls="--", zorder=4)
+        if text:
+            label(ax, z, -1.35, text, fontsize=8, va="top", color="0.3")
+    ax.add_patch(mpatches.Rectangle((z_f1 + 0.02, -1.25), -z_f1 - 0.02, 2.5, facecolor=WAVE_COLOR,
+                                    alpha=0.10, edgecolor="none", zorder=1))
+    ax.add_patch(mpatches.Rectangle((0.0, -1.25), z_obs, 2.5, facecolor=WAVE_COLOR, alpha=0.06,
+                                    edgecolor="none", zorder=0))
+    y_box = 1.75
+    boxes = ((-1.0, 0.6, "LPIA\nfront", RAY_COLOR), (-0.35, 0.45, "SPW", WAVE_COLOR),
+             (0.55, 0.6, "LPIA\nback", RAY_COLOR), (1.6, 0.45, "SPW", WAVE_COLOR))
+    for z, w, text, color in boxes:
+        _operator_box(ax, z, y_box, text, color, width=w, height=0.5, fontsize=8)
+    for (z0, w0, _, _), (z1, w1, _, _) in zip(boxes[:-1], boxes[1:]):
+        ax.annotate("", xy=(z1 - w1/2 - 0.02, y_box), xytext=(z0 + w0/2 + 0.02, y_box),
+                    arrowprops=dict(arrowstyle="-|>", color="0.4", lw=0.8), zorder=6)
+    _finish(ax, (-1.65, 2.6), (-2.0, 2.15), title)
+
+
+def plano_convex_orientation(ax, face="front", title=None):
+    """Sketch of a plano-convex lens focusing a collimated beam, with the
+    curved face towards the light (face="front", the refraction shared by
+    both faces, little spherical aberration) or behind (face="back", all
+    the refraction at the curved face, the marginal rays focus much
+    shorter). Rays are traced exactly.
+
+    Parameters
+    ----------
+    ax : matplotlib Axes
+    face : {"front", "back"}, optional
+    title : str, optional
+    """
+
+    mpatches = _patches()
+    R, n, half, base = 2.0, 1.5, 1.0, 0.08
+    sag = R - np.sqrt(R**2 - half**2)
+    t_c = sag + base
+    ys = np.linspace(-half, half, 200)
+    if face == "front":
+        curve = np.c_[R - np.sqrt(R**2 - ys**2), ys]
+        poly = np.r_[curve, [[t_c, half], [t_c, -half]]]
+        surfaces = [("sphere", 0.0), ("plane", t_c)]
+    else:
+        curve = np.c_[t_c - (R - np.sqrt(R**2 - ys**2)), ys]
+        poly = np.r_[[[0.0, -half], [0.0, half]], curve[::-1]]
+        surfaces = [("plane", 0.0), ("sphere", t_c)]
+    ax.add_patch(mpatches.Polygon(poly, closed=True, facecolor=GLASS, edgecolor=EDGE, lw=1.2,
+                                  zorder=2))
+    f = R/(n - 1)
+    z_end = t_c + f + 0.8
+    for y in np.linspace(-0.9, 0.9, 11):
+        p, d = np.array([-0.8, y]), np.array([1.0, 0.0])
+        pts = [p]
+        media = [(1.0, n), (n, 1.0)]
+        for (kind, z_s), (n1, n2) in zip(surfaces, media):
+            if kind == "plane":
+                s = (z_s - p[0])/d[0]
+                q = p + s*d
+                nrm = np.array([-1.0, 0.0])
+            else:
+                # sphere with its vertex at z_s, convex towards the light
+                # (front) or towards the image (back)
+                c = np.array([z_s + R, 0.0]) if face == "front" else np.array([z_s - R, 0.0])
+                o = p - c
+                b = np.dot(o, d)
+                disc = b**2 - (np.dot(o, o) - R**2)
+                s = -b - np.sqrt(disc) if face == "front" else -b + np.sqrt(disc)
+                q = p + s*d
+                nrm = (q - c)/R
+                if np.dot(nrm, d) > 0:
+                    nrm = -nrm
+            d = _refract(d, nrm, n1, n2)
+            p = q
+            pts.append(p)
+        s = (z_end - p[0])/d[0]
+        pts.append(p + s*d)
+        pts = np.array(pts)
+        marginal = abs(y) > 0.8
+        ax.plot(pts[:, 0], pts[:, 1], color=STRAY if marginal else RAY_COLOR, lw=0.9, zorder=3)
+        if marginal and y < 0:
+            z_m = p[0] - p[1]*d[0]/d[1]          # where the marginal ray crosses the axis
+    ax.plot(z_m, 0.0, "x", color=STRAY, ms=7, mew=1.8, zorder=5)
+    ax.plot([z_m, z_m], [0.08, 0.95], color=STRAY, lw=0.6, zorder=1)
+    label(ax, z_m, 1.0, "marginal\nfocus", fontsize=8, va="bottom", color=STRAY)
+    z_f = t_c + (f - t_c/n if face == "front" else f)    # paraxial back focal distance
+    ax.plot([z_f, z_f], [-0.9, 0.9], color="0.45", lw=0.8, ls=":", zorder=1)
+    label(ax, z_f, -1.05, "paraxial focus", fontsize=8, va="top", color="0.35")
+    label(ax, 0.3, 1.45, "curved face towards the light" if face == "front"
+          else "flat face towards the light", fontsize=9, va="bottom")
+    _finish(ax, (-0.85, z_end + 0.05), (-1.35, 1.85), title)
+
+
+def relief_grating_orders(ax, kind="sinusoidal", title=None):
+    """Sketch of a surface relief grating etched into glass (light from the
+    glass at normal incidence) and its transmitted orders: a sinusoidal
+    profile (several orders) or a blazed sawtooth of depth lambda/(n - 1)
+    (ideally all light in order +1).
+
+    Parameters
+    ----------
+    ax : matplotlib Axes
+    kind : {"sinusoidal", "blazed"}, optional
+    title : str, optional
+    """
+
+    mpatches = _patches()
+    P, d = 1.0, 0.35
+    ys = np.linspace(-2.0, 2.0, 600)
+    if kind == "blazed":
+        prof = d*np.mod(ys + 2.0, P)/P
+    else:
+        prof = d/2*(1 + np.cos(2*np.pi*ys/P))
+    poly = np.r_[np.c_[prof, ys], [[-1.6, 2.0], [-1.6, -2.0]]]
+    ax.add_patch(mpatches.Polygon(poly, closed=True, facecolor=GLASS, edgecolor="none", zorder=1))
+    ax.plot(prof, ys, color=EDGE, lw=1.4, zorder=3)
+    for y in np.linspace(-1.5, 1.5, 7):
+        ax.plot([-1.5, -0.32], [y, y], color=RAY_COLOR, lw=0.9)
+        ax.annotate("", xy=(-0.25, y), xytext=(-1.5, y),
+                    arrowprops=dict(arrowstyle="-|>", color=RAY_COLOR, lw=0.9))
+    label(ax, -1.05, -2.25, "plane wave\nin the glass", fontsize=8, va="top")
+    orders = (-1, 0, 1, 2) if kind == "sinusoidal" else (1,)
+    widths = {-1: 1.6, 0: 0.8, 1: 1.6, 2: 1.2} if kind == "sinusoidal" else {1: 2.6}
+    sin1 = 0.35
+    for m in orders:
+        s = m*sin1
+        c = np.sqrt(1 - s**2)
+        ax.plot([d + 0.3, d + 0.3 + 1.8*c], [0.0, 1.8*s], color=WAVE_COLOR, lw=widths[m])
+        ax.annotate("", xy=(d + 0.3 + 1.9*c, 1.9*s), xytext=(d + 0.3, 0.0),
+                    arrowprops=dict(arrowstyle="-|>", color=WAVE_COLOR, lw=widths[m]))
+        label(ax, d + 0.3 + 2.15*c, 2.15*s, "{:+d}".format(m) if m else "0", fontsize=9,
+              color=WAVE_COLOR)
+    label(ax, 0.17, 2.2, "period $\\Lambda$, depth $d$", fontsize=8, va="bottom")
+    label(ax, 2.0, -2.25, "transmitted orders\n$\\sin\\theta_m = m\\lambda/\\Lambda$", fontsize=8,
+          va="top", color=WAVE_COLOR)
+    _finish(ax, (-1.65, 2.9), (-2.85, 2.6), title)
