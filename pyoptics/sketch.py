@@ -88,6 +88,10 @@ Setup sketches for the other example notebooks:
   grating and its orders, the LPIA chain through a rod lens, where to put
   the output plane behind a focusing surface, and the two orientations of a
   plano-convex lens (notebook 168, local plane interface approximation).
+- polishing_layout(): a bonnet tool on an asphere and its removal spot,
+  raster and spiral tool paths, the ripple of overlapping tracks and the
+  turned-down edge under an overhanging tool (notebook 164,
+  polishing errors).
 - diode_collimator(), fibre_coupling(): an astigmatic laser diode with an
   aspheric collimator and a focusing lens, and a Gaussian beam focused into
   a single-mode fibre by a spherical lens or an asphere (notebook 112, field tracing applications).
@@ -12288,3 +12292,126 @@ def relief_grating_orders(ax, kind="sinusoidal", title=None):
     label(ax, 2.0, -2.25, "transmitted orders\n$\\sin\\theta_m = m\\lambda/\\Lambda$", fontsize=8,
           va="top", color=WAVE_COLOR)
     _finish(ax, (-1.65, 2.9), (-2.85, 2.6), title)
+
+
+def polishing_layout(ax, kind="tool", title=None):
+    """Sketches of sub-aperture polishing and the errors it leaves (all
+    proportions exaggerated).
+
+    Parameters
+    ----------
+    ax : matplotlib Axes
+    kind : {"tool", "paths", "ripple", "edge"}, optional
+        "tool": a bonnet tool on a spindle polishes an asphere in a small
+        contact spot whose removal profile is the tool influence function
+        (TIF). "paths": raster and spiral tool paths in a top view of the
+        surface, with the pitch p. "ripple": the removal of neighbouring
+        tracks (Gaussian TIF of width w, pitch p) adds up to a mean removal
+        with a periodic residual. "edge": a tool that overhangs the rim
+        presses harder on the remaining contact area and turns the edge
+        down.
+    title : str, optional
+    """
+
+    mpatches = _patches()
+    tool_color, removal_color = "#e0a000", "#c0392b"
+    if kind == "tool":
+        z = np.linspace(-2.6, 2.6, 300)
+        top = 1.0 - 0.11*z**2
+        ax.add_patch(mpatches.Polygon(np.r_[np.c_[z, top], [[2.6, -0.4], [-2.6, -0.4]]], closed=True,
+                                      facecolor=GLASS, edgecolor=EDGE, lw=1.2, zorder=2))
+        z0 = 0.9
+        y0 = 1.0 - 0.11*z0**2
+        nz, ny = 0.22*z0, 1.0
+        nn = np.hypot(nz, ny)
+        nz, ny = nz/nn, ny/nn
+        rb = 0.55
+        cz, cy = z0 + rb*nz, y0 + rb*ny
+        ax.add_patch(mpatches.Circle((cz, cy), rb, facecolor=tool_color, edgecolor="0.3", lw=1,
+                                     zorder=4))
+        # spindle, tilted by the precession angle against the local normal
+        a = np.radians(20.0)
+        sz, sy = nz*np.cos(a) - ny*np.sin(a), nz*np.sin(a) + ny*np.cos(a)
+        ax.plot([cz, cz + 1.4*sz], [cy, cy + 1.4*sy], color="0.3", lw=7, solid_capstyle="butt",
+                zorder=3)
+        label(ax, cz + 1.55*sz + 0.1, cy + 1.55*sy, "spindle (precessed)", fontsize=8, ha="left")
+        label(ax, cz + 0.75, cy - 0.05, "bonnet", fontsize=8, ha="left")
+        # contact spot
+        zz = np.linspace(z0 - 0.3, z0 + 0.3, 40)
+        ax.plot(zz, 1.0 - 0.11*zz**2 - 0.015, color=removal_color, lw=3, zorder=5)
+        arrow(ax, z0 - 0.7, y0 + 0.45, z0 - 1.9, y0 + 0.45 + 0.11*(z0**2 - (z0 - 1.2)**2),
+              color="0.25", text="traverse along\nthe tool path", text_pos=(z0 - 1.6, y0 + 1.0),
+              fontsize=8)
+        # TIF below the part
+        u = np.linspace(-0.9, 0.9, 200)
+        ax.plot(z0 + u, -0.75 - 0.45*np.exp(-u**2/(2*0.22**2)), color=removal_color, lw=1.4)
+        ax.plot(z0 + u, -0.75 + 0*u, color="0.5", lw=0.6)
+        label(ax, z0 + 1.05, -1.0, "removal profile of the spot\n(tool influence function,\n"
+              "FWHM $w$)", fontsize=8, ha="left", color=removal_color)
+        label(ax, -1.6, 0.25, "asphere", fontsize=9)
+        _finish(ax, (-2.8, 4.0), (-1.5, 3.4), title)
+    elif kind == "paths":
+        t = np.linspace(0, 2*np.pi, 200)
+        for zc, name in ((-1.4, "raster"), (1.4, "spiral")):
+            ax.add_patch(mpatches.Circle((zc, 0), 1.15, facecolor=GLASS, edgecolor=EDGE, lw=1.2))
+            if name == "raster":
+                ys = np.arange(-1.05, 1.06, 0.15)
+                pts = []
+                for k, y in enumerate(ys):
+                    h = np.sqrt(max(1.15**2 - y**2, 0)) - 0.05
+                    seg = [(zc - h, y), (zc + h, y)]
+                    pts += seg if k % 2 == 0 else seg[::-1]
+                pts = np.array(pts)
+                ax.plot(pts[:, 0], pts[:, 1], color=tool_color, lw=1.1)
+                arrow(ax, zc + 1.3, ys[6], zc + 1.3, ys[7], color="0.2", style="<|-|>")
+                label(ax, zc + 1.45, 0.5*(ys[6] + ys[7]), "$p$", fontsize=9, ha="left")
+            else:
+                th = np.linspace(0, 7*2*np.pi, 1500)
+                r = 1.1*(1 - th/th[-1])
+                ax.plot(zc + r*np.cos(th), r*np.sin(th), color=tool_color, lw=1.1)
+                arrow(ax, zc + 0.943, 0.0, zc + 1.1, 0.0, color="0.2", style="<|-|>")
+                label(ax, zc + 1.02, 0.12, "$p$", fontsize=9, va="bottom")
+            label(ax, zc, -1.35, name, fontsize=9, va="top")
+        _finish(ax, (-2.8, 3.0), (-1.7, 1.35), title)
+    elif kind == "ripple":
+        p, w = 1.0, 0.9
+        s = w/(2*np.sqrt(2*np.log(2)))
+        x = np.linspace(-3.2, 3.2, 800)
+        total = 0*x
+        for k in range(-6, 7):
+            g = 0.55*np.exp(-(x - k*p)**2/(2*s**2))
+            total += g
+            if abs(k) <= 2:
+                ax.plot(x, -g, color=removal_color, lw=0.8, ls="--")
+        mean = total[(x > -2) & (x < 2)].mean()
+        ax.plot(x, 0*x, color="0.5", lw=0.8)
+        ax.plot(x, -total, color=EDGE, lw=1.8)
+        ax.plot(x, -mean + 0*x, color="0.4", lw=0.8, ls=":")
+        label(ax, -3.3, 0.12, "surface before", fontsize=8, ha="left", va="bottom")
+        label(ax, 3.3, -mean - 0.12, "mean removal $D$", fontsize=8, ha="right", va="top")
+        label(ax, -3.3, -1.6, "after: ripple $\\propto 2D\\,e^{-2\\pi^2 s^2/p^2}$, "
+              "$s = w/2.355$", fontsize=8, ha="left", color=EDGE)
+        arrow(ax, 0, 0.35, p, 0.35, color="0.2", style="<|-|>", text="$p$", text_pos=(0.5*p, 0.5),
+              fontsize=9)
+        label(ax, -2.1, -0.75, "one track\n(TIF across it)", fontsize=8, color=removal_color)
+        _finish(ax, (-3.4, 3.4), (-1.8, 0.75), title)
+    elif kind == "edge":
+        ax.add_patch(mpatches.Rectangle((-2.5, -0.8), 4.0, 0.8, facecolor=GLASS, edgecolor="none"))
+        z = np.linspace(-2.5, 1.5, 300)
+        prof = -0.22*np.clip((z - 0.5)/1.0, 0, None)**2
+        ax.plot(z, prof, color=EDGE, lw=1.6)
+        ax.plot([1.5, 1.5], [prof[-1], -0.8], color=EDGE, lw=1.2)
+        ax.plot(z[z > 0.4], 0*z[z > 0.4], color="0.5", lw=0.8, ls=":")
+        ax.add_patch(mpatches.Rectangle((0.3, 0.05), 2.0, 0.3, facecolor=tool_color, edgecolor="0.3",
+                                        lw=1, alpha=0.9))
+        label(ax, 1.3, 0.55, "tool overhangs the rim", fontsize=8)
+        for zp in np.linspace(0.45, 1.4, 6):
+            hgt = 0.12 + 0.45*((zp - 0.4)/1.0)**3
+            y_top = -0.22*max(zp - 0.5, 0)**2
+            arrow(ax, zp, y_top, zp, y_top - hgt, color=removal_color)
+        label(ax, 0.2, -0.45, "pressure rises\ntowards the edge", fontsize=8, color=removal_color,
+              ha="right")
+        label(ax, 1.65, -0.35, "turned-\ndown\nedge", fontsize=8, ha="left", color=EDGE)
+        _finish(ax, (-2.6, 2.6), (-1.0, 0.9), title)
+    else:
+        raise ValueError("kind must be 'tool', 'paths', 'ripple' or 'edge'.")
