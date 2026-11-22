@@ -576,3 +576,168 @@ def test_detector_coupling_into_a_fibre_mode():
     assert r["fibre"].coupling > 0.99
     with pytest.raises(ValueError):
         ft.Detector("fibre", ("coupling",))
+
+
+# --------------------------------------------------------------------------
+# local plane interface approximation
+# --------------------------------------------------------------------------
+
+def _tilted_plane_field(pol):
+    x = np.linspace(-50, 50, 401)
+    A = np.exp(-(x/30)**8)
+    return ft.Field(np.stack([A*(pol == "p"), A*(pol == "s")], -1), x, None, 0.5)
+
+
+@pytest.mark.parametrize("pol", ["s", "p"])
+def test_lpia_tilted_plane_is_snell_and_fresnel(pol):
+    from pyoptics.interfaces import t_s, t_p
+    th, n2 = np.radians(30), 1.5
+    src = _tilted_plane_field(pol)
+    step = ft.LocalPlaneInterface(lambda X: 10 + np.tan(th)*X, n2, distance=40.0)
+    out, _ = step.apply(src, {})
+    assert out.n == n2 and out.z == pytest.approx(40.0)
+    th2 = np.arcsin(np.sin(th)/n2)
+    delta = th - th2                              # refracted ray against the z axis
+    # direction: the analytic linear phase is the transverse wave vector
+    assert out.beta[0] == pytest.approx(-2*np.pi/0.5*n2*np.sin(delta), rel=1E-9)
+    # irradiance: |t|**2 cos2/cos1, the projection onto the output plane and
+    # the stretch of the ray map dx_out/dx; E_z (p) is not part of it
+    t = t_s(th, 1, n2) if pol == "s" else t_p(th, 1, n2)
+    stretch = 1 + np.tan(th)*np.tan(delta)
+    expect = abs(t)**2*np.cos(th2)/np.cos(th)/np.cos(delta)/stretch
+    if pol == "p":
+        expect *= np.cos(delta)**2
+    A = out.amplitudes()[0 if pol == "p" else 1]
+    assert abs(A[len(out.x)//2])**2 == pytest.approx(expect, rel=1E-4)
+    assert np.abs(out.amplitudes()[1 if pol == "p" else 0]).max() < 1E-12
+
+
+def test_lpia_thin_element_reduces_to_tea():
+    f, n = 200.0, 1.5
+    R = (n - 1)*f
+    x = np.linspace(-1, 1, 128)
+    src = ft.gaussian(0.3, WL, x, x)
+    h = lambda X, Y: -(X**2 + Y**2)/(2*R)
+    b = ft.Chain([ft.ThinElement(h, n), ft.Propagate(f/2, method="fresnel")]).run(src).field
+    for face in ("back", "front"):
+        a = ft.Chain([ft.ThinElement(h, n, method="lpia", face=face),
+                      ft.Propagate(f/2, method="fresnel")]).run(src).field
+        assert a.z == b.z
+        assert rel(a.resample(b.x, b.y).E()[0], b.E()[0]) < 2E-3
+    # one-dimensional fields
+    src1 = ft.gaussian(0.3, WL, x)
+    a = ft.Chain([ft.ThinElement(lambda X: -X**2/(2*R), n, method="lpia")]).run(src1).field
+    b = ft.Chain([ft.ThinElement(lambda X: -X**2/(2*R), n)]).run(src1).field
+    assert rel(a.resample(b.x).E()[0], b.E()[0]) < 1E-3
+
+
+def test_lpia_thin_element_fresnel_and_power():
+    x = np.linspace(-1, 1, 64)
+    src = ft.gaussian(0.3, WL, x, x, power=1.0)
+    out = ft.Chain([ft.ThinElement(np.zeros((64, 64)), 1.5, fresnel=True,
+                                   method="lpia")]).run(src).field
+    assert out.power() == pytest.approx((4*1.5/2.5**2)**2, rel=1E-6)
+    # lossless: a lens array conserves the power (to the sampling of the
+    # ray tubes on the output grid)
+    h = lambda X, Y: 2E-3*np.cos(2*np.pi*X/0.5)*np.cos(2*np.pi*Y/0.5)
+    out = ft.Chain([ft.ThinElement(h, 1.5, method="lpia", oversample=4)]).run(src).field
+    assert out.power() == pytest.approx(1.0, rel=1E-3)
+
+
+def test_lpia_lens_surfaces_match_the_ray_trace():
+    from pyoptics.raytrace import System, Surface
+    n, R1, R2, T = 1.5, 50.0, -50.0, 5.0
+    sysm = System([Surface(R=R1, thickness=T, n_after=n, semi_diameter=10),
+                   Surface(R=R2, thickness=20.0, n_after=1.0, semi_diameter=10)], 0, WL)
+    x = np.linspace(-8, 8, 128)
+    src = ft.gaussian(3.0, WL, x, x)
+    a = ft.Chain([ft.Trace(sysm)]).run(src, polarization="vector").field
+    front = ft.LocalPlaneInterface(lambda X, Y: R1 - np.sqrt(R1**2 - X**2 - Y**2), n)
+    f1 = ft.Chain([front]).run(src, polarization="vector").field
+    z1 = f1.z
+    back = ft.LocalPlaneInterface(lambda X, Y: T - z1 + R2 + np.sqrt(R2**2 - X**2 - Y**2), 1.0,
+                                  distance=T + 20.0 - z1)
+    b = ft.Chain([back]).run(f1, polarization="vector").field
+    assert b.z == pytest.approx(a.z)
+    assert b.power() == pytest.approx(a.power(), rel=1E-4)
+    bi = b.resample(a.x, a.y)
+    assert rel(bi.E()[0], a.E()[0]) < 1E-2
+    # the cross-polarized part of the curved surfaces, too
+    assert rel(bi.E()[1], a.E()[1]) < 0.1
+
+
+def _grating_orders(h, P, n, wl, method, M=4, N_per=256, orders=(0, 1, 2), grad=None):
+    """Transmitted efficiencies of a surface relief grating h(x) (glass below,
+    light from the glass at normal incidence, TE)."""
+    N = M*N_per
+    x = (np.arange(N) + 0.5)*P/N_per - M*P/2
+    src = ft.Field(np.stack([0*x, np.ones(N)], -1).astype(complex), x, None, wl, n=n)
+    if method == "lpia":
+        res = ft.Chain([ft.LocalPlaneInterface(h, 1.0, gradient=grad, x_out=x)]).run(
+            src, polarization="vector")
+    else:
+        res = ft.Chain([ft.ThinElement(h, n, n_medium=1.0), ft.Interface(1.0, fresnel=True)]).run(src)
+    c = np.fft.fft(res.field.E()[1])/N
+    k0 = 2*np.pi/wl
+    eff = [abs(c[(m*M) % N])**2*np.sqrt(k0**2 - (2*np.pi*m/P)**2)/k0/n for m in orders]
+    return np.array(eff), res
+
+
+def _rcwa_orders(h_of_z, P, depth, n, wl, K=40, orders=(0, 1, 2)):
+    from pyoptics.litho.rcwa import Layer, rcwa
+    layers = [Layer(depth/K, 1.0, [h_of_z(z)]) for z in (np.arange(K) + 0.5)/K*depth]
+    res = rcwa(P, layers, wl, n_in=n, n_out=1.0, n_orders=max(12, int(2*P/wl)))
+    T = res.efficiencies((0, 1))[1][0]
+    return np.array([T[res.m == m][0] for m in orders])
+
+
+def test_lpia_sinusoidal_grating_against_rcwa():
+    wl, n, d = 0.5, 1.5, 0.8
+    h = lambda X: d/2*(1 + np.cos(2*np.pi*X/P))
+    P = 4.11                                       # about 8 wavelengths
+    seg = lambda z: (0.0, min(P/np.pi*np.arccos(np.clip(2*z/d - 1, -1, 1)), 0.999*P), n)
+    ref = _rcwa_orders(seg, P, d, n, wl)
+    lpia, _ = _grating_orders(h, P, n, wl, "lpia")
+    tea, _ = _grating_orders(h, P, n, wl, "tea")
+    # the LPIA follows the rigorous result, the TEA does not
+    assert np.max(np.abs(lpia - ref)) < 0.01
+    assert np.max(np.abs(tea - ref)) > 0.015
+
+
+def test_lpia_reports_steps_tir_and_caustics():
+    wl, n = 0.5, 1.5
+    d, P = wl/(n - 1), 2.13
+    eff, res = _grating_orders(lambda X: d*np.mod(X, P)/P, P, n, wl, "lpia",
+                               grad=lambda X: np.full_like(X, d/P))
+    notes = " ".join(res.log[0]["notes"])
+    assert "steps of the profile" in notes and "facets down to" in notes
+    assert 0.76 < eff[1] < 0.86                    # RCWA 0.74, TEA 0.93
+    # a deep sinusoid: total internal reflection in the glass
+    _, res = _grating_orders(lambda X: 1.0*np.cos(2*np.pi*X/2.13), 2.13, n, wl, "lpia")
+    assert "total internal reflection" in " ".join(res.log[0]["notes"])
+    # a strongly focusing surface: rays cross behind it unless the output
+    # plane is put in front
+    x = np.linspace(-30, 30, 256)
+    src = ft.Field(np.exp(-(x/15)**8), x, None, wl)
+    a = 25.0
+    h = lambda X: a - np.sqrt(np.clip(a**2 - X**2, 0, None))
+    out = ft.Chain([ft.LocalPlaneInterface(h, n, distance=100.0)]).run(src)   # focus at ~75
+    assert "rays cross" in " ".join(out.log[0]["notes"])
+    out = ft.Chain([ft.LocalPlaneInterface(h, n, distance="front")]).run(src)
+    assert "rays cross" not in " ".join(out.log[0]["notes"])
+    assert 0 <= out.field.z < 1E-3                 # the vertex
+
+
+def test_lpia_height_as_array_and_errors():
+    x = np.linspace(-1, 1, 64)
+    src = ft.gaussian(0.3, WL, x, x)
+    X, Y = np.meshgrid(x, x)
+    h = -(X**2 + Y**2)/200.0
+    a = ft.Chain([ft.ThinElement(h, 1.5, method="lpia")]).run(src).field
+    b = ft.Chain([ft.ThinElement(lambda X, Y: -(X**2 + Y**2)/200.0, 1.5,
+                                 method="lpia")]).run(src).field
+    assert rel(a.resample(b.x, b.y).E()[0], b.E()[0]) < 1E-4
+    with pytest.raises(ValueError):
+        ft.ThinElement(h, 1.5, method="rcwa")
+    with pytest.raises(ValueError):
+        ft.LocalPlaneInterface(h, 1.5, distance="middle").apply(src, {})
