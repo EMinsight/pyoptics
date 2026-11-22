@@ -100,7 +100,7 @@ What each module does and how mature it is. Planned work is listed in
   local plane interface approximation (local law of refraction, Fresnel
   matrix at the local angle of incidence, vectorial polarization, ray field
   summation), with a report of steps, total internal reflection, narrow
-  facets and caustics (notebook 166, local plane interface approximation)
+  facets and caustics (notebook 168, local plane interface approximation)
 - `polygons`: new, tested: polygons as (N, 2) vertex arrays: signed area,
   centroid and second moments, the exact Fourier transform of any polygon
   (Lee and Mittra's edge sum, with a Taylor series near k = 0 and vertices
@@ -435,7 +435,31 @@ What each module does and how mature it is. Planned work is listed in
   edge thickness checks, a barrel with retaining rings, spacers and a stop
   plate cut to the lenses, ray fans as wires or tubes, names and colours,
   a section plot, a 3D plot and glTF export; checked against analytic volumes, the traced rays
-  and overlaps of the parts (notebook 162, CAD export of lens systems)
+  and overlaps of the parts (notebook 162, CAD export of lens systems); spacer
+  bores follow the traced beam envelope (also off axis), and spacers
+  between overlapping lenses are cylinders
+- `nsrt`: new, tested: non-sequential ray tracing; oriented faces with a
+  medium on each side (conics and `raytrace` sag surfaces, rectangles,
+  cylinders, cones, spheres, boxes) and triangle meshes with a bounding
+  volume hierarchy (STL, STEP and build123d solids tessellated, properties
+  assigned per solid or per face by label, prefix pattern or function),
+  `FaceProperty` with Fresnel, fixed or angle dependent R and T, thin-film
+  coatings and BRDF/BTDF scatter, bulk absorption, a deterministic
+  splitting trace with Russian roulette and a Monte Carlo trace, importance
+  sampling of scatter towards targets (one-sample MIS), detectors with the
+  event history of every ray (reflection, scatter, face paths),
+  irradiance maps, power balance and `Scene.add_system()` that turns a
+  sequential `raytrace.System` with its `cad` mechanics into faces (lands,
+  ground bevels and rims, barrel, spacers); numba kernels with a numpy
+  fallback; checked against the sequential trace, Fresnel slabs, TIR,
+  the integrating sphere, view factors and ghosts from
+  `photography.ghost_system` (notebooks 166 (non-sequential ray tracing)
+  and 167 (stray light in Caldwell's lens))
+- `bsdf`: new, tested: scatter distributions in direction cosine space;
+  Lambertian, Gaussian and ABg (Harvey) BSDFs and their mixtures, total
+  integrated scatter against the incidence angle, sampling and pdfs;
+  checked against numerical integration
+  (notebook 166, non-sequential ray tracing)
 - `freeform`: new, tested: beam shaping by ray mapping; the radial ray map
   from equal enclosed power, Fermi–Dirac flat tops, the two-lens Gaussian
   to flat-top shaper (Kreuzer, Hoffnagle–Jefferson) from equal optical path
