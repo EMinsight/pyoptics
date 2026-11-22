@@ -416,12 +416,14 @@ What each module does and how mature it is. Planned work is listed in
   optics simulations (notebook 87, speckle reduction)
 - `cad`: new, tested: export of `raytrace.System` lens systems to STEP with
   build123d; lenses and mirror substrates as solids (spheres and planes
-  exact, aspheres as B-spline sections, freeforms and displaced slabs cut
-  from a cylinder by B-spline faces), cemented groups as touching solids, a
-  mechanical diameter beyond the clear aperture with flat lands, 45 degree
-  bevels on rim edges in air, edge thickness checks, ray fans as wires or
-  tubes, names and colours; checked against analytic volumes and the traced
-  ray points
+  exact, aspheres as B-spline sections, Fresnel facets and risers, freeforms
+  and displaced slabs cut from a cylinder by B-spline faces, freeform
+  mirrors), cemented groups as touching solids, a mechanical diameter beyond
+  the clear aperture with flat lands, 45 degree bevels on rim edges in air,
+  edge thickness checks, a barrel with retaining rings, spacers and a stop
+  plate cut to the lenses, ray fans as wires or tubes, names and colours,
+  and a section plot; checked against analytic volumes, the traced rays
+  and overlaps of the parts (notebook 162, CAD export of lens systems)
 - `freeform`: new, tested: beam shaping by ray mapping; the radial ray map
   from equal enclosed power, Fermi–Dirac flat tops, the two-lens Gaussian
   to flat-top shaper (Kreuzer, Hoffnagle–Jefferson) from equal optical path

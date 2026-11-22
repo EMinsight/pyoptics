@@ -101,3 +101,100 @@ def test_mirror_substrate_and_too_thin_edge():
                       rt.Surface(-20.0, 30.0, n_after=1.0, semi_diameter=11.0)], 0, 550e-6)
     with pytest.raises(ValueError, match="Edge thickness"):
         cad.system_model(lens, rays=None, mechanics=thin)
+
+
+def test_flat_land_and_bevels_on_a_freeform_plate():
+    zern = rt.ZernikeSurface(np.inf, 3.0, zernike={5: 0.05, 10: 0.03}, norm_radius=8.0,
+                             n_after=1.5, semi_diameter=8.0)
+    system = rt.System([rt.Surface(np.inf, 2.0, semi_diameter=8.0), zern,
+                        rt.Surface(np.inf, 10.0, n_after=1.0, semi_diameter=8.0)], 0, 550e-6)
+    rm, b = 9.5, 0.3
+    model = cad.system_model(system, rays=None, mechanics=cad.Mechanics(margin=1.5, bevel=b))
+    (plate,) = model.lenses
+    assert plate.is_valid
+    # the land lies at the rim point of the freeform farthest towards air:
+    phi = np.linspace(0, 2*np.pi, 181)
+    z_land = np.min(zern.sag_xy(8*np.cos(phi), 8*np.sin(phi)))
+    r = np.linspace(0, 8, 801)
+    p = np.linspace(0, 2*np.pi, 801, endpoint=False)
+    Rg, Pg = np.meshgrid(r, p)
+    inner = np.trapezoid(np.mean(3 - zern.sag_xy(Rg*np.cos(Pg), Rg*np.sin(Pg)), axis=0)*2*np.pi*r,
+                         r)
+    V = inner + np.pi*(rm**2 - 64)*(3 - z_land) - 2*2*np.pi*(rm - b/3)*b**2/2
+    assert plate.volume == pytest.approx(V, rel=1e-6)
+    assert "BSPLINE" in {f.geom_type.name for f in plate.faces()}
+
+
+def test_fresnel_lens_follows_the_facets():
+    from pyoptics.fresnel import FresnelSurface
+
+    fs = FresnelSurface(-30.0, n_zones=10, radius=10.0, n_after=1.0, semi_diameter=10.0,
+                        thickness=60.0)
+    system = rt.System([rt.Surface(np.inf, 2.0, n_after=1.5, semi_diameter=10.0), fs], 0, 550e-6)
+    model = cad.system_model(system, rays=None, mechanics=cad.Mechanics(margin=1.0, bevel=0.2))
+    r = np.linspace(0, 10, 400001)
+    z = fs.sag(r**2)
+    V = np.trapezoid(2*np.pi*r*(2 + z), r) + np.pi*(121 - 100)*(2 + z[-1]) \
+        - 2*2*np.pi*(11 - 0.2/3)*0.2**2/2
+    assert model.lenses[0].volume == pytest.approx(V, rel=1e-5)
+
+
+def test_freeform_fold_mirror():
+    surfaces = [rt.Surface(np.inf, 20.0, semi_diameter=5.0), rt.CoordinateBreak(tilt=(np.pi/4, 0, 0)),
+                rt.ZernikeSurface(np.inf, 0.0, zernike={5: 0.02}, norm_radius=8.0, mirror=True,
+                                  semi_diameter=8.0),
+                rt.CoordinateBreak(tilt=(np.pi/4, 0, 0), thickness=-30.0)]
+    system = rt.System(surfaces, 0, 550e-6)
+    model = cad.system_model(system, rays=None,
+                             mechanics=cad.Mechanics(margin=2.0, mirror_thickness=4.0, bevel=0.5))
+    (m,) = model.lenses
+    assert m.label == "M1" and m.is_valid
+    # about a 4 mm thick disk of radius 10 with one bevelled edge:
+    assert m.volume == pytest.approx(np.pi*100*4.0, rel=0.02)
+    # the substrate lies behind the mirror (seen from the incoming light, +z):
+    frame = system.frames()[0][2]
+    centre = (np.array(tuple(m.center())) - frame[0]) @ frame[1]
+    assert centre[2] > 1.0
+
+
+def test_mount_parts_touch_but_do_not_overlap():
+    S = [rt.Surface(21.48, 2.0, n_after=1.6204, semi_diameter=6.5),
+         rt.Surface(-124.1, 5.26, n_after=1.0, semi_diameter=6.5),
+         rt.Surface(-19.1, 1.25, n_after=1.6034, semi_diameter=4.6),
+         rt.Surface(22.0, 1.5, n_after=1.0, semi_diameter=4.6),
+         rt.Surface(np.inf, 4.0, semi_diameter=4.2),
+         rt.Surface(328.9, 2.25, n_after=1.6204, semi_diameter=5.4),
+         rt.Surface(-16.7, 43.0, n_after=1.0, semi_diameter=5.4)]
+    system = rt.System(S, 4, 550e-6, field_angle=np.radians(10)).at_paraxial_focus()
+    model = cad.system_model(system, n_rays=5, mount=cad.Mount(),
+                             mechanics=cad.Mechanics(margin=1.5, bevel=0.2))
+    labels = [p.label for p in model.mount]
+    assert labels[0] == "barrel" and "ring_front" in labels and "ring_back" in labels
+    assert "stop" in labels and any(x.startswith("spacer_1") for x in labels)
+    for part in model.mount:
+        assert part.is_valid
+        for lens in model.lenses:
+            common = part & lens
+            assert common is None or common.volume < 1e-6
+    # every lens is held by rings or spacers on both sides:
+    holders = [p for p in model.mount if p.label not in ("barrel", "stop")]
+    for lens in model.lenses:
+        z = lens.center().Z
+        touching = [p for p in holders if p.distance_to(lens) < 1e-6]
+        assert any(p.center().Z < z for p in touching) and any(p.center().Z > z for p in touching)
+    # the spacers stay out of the traced beam:
+    spacers = [p for p in model.mount if p.label not in ("barrel", "stop")]  # rim rays graze the stop
+    for ray in model.rays:
+        for part in spacers:
+            assert part.distance_to(ray) > 0.05
+
+
+def test_plot_section():
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    model = cad.system_model(doublet(), n_rays=3, mechanics=cad.Mechanics(margin=1.0, bevel=0.2))
+    ax = cad.plot_section(model, plt.figure().gca())
+    assert len(ax.patches) == 2
+    plt.close("all")

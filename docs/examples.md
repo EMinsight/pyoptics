@@ -209,6 +209,7 @@ Sequential and polarization ray tracing, from rays to waves, glass catalogues, l
 - {doc}`154 Global optimization and saddle points <notebooks/154_global_optimization_saddle_points>`
 - {doc}`155 Off-axis mirrors and nodal aberrations <notebooks/155_off_axis_mirrors_nodal_aberrations>`
 - {doc}`159 Phone camera lens with Forbes Q polynomials <notebooks/159_phone_camera_lens_forbes_q>`
+- {doc}`162 CAD export of lens systems <notebooks/162_cad_export_lens_systems>`
 
 ```{toctree}
 :hidden:
@@ -238,6 +239,7 @@ notebooks/153_multiconfig_optimization
 notebooks/154_global_optimization_saddle_points
 notebooks/155_off_axis_mirrors_nodal_aberrations
 notebooks/159_phone_camera_lens_forbes_q
+notebooks/162_cad_export_lens_systems
 ```
 
 ## Interferometry, holography and wavefront sensing
