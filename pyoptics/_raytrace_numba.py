@@ -6,7 +6,7 @@ and temporary array overhead that dominates the trace of small and medium
 bundles (ray aiming traces many of them). It covers Surface (conics, even
 aspheres, mirrors), IdealLens, Axicon, CoordinateBreak, ToroidalSurface,
 BiconicSurface and the Q-type aspheres (QbfsSurface, QconSurface,
-Q2DSurface) with the same formulas as their NumPy methods (the Chebyshev
+Q2DSurface, QconQ2DSurface) with the same formulas as their NumPy methods (the Chebyshev
 series of the Q polynomials by Clenshaw's recurrence); systems with other
 surface types are traced by NumPy. Newton iterations stop ray by ray
 instead of when the whole bundle has converged, so iterated intersections
@@ -25,7 +25,7 @@ except ImportError:  # pragma: no cover - depends on the installation
 available = nb is not None
 
 # surface kinds:
-STANDARD, BREAK, IDEAL, AXICON, TOROID, BICONIC, QBFS, QCON, Q2D = range(9)
+STANDARD, BREAK, IDEAL, AXICON, TOROID, BICONIC, QBFS, QCON, Q2D, QCONQ2D = range(10)
 
 
 def _chebval(coef, n, t):
@@ -72,6 +72,41 @@ def _q_sag_slope(kind, c, K, Qc, dQc, n_Q, rn2, r2):
     return z, s
 
 
+def _q2d_departure(rn, g0, g1, g_kind, g_m, g_coef, g_dcoef, g_n, x, y):
+    """Q2D departure D(x, y) and its gradient, groups g0 to g1, normalization
+    radius rn."""
+
+    wr, wi = x/rn, y/rn
+    X = wr*wr + wi*wi
+    t = 2.0*X - 1.0
+    D, Dx, Dy = 0.0, 0.0, 0.0
+    for k in range(g0, g1):
+        P = _chebval(g_coef[k], g_n[k], t)
+        dP = 2.0*_chebval(g_dcoef[k], g_n[k] - 1, t)
+        m = g_m[k]
+        if m == 0:
+            fq = X*(1.0 - X)*P
+            df = (1.0 - 2.0*X)*P + X*(1.0 - X)*dP
+            D += fq
+            Dx += df*2.0*wr/rn
+            Dy += df*2.0*wi/rn
+            continue
+        # w**m and m w**(m - 1), w = wr + i wi
+        ar, ai = 1.0, 0.0
+        for _ in range(m - 1):
+            ar, ai = ar*wr - ai*wi, ar*wi + ai*wr
+        br, bi = m*ar, m*ai
+        ar, ai = ar*wr - ai*wi, ar*wi + ai*wr
+        if g_kind[k] == 0:
+            Am, Ax, Ay = ar, br, -bi
+        else:
+            Am, Ax, Ay = ai, bi, br
+        D += P*Am
+        Dx += dP*2.0*wr/rn*Am + P*Ax/rn
+        Dy += dP*2.0*wi/rn*Am + P*Ay/rn
+    return D, Dx, Dy
+
+
 def _xy_sag_grad(kind, c, K, A, n_A, cx, Kx, B, n_B, rn, g0, g1, g_kind, g_m, g_coef, g_dcoef,
                  g_n, x, y):
     """Sag z(x, y) and gradient of a toroidal, biconic or Q2D surface."""
@@ -109,34 +144,7 @@ def _xy_sag_grad(kind, c, K, A, n_A, cx, Kx, B, n_B, rn, g0, g1, g_kind, g_m, g_
     # Q2D: best fit sphere (c) plus D/root
     r2 = x*x + y*y
     root = np.sqrt(1.0 - c*c*r2)
-    wr, wi = x/rn, y/rn
-    X = wr*wr + wi*wi
-    t = 2.0*X - 1.0
-    D, Dx, Dy = 0.0, 0.0, 0.0
-    for k in range(g0, g1):
-        P = _chebval(g_coef[k], g_n[k], t)
-        dP = 2.0*_chebval(g_dcoef[k], g_n[k] - 1, t)
-        m = g_m[k]
-        if m == 0:
-            fq = X*(1.0 - X)*P
-            df = (1.0 - 2.0*X)*P + X*(1.0 - X)*dP
-            D += fq
-            Dx += df*2.0*wr/rn
-            Dy += df*2.0*wi/rn
-            continue
-        # w**m and m w**(m - 1), w = wr + i wi
-        ar, ai = 1.0, 0.0
-        for _ in range(m - 1):
-            ar, ai = ar*wr - ai*wi, ar*wi + ai*wr
-        br, bi = m*ar, m*ai
-        ar, ai = ar*wr - ai*wi, ar*wi + ai*wr
-        if g_kind[k] == 0:
-            Am, Ax, Ay = ar, br, -bi
-        else:
-            Am, Ax, Ay = ai, bi, br
-        D += P*Am
-        Dx += dP*2.0*wr/rn*Am + P*Ax/rn
-        Dy += dP*2.0*wi/rn*Am + P*Ay/rn
+    D, Dx, Dy = _q2d_departure(rn, g0, g1, g_kind, g_m, g_coef, g_dcoef, g_n, x, y)
     s = c/root
     kk = D*c*c/root**3
     z = c*r2/(1.0 + root) + D/root
@@ -277,9 +285,46 @@ def _intersect_xy(kind, c, K, A, n_A, cx, Kx, B, n_B, rn, g0, g1, g_kind, g_m, g
     return t
 
 
+def _qconq2d_sag_grad(c, K, Qc, dQc, n_Q, rn2, rf, x0, y0, g0, g1, g_kind, g_m, g_coef,
+                      g_dcoef, g_n, x, y):
+    """Sag and gradient of a Q-con asphere plus a Q2D departure centred on
+    (x0, y0) with the normalization radius rf (qaspheres.QconQ2DSurface)."""
+
+    z, s = _q_sag_slope(QCON, c, K, Qc, dQc, n_Q, rn2, x*x + y*y)
+    gx, gy = x*s, y*s
+    if g1 > g0:
+        D, Dx, Dy = _q2d_departure(rf, g0, g1, g_kind, g_m, g_coef, g_dcoef, g_n, x - x0, y - y0)
+        z, gx, gy = z + D, gx + Dx, gy + Dy
+    return z, gx, gy
+
+
+def _intersect_qconq2d(c, K, Qc, dQc, n_Q, rn2, rf, x0, y0, g0, g1, g_kind, g_m, g_coef,
+                       g_dcoef, g_n, x, y, z, ex, ey, ez):
+    """Q-con + Q2D: from the base conic by Newton steps on the full sag."""
+
+    t = _intersect_conic(c, K, Qc, 0, x, y, z, ex, ey, ez)
+    if not np.isfinite(t):
+        t = -z/ez
+    for _ in range(60):
+        qx, qy, qz = x + t*ex, y + t*ey, z + t*ez
+        zs, gx, gy = _qconq2d_sag_grad(c, K, Qc, dQc, n_Q, rn2, rf, x0, y0, g0, g1, g_kind, g_m,
+                                       g_coef, g_dcoef, g_n, qx, qy)
+        step = (qz - zs)/(ez - gx*ex - gy*ey)
+        t = t - step
+        if not np.isfinite(step) or abs(step) < 1e-14*(1.0 + abs(t)):
+            break
+    qx, qy = x + t*ex, y + t*ey
+    zs, _, _ = _qconq2d_sag_grad(c, K, Qc, dQc, n_Q, rn2, rf, x0, y0, g0, g1, g_kind, g_m,
+                                 g_coef, g_dcoef, g_n, qx, qy)
+    if not np.isfinite(zs):
+        t = np.nan
+
+    return t
+
+
 def _trace_rays(P0, d0, opl0, O, R, kind, c, K, A, n_A, cone, f, mirror, sd, n, clip,
                 cx, Kx, B, n_B, rn, Qc, dQc, n_Q, g_start, g_end, g_kind, g_m, g_coef,
-                g_dcoef, g_n, out_P, out_d, out_opl, valid):
+                g_dcoef, g_n, rf, x0, y0, out_P, out_d, out_opl, valid):
     S = len(kind)
     for r in nb.prange(P0.shape[0]):
         px, py, pz = P0[r, 0], P0[r, 1], P0[r, 2]
@@ -305,6 +350,10 @@ def _trace_rays(P0, d0, opl0, O, R, kind, c, K, A, n_A, cone, f, mirror, sd, n, 
                 elif k == QBFS or k == QCON:
                     t = _intersect_q(k, c[i], K[i], A[i], Qc[i], dQc[i], n_Q[i], rn[i]*rn[i],
                                      x, y, z, ex, ey, ez)
+                elif k == QCONQ2D:
+                    t = _intersect_qconq2d(c[i], K[i], Qc[i], dQc[i], n_Q[i], rn[i]*rn[i], rf[i],
+                                           x0[i], y0[i], g_start[i], g_end[i], g_kind, g_m,
+                                           g_coef, g_dcoef, g_n, x, y, z, ex, ey, ez)
                 elif k == TOROID or k == BICONIC or k == Q2D:
                     t = _intersect_xy(k, c[i], K[i], A[i], n_A[i], cx[i], Kx[i], B[i], n_B[i],
                                       rn[i], g_start[i], g_end[i], g_kind, g_m, g_coef,
@@ -326,7 +375,13 @@ def _trace_rays(P0, d0, opl0, O, R, kind, c, K, A, n_A, cone, f, mirror, sd, n, 
                     opl += n[i]*(sgn*(abs(fi)/aez - dist) - (qx*ex + qy*ey + qz*ez))
                     ex, ey, ez = sgn*vx/dist, sgn*vy/dist, sgn*vz/dist
                 else:
-                    if k == TOROID or k == BICONIC or k == Q2D:
+                    if k == QCONQ2D:
+                        _, gx, gy = _qconq2d_sag_grad(c[i], K[i], Qc[i], dQc[i], n_Q[i],
+                                                      rn[i]*rn[i], rf[i], x0[i], y0[i],
+                                                      g_start[i], g_end[i], g_kind, g_m, g_coef,
+                                                      g_dcoef, g_n, qx, qy)
+                        Nx, Ny = -gx, -gy
+                    elif k == TOROID or k == BICONIC or k == Q2D:
                         _, gx, gy = _xy_sag_grad(k, c[i], K[i], A[i], n_A[i], cx[i], Kx[i], B[i],
                                                  n_B[i], rn[i], g_start[i], g_end[i], g_kind,
                                                  g_m, g_coef, g_dcoef, g_n, qx, qy)
@@ -383,7 +438,10 @@ if available:
     _intersect_cone = nb.njit(**_options)(_intersect_cone)
     _chebval = nb.njit(**_options)(_chebval)
     _q_sag_slope = nb.njit(**_options)(_q_sag_slope)
+    _q2d_departure = nb.njit(**_options)(_q2d_departure)
     _xy_sag_grad = nb.njit(**_options)(_xy_sag_grad)
+    _qconq2d_sag_grad = nb.njit(**_options)(_qconq2d_sag_grad)
+    _intersect_qconq2d = nb.njit(**_options)(_intersect_qconq2d)
     _intersect_q = nb.njit(**_options)(_intersect_q)
     _intersect_xy = nb.njit(**_options)(_intersect_xy)
     _kernel = nb.njit(parallel=True, **_options)(_trace_rays)
@@ -451,6 +509,7 @@ def trace(P, d, opl, frames, surfaces, kinds, n, clip):
     for i, s in enumerate(surfaces):
         A[i, :n_A[i]] = s.aspheric
     cx, Kx, rn = np.zeros(S), np.zeros(S), np.ones(S)
+    rf, x0, y0 = np.ones(S), np.zeros(S), np.zeros(S)
     B_list, Q_list, groups = [()]*S, [np.zeros(0)]*S, []
     g_start, g_end = np.zeros(S, dtype=np.int64), np.zeros(S, dtype=np.int64)
     for i, (s, kind) in enumerate(zip(surfaces, kinds)):
@@ -458,17 +517,20 @@ def trace(P, d, opl, frames, surfaces, kinds, n, clip):
             cx[i] = 0.0 if np.isinf(s.R_x) else 1.0/s.R_x
         if kind == BICONIC:
             Kx[i], B_list[i] = s.conic_x, tuple(s.aspheric_x)
-        if kind in (QBFS, QCON, Q2D):
+        if kind in (QBFS, QCON, Q2D, QCONQ2D):
             from . import qaspheres
             rn[i] = s.norm_radius
         if kind == QBFS:
             c[i] = s.c_bfs  # the base sphere; s.c is the vertex curvature
             if s.q:
                 Q_list[i] = qaspheres.qbfs_series(s.q)
-        elif kind == QCON and s.q:
+        elif kind in (QCON, QCONQ2D) and s.q:
             Q_list[i] = qaspheres.qcon_series(s.q)
-        elif kind == Q2D:
+        if kind == QCONQ2D:
+            rf[i], (x0[i], y0[i]) = s.freeform_radius, s.centre
+        if kind == Q2D:
             c[i], K[i] = s.c_bfs, 0.0
+        if kind in (Q2D, QCONQ2D):
             g_start[i] = len(groups)
             for (part, m), coef in s._groups().items():
                 groups.append((0 if part == "cos" else 1, m, np.asarray(coef, float)))
@@ -501,7 +563,7 @@ def trace(P, d, opl, frames, surfaces, kinds, n, clip):
     _kernel(np.ascontiguousarray(P, dtype=float), np.ascontiguousarray(d, dtype=float),
            np.ascontiguousarray(opl, dtype=float), O, R, np.asarray(kinds, dtype=np.int64), c, K, A,
            n_A, cone, f, mirror, sd, np.asarray(n, dtype=float), bool(clip), cx, Kx, B, n_B, rn,
-           Qc, dQc, n_Q, g_start, g_end, g_kind, g_m, g_coef, g_dcoef, g_n, out_P, out_d,
+           Qc, dQc, n_Q, g_start, g_end, g_kind, g_m, g_coef, g_dcoef, g_n, rf, x0, y0, out_P, out_d,
            out_opl, valid)
 
     return out_P, out_d, out_opl, valid

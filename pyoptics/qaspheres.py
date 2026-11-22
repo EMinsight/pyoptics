@@ -63,6 +63,10 @@ coefficients; `best_fit_sphere()` gives Forbes' sphere through vertex and
 rim. `QCoefficient` is a `lens_optimization.Variable` for the damped least
 squares optimizer.
 
+Rays are intersected with the surfaces by Newton steps on the full sag, in
+a compiled per-ray loop if numba is installed (`use_numba`, default True;
+False: NumPy).
+
 References
 ----------
 G. W. Forbes, "Shape specification for axially symmetric optical
@@ -79,18 +83,45 @@ optical elements and systems - Part 12: Aspheric surfaces" (includes the Q
 forms).
 """
 
+import copy
 from functools import lru_cache
+from types import SimpleNamespace
 
 import numpy as np
 from numpy.polynomial import chebyshev as C
 from scipy.special import eval_jacobi
 
-from . import abcd
+from . import abcd, _qaspheres_numba
 from .raytrace import Surface, _norm
 
 
+# Newton intersections with the compiled kernel if numba is installed
+# (pip install pyoptics[fast]); False: always NumPy.
+use_numba = True
+
+
+def _compiled():
+    return use_numba and _qaspheres_numba.available
+
+
+def _kernel_series(a):
+    a = np.asarray(a, float)
+    return _qaspheres_numba.series(a) if len(a) else (np.zeros(1), 0, np.zeros(1))
+
+
+def _kernel_groups(surface):
+    """Packed Q2D groups of a surface, cached on it by its coefficients."""
+
+    key = (surface.cos, surface.sin)
+    cached = surface.__dict__.get("_packed_groups")
+    if cached is None or cached[0] != key:
+        cached = (key, _qaspheres_numba.pack_groups(surface._groups()))
+        surface.__dict__["_packed_groups"] = cached
+    return cached[1]
+
+
 __all__ = ["qbfs", "qbfs_series", "qcon", "qcon_series", "sag_qbfs", "sag_qcon",
-           "QbfsSurface", "QconSurface", "best_fit_sphere", "fit_qbfs", "fit_qcon",
+           "QbfsSurface", "QconSurface", "QconQ2DSurface", "best_fit_sphere", "fit_qbfs", "fit_qcon",
            "even_asphere_sag", "rms_slope", "QCoefficient", "q2d", "Q2DSurface",
            "Q2DCoefficient"]
 
@@ -272,7 +303,22 @@ def even_asphere_sag(r, c, K=0.0, aspheric=()):
     return Surface(1/c if c else np.inf, conic=K, aspheric=aspheric).sag(np.asarray(r, float)**2)
 
 
-class _QSurface(Surface):
+class _SharedCoefficients:
+    """Copies share the coefficient tuples (immutable) and the packed
+    kernel data instead of copying them item by item: optimizers copy
+    systems for every perturbed variable."""
+
+    _shared = ("q", "cos", "sin", "centre", "_packed_groups")
+
+    def __deepcopy__(self, memo):
+        other = self.__class__.__new__(self.__class__)
+        memo[id(self)] = other
+        for k, v in self.__dict__.items():
+            other.__dict__[k] = v if k in self._shared else copy.deepcopy(v, memo)
+        return other
+
+
+class _QSurface(_SharedCoefficients, Surface):
     """Common part of the Q surfaces: Newton intersection on the full sag."""
 
     def _series(self):
@@ -287,6 +333,14 @@ class _QSurface(Surface):
 
         base = Surface(self.R, conic=self._base_conic)
         t = base.intersect(P, d)
+        if _compiled():
+            K = _qaspheres_numba
+            if isinstance(self, QconSurface):
+                radial, c, series = K.QCON, self.c, qcon_series(self.q) if self.q else ()
+            else:
+                radial, c, series = K.QBFS, self.c_bfs, qbfs_series(self.q) if self.q else ()
+            return K.intersect(P, d, t, radial, c, getattr(self, "conic", 0.0), self.norm_radius**2,
+                               _kernel_series(series), tol=1e-15)
         t = np.where(np.isfinite(t), t, -P[:, 2]/d[:, 2])
         prev = np.full(len(t), np.inf)
         for _ in range(60):
@@ -739,7 +793,7 @@ def q2d(m, n, x):
     return C.chebval(_x_to_t(x), _q2d_coefficients(m, n + 1)[n])
 
 
-class Q2DSurface(Surface):
+class Q2DSurface(_SharedCoefficients, Surface):
     """Q2D freeform: a best fit sphere plus a slope-orthonormal departure
     with azimuthal terms (Forbes 2012) ::
 
@@ -849,9 +903,18 @@ class Q2DSurface(Surface):
         t = _x_to_t(X)
         D = np.zeros(w.shape)
         Dx, Dy = np.zeros(w.shape), np.zeros(w.shape)
-        for (kind, m), coef in self._groups().items():
-            P = C.chebval(t, coef)
-            dP = 2*C.chebval(t, C.chebder(coef)) if len(coef) > 1 else 0.0*P   # dP/dX
+        groups = self._groups()
+        if not groups:
+            return D, Dx, Dy
+        # one Chebyshev Vandermonde matrix for all groups, powers of w by recurrence
+        T = C.chebvander(t, max(len(c) for c in groups.values()) - 1)
+        powers = [np.ones(w.shape, complex)]
+        for _ in range(max(m for _, m in groups)):
+            powers.append(powers[-1]*w)
+        for (kind, m), coef in groups.items():
+            P = T[..., :len(coef)] @ coef
+            dP = (2*(T[..., :len(coef) - 1] @ C.chebder(coef)) if len(coef) > 1
+                  else np.zeros(w.shape))   # dP/dX
             if m == 0:
                 # X (1 - X) P(X)
                 f = X*(1 - X)*P
@@ -859,8 +922,8 @@ class Q2DSurface(Surface):
                 D = D + f
                 Dx, Dy = Dx + df*2*w.real/rn, Dy + df*2*w.imag/rn
                 continue
-            wm = w**m
-            wm1 = m*w**(m - 1)
+            wm = powers[m]
+            wm1 = m*powers[m - 1]
             if kind == "cos":
                 A, Ax, Ay = wm.real, wm1.real, -wm1.imag
             else:
@@ -870,6 +933,69 @@ class Q2DSurface(Surface):
             Dy = Dy + dP*2*w.imag/rn*A + P*Ay/rn
 
         return D, Dx, Dy
+
+    def _departure_hessian(self, x, y):
+        """Second derivatives (D_xx, D_xy, D_yy) of D in the local frame."""
+
+        rn = self.norm_radius
+        w = (np.asarray(x, float) + 1j*np.asarray(y, float))/rn
+        u, v = w.real, w.imag
+        X = np.abs(w)**2
+        t = _x_to_t(X)
+        Huu, Huv, Hvv = np.zeros(w.shape), np.zeros(w.shape), np.zeros(w.shape)
+        groups = self._groups()
+        if not groups:
+            return Huu, Huv, Hvv
+        T = C.chebvander(t, max(len(c) for c in groups.values()) - 1)
+        powers = [np.ones(w.shape, complex)]
+        for _ in range(max(m for _, m in groups)):
+            powers.append(powers[-1]*w)
+        zero = np.zeros(w.shape)
+        Xu, Xv = 2*u, 2*v
+        for (kind, m), coef in groups.items():
+            n = len(coef)
+            P = T[..., :n] @ coef
+            dP = 2*(T[..., :n - 1] @ C.chebder(coef)) if n > 1 else zero        # dP/dX
+            d2P = 4*(T[..., :n - 2] @ C.chebder(coef, 2)) if n > 2 else zero    # d2P/dX2
+            if m == 0:
+                f1 = (1 - 2*X)*P + X*(1 - X)*dP
+                f2 = -2*P + 2*(1 - 2*X)*dP + X*(1 - X)*d2P
+                Huu = Huu + f2*Xu**2 + 2*f1
+                Huv = Huv + f2*Xu*Xv
+                Hvv = Hvv + f2*Xv**2 + 2*f1
+                continue
+            W0, W1 = powers[m], m*powers[m - 1]
+            W2 = m*(m - 1)*powers[m - 2] if m > 1 else zero.astype(complex)
+            if kind == "cos":
+                A, Au, Av, Auu, Auv = W0.real, W1.real, -W1.imag, W2.real, -W2.imag
+            else:
+                A, Au, Av, Auu, Auv = W0.imag, W1.imag, W1.real, W2.imag, W2.real
+            Huu = Huu + d2P*Xu**2*A + 2*dP*A + 2*dP*Xu*Au + P*Auu
+            Huv = Huv + d2P*Xu*Xv*A + dP*(Xu*Av + Xv*Au) + P*Auv
+            Hvv = Hvv + d2P*Xv**2*A + 2*dP*A + 2*dP*Xv*Av - P*Auu
+
+        return Huu/rn**2, Huv/rn**2, Hvv/rn**2
+
+    def sag_hessian(self, x, y):
+        """Second derivatives (z_xx, z_xy, z_yy) of the sag, analytic."""
+
+        x, y = np.asarray(x, float), np.asarray(y, float)
+        cb = self.c_bfs
+        with np.errstate(invalid="ignore"):
+            rho = 1/np.sqrt(1 - cb**2*(x**2 + y**2))
+        D, Dx, Dy = self._departure_and_gradient(x, y)
+        Dxx, Dxy, Dyy = self._departure_hessian(x, y)
+        # sphere: (dz/dr)/r = cb rho, its derivative in r**2 cb**3 rho**3/2
+        sr, ds = cb*rho, cb**3*rho**3/2
+        # 1/root: rho_x = cb^2 x rho^3, rho_xx = cb^2 rho^3 + 3 cb^4 x^2 rho^5
+        rx, ry = cb**2*x*rho**3, cb**2*y*rho**3
+        rxx = cb**2*rho**3 + 3*cb**4*x**2*rho**5
+        rxy = 3*cb**4*x*y*rho**5
+        ryy = cb**2*rho**3 + 3*cb**4*y**2*rho**5
+        zxx = sr + 2*x**2*ds + Dxx*rho + 2*Dx*rx + D*rxx
+        zxy = 2*x*y*ds + Dxy*rho + Dx*ry + Dy*rx + D*rxy
+        zyy = sr + 2*y**2*ds + Dyy*rho + 2*Dy*ry + D*ryy
+        return zxx, zxy, zyy
 
     def departure(self, x, y):
         """Normal departure D(x, y) from the base sphere (before the
@@ -894,6 +1020,12 @@ class Q2DSurface(Surface):
         return QbfsSurface(self.R, 0.0, self._axial(), self.norm_radius).sag(r2)
 
     def _gradient(self, x, y):
+        return self._sag_and_gradient(x, y)[1:]
+
+    def _sag_and_gradient(self, x, y):
+        """Sag and its gradient from one evaluation of the polynomials."""
+
+        x, y = np.asarray(x, float), np.asarray(y, float)
         cb = self.c_bfs
         r2 = x**2 + y**2
         with np.errstate(invalid="ignore"):
@@ -901,18 +1033,22 @@ class Q2DSurface(Surface):
         D, Dx, Dy = self._departure_and_gradient(x, y)
         s = cb/root                       # (dz_sphere/dr)/r
         k = D*cb**2/root**3
-        return x*s + Dx/root + k*x, y*s + Dy/root + k*y
+        return _sphere(cb, 0.0, r2) + D/root, x*s + Dx/root + k*x, y*s + Dy/root + k*y
 
     def intersect(self, P, d):
         """Distance along the rays to the surface: from the base sphere by
         Newton steps on the full sag."""
 
         t = Surface(self.R).intersect(P, d)
+        if _compiled():
+            K = _qaspheres_numba
+            return K.intersect(P, d, t, K.SPHERE, self.c_bfs, 0.0, 1.0, _kernel_series(()),
+                               K.OVER_ROOT, self.norm_radius, (0.0, 0.0), _kernel_groups(self))
         t = np.where(np.isfinite(t), t, -P[:, 2]/d[:, 2])
         for _ in range(60):
             Q = P + t[:, None]*d
-            gx, gy = self._gradient(Q[:, 0], Q[:, 1])
-            G = Q[:, 2] - self.sag_xy(Q[:, 0], Q[:, 1])
+            z, gx, gy = self._sag_and_gradient(Q[:, 0], Q[:, 1])
+            G = Q[:, 2] - z
             dG = d[:, 2] - gx*d[:, 0] - gy*d[:, 1]
             with np.errstate(invalid="ignore", divide="ignore"):
                 step = G/dG
@@ -937,6 +1073,147 @@ class Q2DSurface(Surface):
 
         v = [c for _, c in self.cos] + [c for _, c in self.sin]
         return np.sqrt(np.sum(np.square(v)))/self.norm_radius
+
+
+class QconQ2DSurface(QconSurface):
+    """Q-con asphere with a Q2D freeform departure centred off axis: an
+    off-axis mirror segment of a rotationally symmetric parent with a
+    freeform correction over its footprint ::
+
+        z(x, y) = z_Qcon(x**2 + y**2) + D((x - x0)/r_f, (y - y0)/r_f),
+
+    with the Q-con sag of `QconSurface` about the vertex and the Q2D
+    departure D of `Q2DSurface` (same coefficients, polynomials and
+    azimuth convention) centred on the point (x0, y0) of the local frame
+    with its own normalization radius r_f, usually the footprint centre
+    and radius (`off_axis.freeform_mirrors`). D is added to the sag as it
+    is: it is not divided by the square root of the base sphere, since the
+    base is not a sphere about (x0, y0). The paraxial data and the Seidel
+    sums use the Q-con part; the departure only enters the real ray trace.
+
+    Parameters
+    ----------
+    R, thickness, q, norm_radius, conic : optional
+        As for `QconSurface` (norm_radius is that of the Q-con terms).
+    cos, sin : dict, optional
+        {(m, n): coefficient} of the Q2D terms, as for `Q2DSurface`.
+    freeform_radius : number, optional
+        Normalization radius r_f of the Q2D terms.
+    centre : (x0, y0), optional
+        Centre of the Q2D terms in the local frame.
+    **kwargs
+        Passed on to `raytrace.Surface`.
+    """
+
+    def __init__(self, R=np.inf, thickness=0.0, q=(), norm_radius=1.0, conic=0.0,
+                 cos=None, sin=None, freeform_radius=1.0, centre=(0.0, 0.0), **kwargs):
+        super().__init__(R, thickness, q, norm_radius, conic, **kwargs)
+        self.freeform_radius = float(freeform_radius)
+        self.centre = (float(centre[0]), float(centre[1]))
+        self.cos = tuple(sorted(((int(m), int(n)), float(v)) for (m, n), v in (cos or {}).items()))
+        self.sin = tuple(sorted(((int(m), int(n)), float(v)) for (m, n), v in (sin or {}).items()
+                                if m > 0))
+
+    def __repr__(self):
+        return ("QconQ2DSurface(R={}, thickness={}, conic={}, q={}, norm_radius={}, cos={}, "
+                "sin={}, freeform_radius={}, centre={})").format(
+            self.R, self.thickness, self.conic, self.q, self.norm_radius, dict(self.cos),
+            dict(self.sin), self.freeform_radius, self.centre)
+
+    set_term = Q2DSurface.set_term
+    get_term = Q2DSurface.get_term
+    _groups = Q2DSurface._groups
+
+    def departure_gradient(self, x, y):
+        """Analytic (dD/dx, dD/dy) of the Q2D departure."""
+
+        return self._departure(x, y)[1:]
+
+    def _departure(self, x, y):
+        x0, y0 = self.centre
+
+        # the Q2D departure with its own normalization radius:
+        patch = SimpleNamespace(norm_radius=self.freeform_radius, _groups=self._groups)
+
+        return Q2DSurface._departure_and_gradient(
+            patch, np.asarray(x, float) - x0, np.asarray(y, float) - y0)
+
+    def departure_hessian(self, x, y):
+        """Analytic second derivatives (D_xx, D_xy, D_yy) of the Q2D departure."""
+
+        x0, y0 = self.centre
+        patch = SimpleNamespace(norm_radius=self.freeform_radius, _groups=self._groups)
+
+        return Q2DSurface._departure_hessian(
+            patch, np.asarray(x, float) - x0, np.asarray(y, float) - y0)
+
+    def departure_xy(self, x, y):
+        """Q2D part of the sag at the points (x, y) of the local frame."""
+
+        return self._departure(x, y)[0]
+
+    def sag_xy(self, x, y):
+        """Sag z(x, y), Q-con sag plus the Q2D departure."""
+
+        x, y = np.asarray(x, float), np.asarray(y, float)
+        return self.sag(x**2 + y**2) + self.departure_xy(x, y)
+
+    def _gradient(self, x, y):
+        return self._sag_and_gradient(x, y)[1:]
+
+    def _sag_and_gradient(self, x, y):
+        """Sag and its gradient from one evaluation of the polynomials."""
+
+        x, y = np.asarray(x, float), np.asarray(y, float)
+        r2 = x**2 + y**2
+        s = self._slope_over_r(r2)
+        D, gx, gy = self._departure(x, y)
+
+        return self.sag(r2) + D, x*s + gx, y*s + gy
+
+    def intersect(self, P, d):
+        """Distance along the rays to the surface: from the Q-con surface by
+        Newton steps on the full sag."""
+
+        if _compiled():
+            K = _qaspheres_numba
+            t = Surface(self.R, conic=self.conic).intersect(P, d)
+            return K.intersect(P, d, t, K.QCON, self.c, self.conic, self.norm_radius**2,
+                               _kernel_series(qcon_series(self.q) if self.q else ()),
+                               K.ADDED if (self.cos or self.sin) else K.NONE,
+                               self.freeform_radius, self.centre, _kernel_groups(self))
+        t = super().intersect(P, d)
+        if not (self.cos or self.sin):
+            return t
+        t = np.where(np.isfinite(t), t, -P[:, 2]/d[:, 2])
+        for _ in range(60):
+            Q = P + t[:, None]*d
+            z, gx, gy = self._sag_and_gradient(Q[:, 0], Q[:, 1])
+            G = Q[:, 2] - z
+            dG = d[:, 2] - gx*d[:, 0] - gy*d[:, 1]
+            with np.errstate(invalid="ignore", divide="ignore"):
+                step = G/dG
+            t = t - step
+            with np.errstate(invalid="ignore"):
+                if np.all(~np.isfinite(step) | (np.abs(step) < 1e-14*(1 + np.abs(t)))):
+                    break
+        Q = P + t[:, None]*d
+
+        return np.where(np.isfinite(self.sag_xy(Q[:, 0], Q[:, 1])), t, np.nan)
+
+    def normal(self, Q):
+        """Unit normals (pointing into +z) at the points Q relative to the vertex."""
+
+        gx, gy = self._gradient(Q[:, 0], Q[:, 1])
+        N = np.stack([-gx, -gy, np.ones(len(Q))], axis=-1)
+
+        return N/_norm(N)[:, None]
+
+    def rms_slope(self):
+        """sqrt(sum of the squared Q2D coefficients)/r_f (radians)."""
+
+        v = [c for _, c in self.cos] + [c for _, c in self.sin]
+        return np.sqrt(np.sum(np.square(v)))/self.freeform_radius
 
 
 try:
