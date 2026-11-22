@@ -92,6 +92,18 @@ Setup sketches for the other example notebooks:
   raster and spiral tool paths, the ripple of overlapping tracks and the
   turned-down edge under an overhanging tool (notebook 175,
   polishing errors).
+- mode_decomposition(): a source as modes traced one by one and added
+  incoherently or, for a pulse, coherently; multimode_fibre(): a
+  multimode beam, its embedded Gaussian and a single-mode fibre;
+  led_behind_collimator(): an LED die in the focal plane of a collimator,
+  the tilted plane waves of its emitters on a screen; young_broadband():
+  Young's double slit in broadband light
+  (notebook 169, source models in field tracing).
+- fox_li_unfolded(): the Fox-Li iteration as a row of apertures;
+  aperture_selection(): an aperture that clips TEM01 more than TEM00;
+  thermal_lens_resonator(): plane mirrors and a rod with a thermal lens;
+  unstable_resonator(): a positive-branch confocal unstable resonator and
+  its output beam (notebook 170, laser resonator modes).
 - diode_collimator(), fibre_coupling(): an astigmatic laser diode with an
   aspheric collimator and a focusing lens, and a Gaussian beam focused into
   a single-mode fibre by a spherical lens or an asphere (notebook 112, field tracing applications).
@@ -374,7 +386,9 @@ __all__ = ["lens", "stop", "plane", "prism", "mirror", "detector", "point_source
            "pancake_lens", "hud_layout", "zoom_cams", "qbfs_geometry",
            "progressive_lens_layout", "lidar_layout", "beam_scanner", "scan_lens_layout",
            "structured_light_layout", "crystal_optics_layout", "modulator_layout", "laser_layout",
-           "hybrid_lens_layout", "litho_stochastics_layout", "text_scale"]
+           "hybrid_lens_layout", "litho_stochastics_layout", "mode_decomposition",
+           "multimode_fibre", "led_behind_collimator", "young_broadband", "fox_li_unfolded",
+           "aperture_selection", "thermal_lens_resonator", "unstable_resonator", "text_scale"]
 
 
 GLASS = "#cfe3f3"
@@ -12415,3 +12429,520 @@ def polishing_layout(ax, kind="tool", title=None):
         _finish(ax, (-2.6, 2.6), (-1.0, 0.9), title)
     else:
         raise ValueError("kind must be 'tool', 'paths', 'ripple' or 'edge'.")
+
+
+# ---------------------------------------------------------------------------
+# notebook 169 (source models in field tracing) and
+# notebook 170 (laser resonator modes)
+# ---------------------------------------------------------------------------
+
+_MODE_COLORS = ("#2a7ab9", "#5aa469", "#d6604d")
+
+
+def _hg(n, xi):
+    """Hermite-Gaussian function of order n (unnormalized, peak about 1)."""
+
+    h = [np.ones_like(xi), 2*xi]
+    for k in range(1, n):
+        h.append(2*xi*h[k] - 2*k*h[k - 1])
+    u = h[n]*np.exp(-xi**2/2)
+    return u/np.abs(u).max()
+
+
+def _profile(ax, z, y, s, values, width, height, color, lw=1.2, ls="-", baseline=True,
+             zorder=5):
+    """A transverse profile drawn sideways: z + width*values(s), y + height*s."""
+
+    if baseline:
+        ax.plot([z, z], [y - height, y + height], color="0.75", lw=0.6, zorder=zorder - 1)
+    ax.plot(z + width*values, y + height*s, color=color, lw=lw, ls=ls, zorder=zorder)
+
+
+def _flow_box(ax, z, y, w, h, text, color="0.94", fontsize=8):
+    ax.add_patch(_patches().FancyBboxPatch((z - w/2, y - h/2), w, h, boxstyle="round,pad=0.04",
+                                           facecolor=color, edgecolor="0.35", lw=0.9, zorder=3))
+    label(ax, z, y, text, fontsize=fontsize)
+
+
+def mode_decomposition(ax, kind="incoherent", title=None):
+    """Sketch of a source decomposed into modes that a field tracing chain
+    traces one by one (notebook 169, source models in field tracing).
+
+    - "incoherent": the coherent modes of a partially coherent beam
+      (Hermite-Gaussians with the weights w_j); each is traced through the
+      chain, and the detector adds the irradiances w_j |E_j|^2.
+    - "pulse": the spectral components of a pulse at the frequencies
+      omega_j; the detector adds the fields with their complex amplitudes
+      a_j, and the sum is a short pulse.
+
+    Parameters
+    ----------
+    ax : matplotlib Axes
+    kind : str, optional
+        "incoherent" or "pulse".
+    title : str, optional
+    """
+
+    if kind not in ("incoherent", "pulse"):
+        raise ValueError("kind must be 'incoherent' or 'pulse'.")
+    rows = [1.5, 0.0, -1.5]
+    s = np.linspace(-1, 1, 201)
+    z_in, z_chain, z_out, z_sum = 0.0, 2.1, 3.7, 5.9
+    weights = [0.6, 0.27, 0.13]
+    for j, (y, col) in enumerate(zip(rows, _MODE_COLORS)):
+        if kind == "incoherent":
+            _profile(ax, z_in, y, s, _hg(j, 2.6*s), 0.45, 0.6, col)
+            label(ax, z_in - 0.5, y, f"$E_{j}$", fontsize=9, ha="right", color=col)
+            label(ax, z_in + 0.55, y + 0.62, f"$w_{j}$ = {weights[j]:.2f}", fontsize=8,
+                  ha="left", color=col)
+            _profile(ax, z_out, y, s, _hg(j, 3.0*s)**2, 0.55, 0.6, col)
+            label(ax, z_out + 0.6, y + 0.62, f"$|E_{j}'|^2$", fontsize=8, ha="left", color=col)
+        else:
+            # one spectral component: a harmonic field and its oscillation in time
+            _profile(ax, z_in, y, s, np.exp(-(2.2*s)**2), 0.45, 0.6, col)
+            label(ax, z_in - 0.5, y, f"$\\omega_{j}$", fontsize=9, ha="right", color=col)
+            t = np.linspace(-1, 1, 300)
+            w_j = 7.0 + 2.2*(j - 1)
+            ax.plot(z_out + 0.55*t + 0.55, y + 0.3*np.cos(w_j*np.pi*t), color=col, lw=1.0,
+                    zorder=5)
+            label(ax, z_out + 0.55, y + 0.62, f"$a_{j} E_{j}' e^{{-i\\omega_{j} t}}$",
+                  fontsize=8, color=col)
+        arrow(ax, z_in + 0.65, y, z_chain - 0.65, y, color="0.35")
+        _flow_box(ax, z_chain, y, 1.1, 0.7, "chain\n(one λ)" if kind == "pulse" else "chain")
+        arrow(ax, z_chain + 0.65, y, z_out - 0.15, y, color="0.35")
+        arrow(ax, z_out + 1.2, y, z_sum - 0.35, 0.0 + 0.25*np.sign(y), color="0.35")
+    ax.add_patch(_patches().Circle((z_sum, 0.0), 0.28, facecolor="white", edgecolor="0.2", lw=1.2,
+                                   zorder=4))
+    label(ax, z_sum, 0.0, "+", fontsize=14, zorder=6)
+    z_res = z_sum + 0.6
+    if kind == "incoherent":
+        total = sum(w*_hg(j, 3.0*s)**2 for j, w in enumerate(weights))
+        _profile(ax, z_res, 0.0, s, total/total.max(), 0.6, 0.9, "k", lw=1.8)
+        label(ax, z_res + 0.35, -1.15, "$I = \\sum_j w_j |E_j'|^2$", fontsize=9, va="top")
+        label(ax, z_in + 0.2, -2.35, "mutually incoherent modes: irradiances add",
+              fontsize=9, ha="left", va="top")
+    else:
+        t = np.linspace(-1, 1, 400)
+        env = np.exp(-(3.2*t)**2)
+        ax.plot(z_res + 0.7 + 0.8*t, 0.9*env*np.cos(7*np.pi*t), color="k", lw=1.2, zorder=5)
+        ax.plot(z_res + 0.7 + 0.8*t, 0.9*env, color="k", lw=0.8, ls="--", zorder=5)
+        label(ax, z_res + 0.7, -1.15, "$E(t) = \\sum_j a_j E_j' e^{-i\\omega_j t}$", fontsize=9,
+              va="top")
+        label(ax, z_in + 0.2, -2.35, "mutually coherent frequencies: fields add",
+              fontsize=9, ha="left", va="top")
+    label(ax, z_in + 0.2, 2.45, "source = modes", fontsize=9, va="bottom")
+    label(ax, z_chain, 2.45, "each traced\non its own", fontsize=9, va="bottom")
+    label(ax, z_sum + 0.6, 2.45, "detector", fontsize=9, va="bottom")
+    _finish(ax, (-1.1, z_res + 1.7), (-2.75, 3.2), title)
+
+
+def multimode_fibre(ax, M2=2.0, title=None):
+    """Sketch of a multimode laser beam focused into a single-mode fibre
+    (notebook 169, source models in field tracing).
+
+    The beam (shaded) has the second-moment radius W and the divergence of
+    M^2 times a Gaussian beam's; its fundamental mode, the embedded Gaussian
+    (dashed), is narrower by sqrt(M^2) everywhere. A fibre matched to the
+    focus of the embedded Gaussian takes the power of that mode and nothing
+    else: the higher order modes are orthogonal to the fibre mode. The bars
+    show the thermal mode powers p_n, proportional to kappa^n.
+
+    Parameters
+    ----------
+    ax : matplotlib Axes
+    M2 : number, optional
+        Beam quality factor drawn.
+    title : str, optional
+    """
+
+    P = _patches()
+    m = np.sqrt(M2)
+    W, f, z_l = 0.62, 2.6, 1.6
+    z_f = z_l + f
+    w0 = 0.09*m                                   # waist of the real beam
+    z = np.linspace(z_l, z_f + 0.9, 200)
+    w = np.sqrt(w0**2 + (W*(z - z_f)/f)**2)
+    we = w/m
+    # the beam before the lens and behind it
+    band(ax, [0.0, z_l], [W, W], [0.0, z_l], [-W, -W], color=LASER, alpha=0.22, edges=False)
+    band(ax, z, w, z, -w, color=LASER, alpha=0.22, edges=False)
+    ax.plot([0.0, z_l], [W, W], color=LASER, lw=0.9)
+    ax.plot([0.0, z_l], [-W, -W], color=LASER, lw=0.9)
+    ax.plot(z, w, color=LASER, lw=0.9)
+    ax.plot(z, -w, color=LASER, lw=0.9)
+    for sgn in (1, -1):
+        ax.plot([0.0, z_l], [sgn*W/m, sgn*W/m], color=REFERENCE, lw=1.1, ls="--", zorder=4)
+        ax.plot(z, sgn*we, color=REFERENCE, lw=1.1, ls="--", zorder=4)
+    lens(ax, z_l, 0.95, text="lens f", text_y=-1.05)
+    # the fibre: cladding and core, the core matched to the embedded Gaussian
+    ax.add_patch(P.Rectangle((z_f, -0.38), 1.6, 0.76, facecolor=CLADDING, edgecolor=FIBRE_EDGE,
+                             lw=0.8, zorder=2))
+    ax.add_patch(P.Rectangle((z_f, -w0/m), 1.6, 2*w0/m, facecolor="#f6d7b0", edgecolor="none",
+                             zorder=2.5))
+    s = np.linspace(-1, 1, 101)
+    _profile(ax, z_f + 1.95, 0.0, s, np.exp(-2*(0.45*s/(w0/m))**2), 0.4, 0.45, REFERENCE,
+             baseline=False)
+    label(ax, z_f + 0.8, -0.5, "single-mode fibre", fontsize=8, va="top")
+    label(ax, z_f + 2.15, 0.55, "fibre mode", fontsize=8, va="bottom", color=REFERENCE)
+    label(ax, 0.8, W + 0.1, f"beam, radius W, $M^2$ = {M2:g}", fontsize=8, va="bottom",
+          color=LASER)
+    label(ax, 0.6, -W - 0.1, "embedded Gaussian (dashed),\nradius $W/\\sqrt{M^2}$", fontsize=8,
+          va="top", color=REFERENCE)
+    # thermal mode powers
+    kappa = (M2 - 1)/(M2 + 1)
+    p = (1 - kappa)*kappa**np.arange(6)
+    z_b, y_b = 0.0, 1.35
+    for n, pn in enumerate(p):
+        ax.add_patch(P.Rectangle((z_b + 0.28*n, y_b), 0.2, 1.1*pn,
+                                 facecolor=REFERENCE if n == 0 else "0.7", edgecolor="none",
+                                 zorder=3))
+        label(ax, z_b + 0.28*n + 0.1, y_b - 0.05, str(n), fontsize=7, va="top")
+    label(ax, z_b + 1.85, y_b + 0.55, "mode powers\n$p_n \\propto \\kappa^n$", fontsize=8,
+          ha="left")
+    label(ax, z_f + 0.8, 1.2,
+          "coupled: only $p_0 = (1-\\kappa)^2$\n" + f"= {(1 - kappa)**2:.2f} for both axes",
+          fontsize=8, color=REFERENCE)
+    _finish(ax, (-0.2, z_f + 2.6), (-1.45, 2.75), title)
+
+
+def led_behind_collimator(ax, title=None):
+    """Sketch of an LED die in the front focal plane of a collimator, and a
+    screen far behind it (notebook 169, source models in field tracing).
+
+    Every emitter of the die becomes a plane wave tilted by its height over
+    the focal length, cut by the lens aperture. The emitters are mutually
+    incoherent, so the screen shows the sum of the shifted copies of the
+    aperture (black): the aperture convolved with the image of the die,
+    without the diffraction ripples of a single emitter. Directly behind
+    the lens the coherence width is about lambda f/D for a die of width D
+    (van Cittert-Zernike with the distance replaced by f).
+
+    Parameters
+    ----------
+    ax : matplotlib Axes
+    title : str, optional
+    """
+
+    f, r, z_s = 1.6, 0.55, 5.4
+    ys = [0.2, 0.0, -0.2]
+    colours = [STAR, IMAGING, STAR2]
+    ax.add_patch(_patches().Rectangle((-0.06, -0.24), 0.12, 0.48, facecolor="#fbe7b0",
+                                      edgecolor=ILLUMINATION, lw=1, zorder=3))
+    for y0, col in zip(ys, colours):
+        point_source(ax, 0.0, y0, color=col, size=40)
+        u = -y0/f                                       # tilt behind the lens
+        top, bot = r + u*(z_s - f), -r + u*(z_s - f)
+        band(ax, [f, z_s], [r, top], [f, z_s], [-r, bot], color=col, alpha=0.12, edges=False)
+        for h in (r, -r):
+            ax.plot([0.0, f, z_s], [y0, h, h + u*(z_s - f)], color=col, lw=0.8, alpha=0.9,
+                    zorder=2)
+    lens(ax, f, 0.75, text="collimator f,\naperture", text_y=-0.95)
+    stop(ax, f + 0.1, 0.75, openings=((0.0, r),), width=0.05)
+    ax.plot([z_s, z_s], [-1.1, 1.1], color="0.35", lw=2.5, zorder=4)
+    label(ax, z_s, -1.2, "screen", va="top")
+    # irradiance: the sum of the shifted aperture copies (a trapezoid)
+    y = np.linspace(-1.1, 1.1, 400)
+    shifts = np.linspace(-0.2, 0.2, 31)/f*(z_s - f)
+    total = np.mean([(np.abs(y + d) < r).astype(float) for d in shifts], axis=0)
+    for y0, col in zip(ys, colours):
+        d = y0/f*(z_s - f)
+        ax.plot(z_s + 0.12 + 0.3*(np.abs(y + d) < r), y, color=col, lw=0.8, zorder=5)
+    ax.plot(z_s + 0.12 + 0.6*total, y, color="k", lw=1.6, zorder=6)
+    label(ax, z_s + 0.5, 1.2, "one emitter (colour)\nall of them (black)", fontsize=8,
+          va="bottom")
+    label(ax, 0.0, -0.35, "LED die,\nwidth D", fontsize=8, va="top")
+    arrow(ax, 0.0, -0.95, f - 0.1, -0.95, style="<|-|>", color="0.4", text="f",
+          text_pos=(f/2, -1.03), va="top")
+    label(ax, (f + z_s)/2 + 0.3, 1.15, "each emitter: a plane wave tilted by y/f", fontsize=8,
+          va="bottom")
+    label(ax, f, 0.85, "coherence width\n≈ λf/D", fontsize=8, va="bottom", color=STRAY)
+    _finish(ax, (-0.5, z_s + 1.2), (-1.55, 1.75), title)
+
+
+def young_broadband(ax, title=None):
+    """Sketch of Young's double slit in broadband light
+    (notebook 169, source models in field tracing). Every wavelength makes fringes with a
+    period lambda L/d; they agree at the centre of the screen and drift
+    apart where the path difference d y/L approaches the coherence length
+    lambda^2/Delta lambda, and the sum (black) loses its visibility.
+
+    Parameters
+    ----------
+    ax : matplotlib Axes
+    title : str, optional
+    """
+
+    d, L = 0.5, 4.0
+    for z0 in (-1.2, -0.8, -0.4):
+        ax.plot([z0, z0], [-0.9, 0.9], color="0.4", lw=1.1)
+    label(ax, -0.8, -1.0, "broadband\nplane wave", fontsize=8, va="top")
+    stop(ax, 0.0, 1.0, openings=((d/2 - 0.03, d/2 + 0.03),), width=0.05)
+    label(ax, 0.0, 1.1, "slits, d apart", fontsize=8, va="bottom")
+    ax.plot([L, L], [-1.3, 1.3], color="0.35", lw=2.5, zorder=4)
+    label(ax, L, -1.4, "screen", va="top", fontsize=8)
+    y_p = 1.0
+    for ys in (d/2, -d/2):
+        ax.plot([0.0, L], [ys, y_p], color="0.3", lw=0.8)
+        ax.plot([0.0, L], [ys, 0.0], color="0.6", lw=0.6, ls=":")
+    ax.plot([L], [y_p], "o", color="k", ms=4, zorder=6)
+    label(ax, L - 0.1, y_p + 0.1, "OPD = d y/L", fontsize=8, ha="right", va="bottom")
+    y = np.linspace(-1.3, 1.3, 600)
+    lams = [0.8, 1.0, 1.25]
+    cols = [_SPECTRUM["blue"], _SPECTRUM["green"], _SPECTRUM["red"]]
+    period0 = 0.3
+    for lam, col in zip(lams, cols):
+        _fringe_curve(ax, L + 0.12, y, 0.0, period0*lam, 0.18, color=col, lw=0.7)
+    lam = np.linspace(0.7, 1.4, 25)
+    total = np.mean([1 + np.cos(2*np.pi*y/(period0*la)) for la in lam], axis=0)
+    ax.plot(L + 0.6 + 0.2*total, y, color="k", lw=1.5, zorder=6)
+    label(ax, L + 0.45, 1.45, "each λ, and the sum", fontsize=8, va="bottom")
+    label(ax, L + 1.3, 0.0, "fringes\nagree", fontsize=8, ha="left")
+    label(ax, L + 1.3, 1.0, "OPD ≈ λ²/Δλ:\nwashed out", fontsize=8, ha="left", color=STRAY)
+    _finish(ax, (-1.5, L + 2.4), (-1.75, 1.8), title)
+
+
+def _transit_profile(t, s):
+    """Field amplitude after a few transits of a Fox-Li iteration: from a
+    uniform start with edge ripples (t = 0) towards the smooth mode (t = 1)."""
+
+    flat = np.ones_like(s) + 0.3*(1 - t)*np.cos(14*(1 - np.abs(s)))*np.abs(s)**6
+    mode = np.cos(0.47*np.pi*s)
+    return np.where(np.abs(s) <= 1, (1 - t)*flat + t*mode, 0.0)
+
+
+def fox_li_unfolded(ax, transits=5, title=None):
+    """Sketch of the Fox-Li iteration (notebook 170, laser resonator modes).
+
+    Top: two plane mirrors of half width a, a distance L apart. Bottom: the
+    same resonator unfolded into a row of apertures; a uniform field enters,
+    each transit diffracts it and the next aperture cuts off the light that
+    spills past the edge (the diffraction loss). After many transits the
+    field no longer changes its shape: it is the lowest-loss mode, an
+    eigenfunction of the round trip.
+
+    Parameters
+    ----------
+    ax : matplotlib Axes
+    transits : int, optional
+        Number of transits drawn.
+    title : str, optional
+    """
+
+    a, L = 0.6, 1.3
+    y_top = 2.0
+    # the resonator
+    for z_m in (0.0, L):
+        ax.plot([z_m, z_m], [y_top - a, y_top + a], color="0.25", lw=3.0, zorder=4)
+    band(ax, [0.0, L], [y_top + a, y_top + a], [0.0, L], [y_top - a, y_top - a], color=LASER,
+         alpha=0.15, edges=False)
+    arrow(ax, -0.25, y_top - a, -0.25, y_top + a, style="<|-|>", color="0.4")
+    label(ax, -0.32, y_top, "2a", fontsize=8, ha="right")
+    arrow(ax, 0.0, y_top + a + 0.15, L, y_top + a + 0.15, style="<|-|>", color="0.4", text="L",
+          text_pos=(L/2, y_top + a + 0.28), va="bottom")
+    label(ax, L + 0.4, y_top + 0.2, "plane mirrors, Fresnel number $N = a^2/(\\lambda L)$",
+          fontsize=9, ha="left")
+    label(ax, L + 0.4, y_top - 0.25, "unfolded: one aperture per transit", fontsize=9,
+          ha="left")
+    # the unfolded row of apertures
+    s = np.linspace(-1.0, 1.0, 301)
+    ts = np.r_[0.0, 1 - 0.55**np.arange(1, transits)]
+    for k in range(transits + 1):
+        stop(ax, k*L, 1.0, openings=((0.0, a),), width=0.05)
+    for k, t in enumerate(ts):
+        z0 = k*L + 0.12
+        prof = _transit_profile(t, s)
+        ax.plot([z0, z0], [-a, a], color="0.75", lw=0.6)
+        ax.plot(z0 + 0.45*prof, a*s, color=LASER, lw=1.2, zorder=5)
+        if k > 0:
+            for sgn in (1, -1):
+                arrow(ax, k*L - 0.35, sgn*(a - 0.05), k*L - 0.05, sgn*(a + 0.28), color=STRAY,
+                      lw=0.8)
+    label(ax, 0.12, -1.15, "uniform\nstart", fontsize=8, va="top")
+    label(ax, transits*L - L + 0.3, -1.15, "lowest-loss\nmode", fontsize=8, va="top")
+    label(ax, 1.5*L, 1.1, "light spilling past the edge: diffraction loss", fontsize=8,
+          color=STRAY, va="bottom")
+    label(ax, transits*L + 0.25, 0.0, "$K E = \\gamma E$", fontsize=10, ha="left")
+    _finish(ax, (-0.6, transits*L + 1.2), (-1.55, y_top + a + 0.55), title)
+
+
+def aperture_selection(ax, ratio=1.4, title=None):
+    """Sketch of mode selection with an aperture in a half-symmetric
+    resonator (notebook 170, laser resonator modes): a plane mirror with an
+    aperture of radius a = ratio*w in front of it, a concave mirror, the
+    TEM00 mode (radius w on the plane mirror) and the wider TEM01 mode. The
+    profiles on the left show how much of each mode the aperture cuts off
+    (red).
+
+    Parameters
+    ----------
+    ax : matplotlib Axes
+    ratio : number, optional
+        Aperture radius in units of the TEM00 radius on the plane mirror.
+    title : str, optional
+    """
+
+    L, R2, wl = 3.0, 6.0, 0.06
+    z_R = np.sqrt(L*(R2 - L))                     # waist on the plane mirror
+    w0 = np.sqrt(wl*z_R/np.pi)
+    z = np.linspace(0.0, L, 101)
+    w = w0*np.sqrt(1 + (z/z_R)**2)
+    band(ax, z, np.sqrt(3)*w, z, -np.sqrt(3)*w, color=REFERENCE, alpha=0.12, edges=False)
+    band(ax, z, w, z, -w, color=LASER, alpha=0.3, edges=False)
+    ax.plot([0.0, 0.0], [-1.0, 1.0], color="0.25", lw=3.0, zorder=4)
+    _mirror_arc(ax, L, -R2, -1.0, 1.0)
+    a = ratio*w0
+    stop(ax, 0.15, 1.0, openings=((0.0, a),), width=0.06)
+    # profiles at the aperture, drawn to the left of the plane mirror
+    y = np.linspace(-1.0, 1.0, 401)
+    for k, (prof, col, name) in enumerate([
+            (np.exp(-2*y**2/w0**2), LASER, "TEM$_{00}$"),
+            ((2*y**2/w0**2)*np.exp(1 - 2*y**2/w0**2), REFERENCE, "TEM$_{01}$")]):
+        zb = -0.45 - 0.95*k
+        ax.plot([zb, zb], [-1.0, 1.0], color="0.75", lw=0.6)
+        ax.plot(zb - 0.6*prof, y, color=col, lw=1.2, zorder=5)
+        out = np.abs(y) > a
+        for sgn in (1, -1):
+            sel = out & (sgn*y > 0)
+            ax.fill_betweenx(y[sel], zb, zb - 0.6*prof[sel], color=STRAY, alpha=0.5, lw=0,
+                             zorder=4)
+        label(ax, zb - 0.3, 1.1, name, fontsize=8, color=col, va="bottom")
+    for sgn in (1, -1):
+        ax.plot([-2.15, 0.15], [sgn*a, sgn*a], color="0.4", lw=0.6, ls=":")
+    label(ax, 0.15, -1.15, f"aperture\na ≈ {ratio:g} w", fontsize=8, va="top")
+    label(ax, L, -1.15, "concave\nmirror R", fontsize=8, va="top")
+    label(ax, L/2, 0.9, "TEM$_{01}$ is wider:\nthe aperture costs it more", fontsize=8,
+          color=REFERENCE, va="bottom")
+    label(ax, -1.0, -1.15, "clipped (red)", fontsize=8, color=STRAY, va="top")
+    _finish(ax, (-2.3, L + 0.4), (-1.55, 1.55), title)
+
+
+def _lens_guide_mode(f, d, wl):
+    """Radius w(z) of the Gaussian mode between two plane mirrors a
+    distance 2d apart with a thin lens f in the middle, sampled over the
+    resonator, or None if unstable."""
+
+    def P(L):
+        return np.array([[1.0, L], [0.0, 1.0]])
+
+    T = np.array([[1.0, 0.0], [-1/f, 1.0]])
+    M = P(d) @ T @ P(d) @ P(d) @ T @ P(d)          # from mirror 1 round trip
+    A, B, C, D = M.ravel()
+    if abs((A + D)/2) >= 1:
+        return None
+    # self-consistent q at mirror 1: 1/q = (D - A)/(2B) - i sqrt(1 - m^2)/|B|
+    m = (A + D)/2
+    inv_q = (D - A)/(2*B) - 1j*np.sqrt(1 - m**2)/abs(B)
+    q = 1/inv_q
+    z = np.linspace(0.0, 2*d, 201)
+    w = np.empty_like(z)
+    for i, zi in enumerate(z):
+        Mz = P(zi) if zi <= d else P(zi - d) @ T @ P(d)
+        qz = (Mz[0, 0]*q + Mz[0, 1])/(Mz[1, 0]*q + Mz[1, 1])
+        w[i] = np.sqrt(-wl/(np.pi*np.imag(1/qz)))
+    return z, w
+
+
+def thermal_lens_resonator(ax, f=30.0, title=None):
+    """Sketch of a resonator with two plane mirrors and a pumped laser rod
+    in the middle whose thermal lens (focal length f) makes it stable
+    (notebook 170, laser resonator modes). The shaded mode follows from
+    the ABCD round trip: a weak lens (long f) gives a large mode that the
+    rod aperture and the mirrors clip; near the far edge of stability
+    (f -> L/4) the mode is focused onto the mirrors and spreads out at the
+    rod.
+
+    Parameters
+    ----------
+    ax : matplotlib Axes
+    f : number, optional
+        Focal length of the thermal lens; the resonator length is 4 (stable
+        for f > 1).
+    title : str, optional
+    """
+
+    P = _patches()
+    L, h_rod, l_rod = 4.0, 0.42, 0.9
+    res = _lens_guide_mode(f, L/2, 0.07)
+    if res is None:
+        raise ValueError("the resonator is unstable for f <= L/4 = 1.")
+    z, w = res
+    band(ax, z, w, z, -w, color=LASER, alpha=0.3, edges=True)
+    for z_m in (0.0, L):
+        ax.plot([z_m, z_m], [-0.75, 0.75], color="0.25", lw=3.0, zorder=4)
+    ax.add_patch(P.Rectangle((L/2 - l_rod/2, -h_rod), l_rod, 2*h_rod, facecolor=GLASS,
+                             edgecolor=EDGE, lw=1, alpha=0.8, zorder=2))
+    for sgn in (1, -1):
+        for zp in np.linspace(L/2 - 0.3, L/2 + 0.3, 3):
+            arrow(ax, zp, sgn*0.95, zp, sgn*(h_rod + 0.04), color=ILLUMINATION, lw=1.0)
+    # where the mode is wider than the rod, the rod clips it
+    inside = np.abs(z - L/2) <= l_rod/2
+    if np.any(w[inside] > 0.9*h_rod):
+        for sgn in (1, -1):
+            ax.fill_between(z[inside], sgn*0.9*h_rod, sgn*np.maximum(w[inside], 0.9*h_rod),
+                            color=STRAY, alpha=0.45, lw=0, zorder=3)
+        label(ax, L/2 + l_rod/2 + 0.1, h_rod + 0.1, "clipped\nby the rod", fontsize=8,
+              ha="left", va="bottom", color=STRAY)
+    # the thermal lens: a parabolic index profile in the rod
+    yy = np.linspace(-h_rod, h_rod, 41)
+    ax.plot(L/2 + 0.25*(1 - (yy/h_rod)**2) - 0.12, yy, color=STRAY, lw=1.0, zorder=3)
+    label(ax, L/2, 1.0, "pump", fontsize=8, va="bottom", color=ILLUMINATION)
+    label(ax, L/2, -1.0, f"rod: thermal lens f = {f:g}\n(index highest on the axis)",
+          fontsize=8, va="top")
+    label(ax, 0.0, -0.85, "plane\nmirror", fontsize=8, va="top")
+    label(ax, L, -0.85, "plane\nmirror", fontsize=8, va="top")
+    _finish(ax, (-0.4, L + 0.4), (-1.6, 1.35), title)
+
+
+def unstable_resonator(ax, M=2.0, title=None):
+    """Sketch of a positive-branch confocal unstable resonator
+    (notebook 170, laser resonator modes). A large concave mirror and a small convex
+    mirror share their focal point F (behind the small mirror). A
+    collimated ray that hits the small mirror seems to come from F, and the
+    large mirror sends it back collimated, M = R1/|R2| times further from
+    the axis. Rays that pass the edge of the small mirror leave the cavity
+    as an annular (for strips: two-strip) output beam; the geometric output
+    coupling is 1 - 1/M for strips and 1 - 1/M^2 for round mirrors.
+
+    Parameters
+    ----------
+    ax : matplotlib Axes
+    M : number, optional
+        Magnification (larger than 1).
+    title : str, optional
+    """
+
+    f1 = 4.0
+    f2 = f1/M                       # |focal length| of the convex mirror
+    L = f1 - f2
+    z_F = f1
+    a = 0.35                        # half width of the small mirror
+    h1 = 1.05*M*a
+    _mirror_arc(ax, 0.0, 2*f1, -h1, h1)
+    _mirror_arc(ax, L, 2*f2, -a, a)
+    z_out = L + 1.6
+    # the output beam between a and M a
+    for sgn in (1, -1):
+        band(ax, [L, z_out], [sgn*M*a, sgn*M*a], [L, z_out], [sgn*a, sgn*a], color=LASER,
+             alpha=0.25, edges=False)
+    # rays: collimated towards the small mirror, diverging back as from F
+    ys = a/M**np.arange(3)[::-1]
+    for y in ys:
+        for sgn in (1, -1):
+            yy = sgn*y
+            ax.plot([0.0, L], [yy, yy], color=LASER, lw=1.0, zorder=3)
+            ax.plot([L, 0.0], [yy, yy*z_F/(z_F - L)], color=LASER, lw=1.0, zorder=3)
+            ax.plot([L, z_F], [yy, 0.0], color=LASER, lw=0.6, ls=":", zorder=2)
+    for sgn in (1, -1):
+        ax.plot([0.0, z_out], [sgn*M*a, sgn*M*a], color=LASER, lw=1.0, zorder=3)
+        arrow(ax, z_out - 0.3, sgn*0.75*(M + 1)/2*a, z_out, sgn*0.75*(M + 1)/2*a, color=LASER)
+    ax.plot([z_F], [0.0], "o", color="k", ms=4, zorder=6)
+    label(ax, z_F, -0.12, "F", fontsize=9, va="top")
+    ax.axhline(0.0, color="0.6", lw=0.6, ls="-.", zorder=0)
+    label(ax, 0.0, -h1 - 0.1, "concave $R_1$", fontsize=8, va="top")
+    label(ax, L, -a - 0.1, "convex $R_2$", fontsize=8, va="top")
+    label(ax, z_out + 0.1, (M + 1)/2*a, "output\nbeam", fontsize=8, ha="left", color=LASER)
+    label(ax, L/2, h1 + 0.15, f"each round trip ×M, M = $R_1/|R_2|$ = {M:g}", fontsize=8,
+          va="bottom")
+    label(ax, (L + z_F)/2 + 0.3, -h1 - 0.1, "output coupling\n1 − 1/M (strips)",
+          fontsize=8, va="top", color=STRAY)
+    _finish(ax, (-0.4, z_out + 0.9), (-h1 - 0.6, h1 + 0.5), title)

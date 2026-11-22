@@ -226,6 +226,16 @@ def test_paraxial_ray_imaging():
     lambda ax: sketch.resonator_types(ax, "concentric"),
     sketch.folded_resonator,
     lambda ax: sketch.folded_resonator(ax, theta=35),
+    sketch.mode_decomposition,
+    lambda ax: sketch.mode_decomposition(ax, "pulse"),
+    sketch.multimode_fibre,
+    sketch.led_behind_collimator,
+    sketch.young_broadband,
+    sketch.fox_li_unfolded,
+    sketch.aperture_selection,
+    sketch.thermal_lens_resonator,
+    lambda ax: sketch.thermal_lens_resonator(ax, f=1.03),
+    sketch.unstable_resonator,
 ])
 def test_sketches_draw(draw):
     fig, ax = plt.subplots()
@@ -435,3 +445,21 @@ def test_crystal_and_modulator_sketches():
         with pytest.raises(ValueError):
             draw(ax, "unknown")
         plt.close(fig)
+
+
+def test_thermal_lens_mode_matches_abcd():
+    # the lens guide mode of the sketch is the abcd eigenmode of the round trip
+    from pyoptics import abcd
+    f, d, wl = 1.5, 2.0, 0.07
+    z, w = sketch._lens_guide_mode(f, d, wl)
+    M = abcd.compose(abcd.free_space(d), abcd.thin_lens(f), abcd.free_space(2*d),
+                     abcd.thin_lens(f), abcd.free_space(d))
+    assert w[0] == pytest.approx(abcd.beam_radius(abcd.eigenmode(M), wl), rel=1e-9)
+    assert w[0] == pytest.approx(w[-1], rel=1e-9)          # symmetric resonator
+    assert sketch._lens_guide_mode(0.9, d, wl) is None       # f < L/4: unstable
+    fig, ax = plt.subplots()
+    with pytest.raises(ValueError):
+        sketch.thermal_lens_resonator(ax, f=0.9)
+    with pytest.raises(ValueError):
+        sketch.mode_decomposition(ax, "coherent")
+    plt.close(fig)
