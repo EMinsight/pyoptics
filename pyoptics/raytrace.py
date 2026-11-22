@@ -129,8 +129,8 @@ and OPDs, as plane waves into the vectorial focus (Debye-Wolf integral).
 
 Speed: if numba is installed (``pip install pyoptics[fast]``), `System.trace()`
 uses a compiled kernel that traces each ray through all surfaces in one loop
-(Surface, IdealLens, Axicon and CoordinateBreak; other surface types use the
-NumPy code). It agrees with the NumPy trace to rounding and is several times
+(Surface, IdealLens, Axicon, CoordinateBreak, ToroidalSurface, BiconicSurface
+and the Q-type aspheres of `qaspheres`; other surface types use the NumPy code). It agrees with the NumPy trace to rounding and is several times
 faster, most for the small bundles of ray aiming. The first trace in a
 session compiles the kernel (once, the result is cached on disk). Set
 ``raytrace.use_numba = False`` to trace with NumPy only.
@@ -975,8 +975,8 @@ class ToroidalSurface(_AnamorphicSurface):
 
     The paraxial data, Seidel sums and the meridional drawing use the y-z
     section (R, conic, aspheric). Real rays see the exact surface (Newton
-    iterations from the osculating quadric; analytic normals). The
-    compiled kernel does not cover it (NumPy trace); `ray_derivatives`
+    iterations from the osculating quadric; analytic normals), also in
+    the compiled kernel of `System.trace()`; `ray_derivatives`
     differentiates it analytically (`lens_optimization.CurvatureX`).
 
     Parameters
@@ -1675,7 +1675,21 @@ class CoordinateBreak(Surface):
 
 
 # polarization ray tracing matrices:
-_KERNEL_TYPES = (Surface, IdealLens, Axicon, CoordinateBreak)
+_KERNEL_TYPES = None
+
+
+def _kernel_types():
+    """{kernel code: class} of the surfaces that the compiled kernel traces."""
+
+    global _KERNEL_TYPES
+    if _KERNEL_TYPES is None:
+        from .qaspheres import Q2DSurface, QbfsSurface, QconSurface
+
+        k = _raytrace_numba
+        _KERNEL_TYPES = {k.STANDARD: Surface, k.BREAK: CoordinateBreak, k.IDEAL: IdealLens,
+                         k.AXICON: Axicon, k.TOROID: ToroidalSurface, k.BICONIC: BiconicSurface,
+                         k.QBFS: QbfsSurface, k.QCON: QconSurface, k.Q2D: Q2DSurface}
+    return _KERNEL_TYPES
 
 
 def _sp_basis(k1, k2, normal):
@@ -3373,7 +3387,7 @@ class System:
         valid = np.ones(len(P), dtype=bool)
         points, directions, opls = [P], [d], [opl]
         n_surf = len(self.surfaces) if last is None else last + 1
-        kinds = [_raytrace_numba.surface_kind(s, _KERNEL_TYPES) for s in self.surfaces[:n_surf]]
+        kinds = [_raytrace_numba.surface_kind(s, _kernel_types()) for s in self.surfaces[:n_surf]]
         if use_numba and _raytrace_numba.available and None not in kinds:
             points, directions, opls, valid = _raytrace_numba.trace(
                 P, d, opl, frames[:n_surf], self.surfaces[:n_surf], kinds, n, clip)
