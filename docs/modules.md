@@ -101,6 +101,24 @@ What each module does and how mature it is. Planned work is listed in
   matrix at the local angle of incidence, vectorial polarization, ray field
   summation), with a report of steps, total internal reflection, narrow
   facets and caustics (notebook 168, local plane interface approximation)
+- `source_modes`: new, tested: partially coherent, polychromatic and pulsed
+  sources for `fieldtrace`. A source is an `Ensemble` of modes (unit power
+  fields with power weights) that `trace()` runs through a chain (or a
+  callable chain(wavelength) for dispersive systems); `EnsembleResult`
+  adds irradiance, power, fibre coupling and the mutual intensity / degree
+  of coherence at any detector, `field_at()` evaluates a field at any
+  point without aliasing its analytic phase. Sources: the Gaussian Schell
+  model by its coherent modes (`gaussian_schell()`, `gsm_parameters()`,
+  `gsm_m2()`, `gsm_width()`), thermal or explicit multimode lasers
+  (`multimode_laser()`, `hermite_gauss()`), point emitters with exact
+  spherical phase and incoherent extended sources (`point_source()`,
+  `extended_source()`, `lambertian_disk()`), spectra (`polychromatic()`,
+  `gaussian_spectrum()`) and pulses as coherent spectral fields
+  (`gaussian_pulse()`, `Pulse`; `PulseResult` gives the group delay and
+  the space-time envelope). Checked against the GSM spreading and
+  coherence, M², the van Cittert–Zernike theorem, the group delay and GDD
+  broadening in glass and Bor's focal pulse broadening (notebook 169,
+  source models in field tracing)
 - `polygons`: new, tested: polygons as (N, 2) vertex arrays: signed area,
   centroid and second moments, the exact Fourier transform of any polygon
   (Lee and Mittra's edge sum, with a Taylor series near k = 0 and vertices
@@ -1180,6 +1198,20 @@ What each module does and how mature it is. Planned work is listed in
   `fibrecomm` and multimode spectra; checked against ODE solutions,
   Wagner–Birnbaum, the master equation and Langevin noise (notebooks
   142 (laser fundamentals) to 144 (laser diodes))
+- `resonators`: new, tested: transverse modes of resonators with finite
+  mirrors by field tracing. The round trip is a `fieldtrace.Chain`
+  (`round_trip()`: two mirrors as thin lenses, apertures with
+  sub-sample edges, intracavity elements such as a thermal lens;
+  `GridPropagate`: band-limited angular spectrum on the fixed grid of the
+  reference plane); `fox_li()` iterates it, `eigenmodes()` diagonalizes it
+  (dense for strips, Arnoldi with a second run for degenerate pairs in 2D)
+  and returns `ResonatorMode`s with loss and Gouy phase
+  (`frequency_offsets()`). References: confocal strip eigenvalues
+  (prolate spheroidal, by quadrature), Gaussian modes and Gouy phases of
+  stable resonators, magnification, geometric loss and equivalent Fresnel
+  number of unstable ones; checked against an independent Fresnel kernel
+  quadrature, the prolate eigenvalues and `abcd`
+  (notebook 170, laser resonator modes)
 - `nonlinear`: new, tested: second- and third-order nonlinear optics.
   Sellmeier equations and d coefficients of BBO, KDP and (MgO:)LN
   (`CRYSTALS`), n₂ of common materials (`N2`); phase mismatch for any
