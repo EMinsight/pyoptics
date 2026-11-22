@@ -50,8 +50,8 @@ differentiated analytically; paraxial operands (`seidel()`,
 `paraxial_target()`, `clearances()`...) by `Linearization.derivative()`;
 other operands, parameters that change something the
 differential trace does not cover (wavelength, field, surfaces other than
-`raytrace.Surface`, Q-bfs, Q-con, Zernike, map, toroidal and biconic surfaces
-and coordinate breaks)
+`raytrace.Surface`, Q-bfs, Q-con, Q2D, Zernike, map, toroidal and biconic
+surfaces (also `QconQ2DSurface`) and coordinate breaks)
 and constraints get central differences of `Linearization.jacobian()`.
 Rays are traced without vignetting (clip=False), as by the operands.
 
@@ -193,10 +193,10 @@ _SYSTEM_OK = {"object_distance", "image_decenter", "image_tilt", "background"}
 
 
 def _shape_types():
-    from .qaspheres import QbfsSurface, QconSurface
+    from .qaspheres import QbfsSurface, QconSurface, Q2DSurface, QconQ2DSurface
 
     return (rt.Surface, QbfsSurface, QconSurface, rt.ZernikeSurface, rt.MapSurface,
-            rt.ToroidalSurface, rt.BiconicSurface)
+            Q2DSurface, QconQ2DSurface, rt.ToroidalSurface, rt.BiconicSurface)
 
 
 def _differs(a, b):
@@ -220,7 +220,7 @@ def _sag_gradient(s, x, y):
 
     if isinstance(s, rt._AnamorphicSurface):
         return s._sag_derivatives(x, y, 1)
-    if isinstance(s, rt.ZernikeSurface):
+    if hasattr(s, "sag_xy"):  # Zernike and Q2D freeforms
         zx, zy = s._gradient(x, y)
         return s.sag_xy(x, y), zx, zy
     r2 = x**2 + y**2
@@ -232,11 +232,14 @@ def _sag_gradient(s, x, y):
 def _hessian(s, x, y, scale):
     """Second derivatives (z_xx, z_xy, z_yy) of the sag: rotationally
     symmetric part from a central difference of the slope over r in r**2,
-    the Zernike departure from central differences of its analytic
-    gradient, the map of a MapSurface from its spline; toroidal and biconic surfaces analytically."""
+    the Q2D parts analytic, the Zernike and MapSurface departures from
+    their analytic Hessians; toroidal and biconic surfaces analytically."""
 
     if isinstance(s, rt._AnamorphicSurface):
         return s.hessian_xy(x, y)
+    if hasattr(s, "sag_hessian"):
+        # Q2DSurface: analytic
+        return s.sag_hessian(x, y)
     r2 = x**2 + y**2
     h2 = 1e-5*scale**2
     sr = s._slope_over_r(r2)
@@ -245,6 +248,10 @@ def _hessian(s, x, y, scale):
     if isinstance(s, rt.ZernikeSurface) and s._has_departure():
         hxx, hxy, hyy = s.departure_hessian(x, y)
         zxx, zxy, zyy = zxx + hxx, zxy + hxy, zyy + hyy
+    elif hasattr(s, "departure_hessian") and (getattr(s, "cos", ()) or getattr(s, "sin", ())):
+        # Q-con + Q2D: analytic Hessian of the departure
+        Dxx, Dxy, Dyy = s.departure_hessian(x, y)
+        zxx, zxy, zyy = zxx + Dxx, zxy + Dxy, zyy + Dyy
 
     return zxx, zxy, zyy
 
