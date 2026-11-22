@@ -172,6 +172,7 @@ Measurement and phase retrieval
    :toctree: generated
 
    pyoptics.interferometry
+   pyoptics.cgh
    pyoptics.coherence
    pyoptics.oct
    pyoptics.holography

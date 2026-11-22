@@ -46,6 +46,9 @@ Setup sketches for the other example notebooks:
   (notebook 23, interferometry).
 - fizeau_interferometer(): Fizeau interferometer with a transmission
   sphere, confocal and cat's eye positions (notebook 24, radius interferometer).
+- cgh_null_test(): a CGH null test of a concave asphere in the beam of a
+  transmission sphere, the diffraction orders of the tilt carrier or the
+  alignment zones (notebook 165, CGH null testing of aspheres).
 - shack_hartmann_sensor(), phase_diversity_setup(): two ways to measure a
   lens (notebook 25, Shack-Hartmann vs phase diversity).
 - holography_setup(): off-axis digital holography, lensless or with a
@@ -1591,6 +1594,133 @@ def fizeau_interferometer(ax, cat_eye=True, title=None):
     beam_splitter(ax, z_bs, 0.0, 0.7, "\\")
     label(ax, z_bs + 0.35, -0.6, "beam\nsplitter", va="top", fontsize=8)
     _finish(ax, (-2.4, 5.6), (-1.6, y_il + 1.0), title)
+
+
+def cgh_null_test(ax, show="orders", title=None):
+    """Sketch of a null test of a concave asphere with a computer-generated
+    hologram (CGH) in the converging beam of a Fizeau transmission sphere.
+
+    The collimated beam of the interferometer enters the transmission
+    sphere (TS), whose last surface (blue) reflects the reference wave.
+    The test wave converges through the CGH. Its tilt carrier sends the
+    order +1 (the null wave) off axis: it focuses beside the TS focus and
+    meets the asphere, which sits on the tilted axis, everywhere at normal
+    incidence, so it returns on itself. The orders 0 and -1 go elsewhere;
+    after the second pass, light of the wrong orders leaves at an angle and
+    misses the stop in the focus of the interferometer.
+
+    Parameters
+    ----------
+    ax : matplotlib Axes
+    show : {"orders", "zones"}, optional
+        "orders": the orders +1, 0 and -1 of the null region. "zones": the
+        alignment zones around the null region instead, a Littrow ring that
+        reflects the light back into the interferometer (aligns the CGH)
+        and a cat's eye ring that focuses onto the vertex of the asphere
+        (sets the spacing).
+    title : str, optional
+    """
+
+    h = 0.75
+    z_ts, z_ref = 0.55, 1.05
+    z_f = 3.6  # TS focus
+    z_c = 2.15  # CGH (pattern on the side facing the asphere)
+    th = 0.22  # carrier angle (exaggerated)
+    R_t = 2.0  # asphere radius (about its centre of curvature, near the +1 focus)
+    d_c = z_f - z_c
+    # converging beam half width on the CGH
+    y_c = h*d_c/(z_f - z_ref)
+    f1 = (z_f + d_c*(np.cos(th) - 1), d_c*np.sin(th))  # +1 focus (rotated about the CGH centre)
+    # collimated beam from the interferometer
+    band(ax, [-1.25, z_ts], [h, h], [-1.25, z_ts], [-h, -h])
+    arrow(ax, -1.2, 1.05, -0.4, 1.05, text="from the Fizeau\ninterferometer", text_pos=(-0.8, 1.22),
+          va="bottom", fontsize=8)
+    arrow(ax, -0.4, -1.05, -1.2, -1.05, text="to the stop and camera", text_pos=(-0.8, -1.2),
+          va="top", fontsize=8)
+    # transmission sphere: a weakly convex front, the reference surface concentric with the focus
+    R_ref = z_f - z_ref
+    yy = np.linspace(-0.92, 0.92, 61)
+    front = z_ts + 0.1 - 0.25*(1 - (yy/0.92)**2)
+    back = z_f - np.sqrt(R_ref**2 - yy**2)
+    ax.add_patch(_patches().Polygon(np.r_[np.c_[front, yy], np.c_[back, yy][::-1]], closed=True,
+                                    facecolor=GLASS, edgecolor=EDGE, lw=1, zorder=3))
+    ax.plot(back, yy, color=REFERENCE, lw=2, zorder=4)
+    label(ax, z_ts + 0.15, -1.0, "TS\n(reference\nsurface)", va="top", fontsize=8)
+    # CGH substrate
+    ax.add_patch(_patches().Rectangle((z_c - 0.1, -1.0), 0.1, 2.0, facecolor=GLASS, edgecolor=EDGE,
+                                      lw=1, zorder=3))
+    for yk in np.linspace(-0.97, 0.97, 40):
+        ax.plot([z_c, z_c + 0.03], [yk, yk + 0.02], color="0.3", lw=0.5, zorder=4)
+    label(ax, z_c - 0.05, -1.08, "CGH", va="top", fontsize=9)
+    # converging test wave from the reference surface to the CGH
+    ys = np.linspace(-h, h, 7)
+    for y0 in ys:
+        z0 = z_f - np.sqrt(R_ref**2 - y0**2)
+        yc = y0*d_c/(z_f - z0)
+        ax.plot([z_ts - 0.05, z0], [y0, y0], color=LASER, lw=0.9, alpha=0.6, zorder=3.5)
+        ax.plot([z0, z_c], [y0, yc], color=LASER, lw=0.9, zorder=2)
+    # asphere: concave, centred on the +1 focus, on the tilted axis
+    phi = np.linspace(-0.42, 0.42, 81) + th
+    za, ya = f1[0] + R_t*np.cos(phi), f1[1] + R_t*np.sin(phi)
+    ax.add_patch(_patches().Polygon(np.r_[np.c_[za, ya], np.c_[za + 0.25*np.cos(th), ya + 0.25*np.sin(th)][::-1]],
+                                    closed=True, facecolor="0.88", edgecolor="0.5", lw=0.6, zorder=3))
+    ax.plot(za, ya, color=TEST, lw=2.2, zorder=4)
+    label(ax, za[-1] + 0.1, ya[-1] + 0.12, "concave asphere\n(on the axis of order +1)", fontsize=8,
+          va="bottom", color=TEST)
+    ax.plot([z_c, f1[0] + (R_t + 0.4)*np.cos(th)], [0.0, f1[1] + (R_t + 0.4)*np.sin(th)], color="0.5",
+            lw=0.6, ls="-.", zorder=1)
+    ax.plot([z_c, z_f + 1.4], [0.0, 0.0], color="0.5", lw=0.6, ls=":", zorder=1)
+    if show == "orders":
+        def order(m, color, ls, lw, to_asphere):
+            fm = (z_f + d_c*(np.cos(m*th) - 1), d_c*np.sin(m*th))
+            for y0 in ys:
+                yc = y0*d_c/(z_f - z_ref)
+                if to_asphere:
+                    v = np.array([fm[0] - z_c, fm[1] - yc])
+                    v /= np.hypot(*v)
+                    # straight through the focus to the sphere around it
+                    zz = fm[0] + R_t*v[0]
+                    yy_ = fm[1] + R_t*v[1]
+                    ax.plot([z_c, zz], [yc, yy_], color=color, lw=lw, ls=ls, zorder=2)
+                else:
+                    ext = 1.25
+                    ax.plot([z_c, z_c + ext*(fm[0] - z_c)], [yc, yc + ext*(fm[1] - yc)], color=color,
+                            lw=lw, ls=ls, zorder=2, alpha=0.8)
+            return fm
+        order(1, LASER, "-", 0.9, True)
+        f0 = order(0, STRAY, "--", 0.7, False)
+        fm1 = order(-1, "#8e5ba8", "--", 0.7, False)
+        ax.plot(*f1, "o", color="0.2", ms=3, zorder=6)
+        label(ax, f1[0] - 0.05, f1[1] + 0.13, "+1", fontsize=9, va="bottom")
+        label(ax, f0[0] + 0.05, f0[1] + 0.07, "0", fontsize=9, va="bottom", color=STRAY)
+        label(ax, fm1[0] + 0.05, fm1[1] - 0.08, "-1", fontsize=9, va="top", color="#8e5ba8")
+        label(ax, 4.2, -1.12, "orders 0, -1 (and +2, -2, ...)\nleave at other angles", fontsize=8,
+              va="top", color=STRAY)
+    else:
+        # alignment zones in the rim of the beam around the null region
+        for y0, kind in ((h, "littrow"), (0.85*h, "cat"), (-h, "littrow"), (-0.85*h, "cat")):
+            yc = y0*d_c/(z_f - z_ref)
+            if kind == "littrow":
+                z0 = z_f - np.sqrt(R_ref**2 - y0**2)
+                arrow(ax, z_c - 0.12, yc + (yc - y0)*0.12/(z_c - z0), z0 + 0.4,
+                      y0 + (yc - y0)*0.4/(z_c - z0), color=REFERENCE, lw=1.0)
+            else:
+                vz = f1[0] + R_t*np.cos(th) - z_c
+                vy = f1[1] + R_t*np.sin(th) - yc
+                ax.plot([z_c, z_c + vz], [yc, yc + vy], color="#2ca02c", lw=0.9, zorder=2)
+        ax.plot([f1[0] + R_t*np.cos(th)], [f1[1] + R_t*np.sin(th)], "o", color="#2ca02c", ms=4, zorder=6)
+        label(ax, z_c - 0.25, 1.12, "Littrow ring: reflects the\nlight back (aligns the CGH)",
+              fontsize=8, va="bottom", color=REFERENCE)
+        label(ax, 4.2, -1.12, "cat's eye ring: focuses on the vertex\n(sets the spacing)",
+              fontsize=8, va="top", color="#2ca02c")
+        for y0 in np.linspace(-0.6*h, 0.6*h, 5):
+            yc = y0*d_c/(z_f - z_ref)
+            v = np.array([f1[0] - z_c, f1[1] - yc])
+            v /= np.hypot(*v)
+            ax.plot([z_c, f1[0] + R_t*v[0]], [yc, f1[1] + R_t*v[1]], color=LASER, lw=0.6, alpha=0.5,
+                    zorder=2)
+        label(ax, 2.95, 0.62, "null region", fontsize=8, color=LASER, va="bottom")
+    _finish(ax, (-1.4, 6.6), (-1.6, 1.9), title)
 
 
 def _lens_under_test(ax, z_lens, f, h, n_rays=9, spherical=0.25, z_end=None, color=LASER):
