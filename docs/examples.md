@@ -87,6 +87,7 @@ Gaussian and structured beams, beam quality, resonators, modes and ultrashort pu
 - {doc}`notebooks/09_mode_analysis`
 - {doc}`notebooks/68_bessel_airy_self_healing`
 - {doc}`notebooks/69_optical_vortices`
+- {doc}`163 Ince-Gaussian beams <notebooks/163_ince_gaussian_beams>`
 - {doc}`notebooks/81_ultrashort_pulses_lenses`
 
 ```{toctree}
@@ -99,6 +100,7 @@ notebooks/08_abcd_matrices
 notebooks/09_mode_analysis
 notebooks/68_bessel_airy_self_healing
 notebooks/69_optical_vortices
+notebooks/163_ince_gaussian_beams
 notebooks/81_ultrashort_pulses_lenses
 ```
 

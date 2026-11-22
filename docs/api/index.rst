@@ -53,6 +53,7 @@ Beams, modes and paraxial optics
    pyoptics.beam_quality
    pyoptics.modes
    pyoptics.vortices
+   pyoptics.ince
    pyoptics.ultrafast
    pyoptics.abcd
 

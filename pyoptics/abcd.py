@@ -74,11 +74,44 @@ Contents
 - imaging: `cardinal_points()`, `image()`
 - wave optics: `collins()`, the Collins integral (Fresnel diffraction
   through any ABCD system)
+- general astigmatism (4x4 matrices): `to_4x4()`, `rotate()`,
+  `cylindrical_lens()`, `is_symplectic()`, `Q_from_q()`, `transform_Q()`,
+  `gaussian_field_Q()`, `astigmatic_parameters()`, `collins_4x4()`
+
+General astigmatism
+-------------------
+Systems with cylindrical lenses or tilted mirrors in different, non-parallel
+orientations need the 4x4 ray matrix ::
+
+    [r_out]   [A  B] [r_in]
+    [u_out] = [C  D] [u_in],    r = (x, y), u = (u_x, u_y),
+
+with 2x2 blocks A, B, C, D. Lossless systems are symplectic,
+M^T J M = J with J = [[0, I], [-I, 0]]. An element rotated by theta about z
+is R M R^T with R = diag(rot(theta), rot(theta)). A fundamental Gaussian
+beam is described by a complex symmetric 2x2 matrix Q (Arnaud and Kogelnik
+1969) that generalizes q, with the field ::
+
+    E(r) ~ exp(i*k/2 * r^T conj(Q^-1) r),
+
+and the ABCD law becomes Q_out = (A Q + B)(C Q + D)^-1 (for reduced Q/n).
+-Im(Q^-1) sets the intensity ellipse, Re(Q^-1) the curvature (phase)
+ellipse. If both have the same principal axes, the beam is *simple*
+astigmatic (two separate q's, as in `gaussian_field(q_y=...)`); if not, it
+is *generally* astigmatic and its intensity ellipse rotates on propagation
+("twisted" beams).
 
 References
 ----------
 H. Kogelnik and T. Li, "Laser beams and resonators", Appl. Opt. 5, 1550-1567
 (1966).
+
+J. A. Arnaud and H. Kogelnik, "Gaussian light beams with general
+astigmatism", Appl. Opt. 8, 1687-1693 (1969).
+
+G. Nemes and A. E. Siegman, "Measurement of all ten second-order moments of
+an astigmatic beam by the use of rotating simple astigmatic (anamorphic)
+optics", J. Opt. Soc. Am. A 11, 2257-2264 (1994).
 
 A. E. Siegman, "Lasers", University Science Books (1986).
 
@@ -229,9 +262,10 @@ def compose(*matrices):
     -------
     M : array
         compose(M1, M2, M3) = M3 @ M2 @ M1; the identity for no arguments.
+        Works for 2x2 and 4x4 matrices alike.
     """
 
-    M = np.eye(2)
+    M = np.eye(len(matrices[0]) if matrices else 2)
     for M_i in matrices:
         M = np.asarray(M_i) @ M
 
@@ -1141,3 +1175,335 @@ def collins(field, x, y, M, wavelength, M_y=None):
     E = E*np.exp(1j*k/2*((D_x - 1)/B_x*X**2 + (D_y - 1)/B_y*Y**2))
 
     return E
+
+
+# general astigmatism (4x4 matrices):
+AstigmaticParameters = namedtuple("AstigmaticParameters",
+                                  ["w", "theta_w", "R", "theta_R", "twisted"])
+AstigmaticParameters.__doc__ = """Intensity and phase ellipses of a Gaussian beam with matrix Q.
+
+Attributes
+----------
+w : array
+    Principal 1/e**2 radii (w_1 <= w_2) of the intensity ellipse.
+theta_w : float
+    Angle of the axis of w_1 to the x axis (radians, in (-pi/2, pi/2]).
+R : array
+    Principal wavefront radii of curvature (np.inf for a flat direction),
+    ordered by the curvature 1/R.
+theta_R : float
+    Angle of the axis of R_1 to the x axis.
+twisted : bool
+    True if the two ellipses are not aligned (general astigmatism).
+"""
+
+
+def _rot2(theta):
+    c, s = np.cos(theta), np.sin(theta)
+
+    return np.array([[c, -s], [s, c]])
+
+
+def _blocks(M):
+    M = np.asarray(M)
+
+    return M[:2, :2], M[:2, 2:], M[2:, :2], M[2:, 2:]
+
+
+def to_4x4(M_x, M_y=None):
+    """4x4 matrix of a system with separate matrices for x and y.
+
+    Parameters
+    ----------
+    M_x : array
+        2x2 matrix in x (and in y unless M_y is given).
+    M_y : array, optional
+        2x2 matrix in y.
+
+    Returns
+    -------
+    M : array
+        4x4 matrix acting on (x, y, u_x, u_y).
+    """
+
+    M_y = M_x if M_y is None else M_y
+    (A_x, B_x), (C_x, D_x) = M_x
+    (A_y, B_y), (C_y, D_y) = M_y
+
+    return np.array([[A_x, 0, B_x, 0], [0, A_y, 0, B_y],
+                     [C_x, 0, D_x, 0], [0, C_y, 0, D_y]], dtype=float)
+
+
+def rotation_4x4(theta):
+    """4x4 matrix that rotates rays by theta about the z axis."""
+
+    R = _rot2(theta)
+    Z = np.zeros((2, 2))
+
+    return np.block([[R, Z], [Z, R]])
+
+
+def rotate(M, theta):
+    """Matrix of an element rotated by theta about the optical axis.
+
+    Parameters
+    ----------
+    M : array
+        4x4 matrix (or 2x2, which is used for both axes).
+    theta : number
+        Rotation angle (radians, anticlockwise seen from +z).
+
+    Returns
+    -------
+    M_rot : array
+        R(theta) @ M @ R(-theta).
+    """
+
+    M = np.asarray(M)
+    if M.shape == (2, 2):
+        M = to_4x4(M)
+
+    return rotation_4x4(theta) @ M @ rotation_4x4(-theta)
+
+
+def cylindrical_lens(f, theta=0.0):
+    """Thin cylindrical lens with power along the direction theta.
+
+    The lens focuses in the plane that contains the z axis and the
+    direction (cos(theta), sin(theta)); the cylinder axis is perpendicular
+    to it. theta = 0 focuses in x.
+
+    Parameters
+    ----------
+    f : number
+        Focal length.
+    theta : number, optional
+        Angle of the power direction to the x axis.
+
+    Returns
+    -------
+    M : array
+        4x4 matrix.
+    """
+
+    return rotate(to_4x4(thin_lens(f), np.eye(2)), theta)
+
+
+def is_symplectic(M, tol=1E-9):
+    """True if M^T J M = J (lossless, 2x2 or 4x4)."""
+
+    M = np.asarray(M)
+    n = len(M)//2
+    J = np.block([[np.zeros((n, n)), np.eye(n)], [-np.eye(n), np.zeros((n, n))]])
+
+    return np.allclose(M.T @ J @ M, J, atol=tol)
+
+
+def Q_from_q(q_x, q_y=None, theta=0.0):
+    """Beam matrix Q of a simple astigmatic beam with axes rotated by theta.
+
+    Parameters
+    ----------
+    q_x : complex
+        Beam parameter along the first principal axis (at theta to x).
+    q_y : complex, optional
+        Beam parameter along the second axis (default q_x: round beam).
+    theta : number, optional
+        Angle of the first principal axis to the x axis.
+
+    Returns
+    -------
+    Q : 2x2 complex array
+        Q = R diag(q_x, q_y) R^T; Q = q*I for a round beam.
+    """
+
+    q_y = q_x if q_y is None else q_y
+    R = _rot2(theta)
+
+    return R @ np.diag([q_x, q_y]).astype(complex) @ R.T
+
+
+def transform_Q(M, Q, n_in=1.0, n_out=1.0):
+    """ABCD law for general astigmatic Gaussian beams.
+
+    Q_out/n_out = (A Q/n_in + B)(C Q/n_in + D)^-1 with the 2x2 blocks of M.
+
+    Parameters
+    ----------
+    M : array
+        4x4 matrix.
+    Q : 2x2 complex array
+        Beam matrix in the input plane.
+    n_in, n_out : numbers, optional
+
+    Returns
+    -------
+    Q_out : 2x2 complex array
+        Symmetric beam matrix in the output plane.
+    """
+
+    A, B, C, D = _blocks(M)
+    Q_r = np.asarray(Q)/n_in
+    Q_out = n_out*(A @ Q_r + B) @ np.linalg.inv(C @ Q_r + D)
+
+    return (Q_out + Q_out.T)/2
+
+
+def gaussian_field_Q(x, y, Q, wavelength, n=1.0, x0=0.0, y0=0.0):
+    """Sample a general astigmatic Gaussian beam with matrix Q.
+
+    Parameters
+    ----------
+    x, y : arrays
+    Q : 2x2 complex array
+        Beam matrix (`Q_from_q()`, `transform_Q()`).
+    wavelength : number
+        Vacuum wavelength.
+    n : number, optional
+    x0, y0 : numbers, optional
+        Centre.
+
+    Returns
+    -------
+    E : array
+        exp(i*k/2 * r^T conj(Q^-1) r) normalized to unit power. The Gouy
+        phase is not included.
+    """
+
+    X, Y = ensure_meshgrid(x, y)
+    X, Y = X - x0, Y - y0
+    k = wavenumber(wavelength, n)
+    P = np.conj(np.linalg.inv(Q))
+    G = k*P.imag  # positive definite
+    norm = np.linalg.det(G)**0.25/np.sqrt(pi)
+
+    return norm*np.exp(1j*k/2*(P[0, 0]*X**2 + 2*P[0, 1]*X*Y + P[1, 1]*Y**2))
+
+
+def _ellipse(S):
+    """Eigenvalues (ascending) of a real symmetric 2x2 matrix and the angle
+    of the first eigenvector."""
+
+    values, vectors = np.linalg.eigh(S)
+    theta = np.arctan2(vectors[1, 0], vectors[0, 0])
+    theta = (theta + pi/2) % pi - pi/2
+
+    return values, theta
+
+
+def astigmatic_parameters(Q, wavelength, n=1.0, tol=1E-9):
+    """Intensity and phase ellipses of a beam with matrix Q.
+
+    Parameters
+    ----------
+    Q : 2x2 complex array
+    wavelength : number
+        Vacuum wavelength.
+    n : number, optional
+    tol : number, optional
+        Relative tolerance of the commutator that decides `twisted`.
+
+    Returns
+    -------
+    AstigmaticParameters
+    """
+
+    k = wavenumber(wavelength, n)
+    P = np.conj(np.linalg.inv(Q))
+    g, theta_w = _ellipse(-P.imag)  # -g ascending: smallest w first
+    w = np.sqrt(-2/(k*g))
+    c, theta_R = _ellipse(-P.real)
+    c = -c
+    with np.errstate(divide="ignore"):
+        R = 1/c
+    commutator = P.real @ P.imag - P.imag @ P.real
+    scale = np.linalg.norm(P.real)*np.linalg.norm(P.imag) + 1E-300
+    twisted = bool(np.linalg.norm(commutator) > tol*scale)
+
+    return AstigmaticParameters(w, theta_w, R, theta_R, twisted)
+
+
+def _rotate_field(field, x, y, W):
+    """E_out(r) = E_in(W^T r) on the same grid (cubic interpolation)."""
+
+    from scipy.ndimage import map_coordinates
+
+    x_l, y_l = np.asarray(x), np.asarray(y)
+    if x_l.ndim == 2:
+        x_l, y_l = x_l[0], y_l[:, 0]
+    X, Y = np.meshgrid(x_l, y_l)
+    X_in = W[0, 0]*X + W[1, 0]*Y
+    Y_in = W[0, 1]*X + W[1, 1]*Y
+    coords = [(Y_in - y_l[0])/get_dx(y_l), (X_in - x_l[0])/get_dx(x_l)]
+    sample = lambda f: map_coordinates(f, coords, order=3, mode="constant", cval=0.0)
+
+    return sample(field.real) + 1j*sample(field.imag)
+
+
+def collins_4x4(field, x, y, M, wavelength):
+    """Propagate a field through a general astigmatic (4x4) paraxial system.
+
+    The generalized Collins integral of a symplectic 4x4 matrix with an
+    invertible B block. With the polar decomposition B = W B_s (W a rotation,
+    B_s symmetric), M is split into ::
+
+        lens(D B^-1 - U S^-1 U^T) . rotation(W) . free(B_s) . lens(B^-1 A - V S^-1 V^T),
+
+    where B = U S V^T is the singular value decomposition and W = U V^T. The
+    lenses are quadratic phases exp(i*k/2 * r^T C r) (with cross terms),
+    free(B_s) is a Fresnel transfer function with the matrix B_s and the
+    rotation resamples the field (cubic interpolation; skipped if W = I,
+    e.g. for all systems whose B is symmetric). As in `collins()`, the
+    output is sampled on the input grid, the grid has to resolve all chirps
+    and the constant phase exp(i*k*L) is omitted.
+
+    Parameters
+    ----------
+    field : array
+    x, y : arrays
+        Centered coordinates (linear or 2d).
+    M : array
+        Symplectic 4x4 matrix (reduced, vacuum wavelength).
+    wavelength : number
+        Vacuum wavelength.
+
+    Returns
+    -------
+    E : array
+        Field in the output plane.
+    """
+
+    M = np.asarray(M, dtype=float)
+    A, B, C, D = _blocks(M)
+    U, S, Vt = np.linalg.svd(B)
+    x_l, y_l = np.asarray(x), np.asarray(y)
+    if x_l.ndim == 2:
+        x_l, y_l = x_l[0], y_l[:, 0]
+    dx = min(get_dx(x_l), get_dx(y_l))
+    if np.min(np.abs(S))*wavelength < 1E-9*dx**2:
+        raise NotImplementedError("collins_4x4() needs an invertible B block.")
+    V = Vt.T
+    if np.linalg.det(U) < 0:
+        U[:, 1] *= -1
+        S = S*np.array([1, -1])
+    if np.linalg.det(V) < 0:
+        V[:, 1] *= -1
+        S = S*np.array([1, -1])
+    B_inv = np.linalg.inv(B)
+    lens_in = B_inv @ A - V @ np.diag(1/S) @ V.T
+    lens_out = D @ B_inv - U @ np.diag(1/S) @ U.T
+    B_s = V @ np.diag(S) @ V.T
+    W = U @ V.T
+
+    X, Y = ensure_meshgrid(x, y)
+    k = wavenumber(wavelength)
+    F_x, F_y = freq_grid(x, y, wavenumbers=False, normal_order=True)
+    chirp = lambda P: np.exp(1j*k/2*(P[0, 0]*X**2 + (P[0, 1] + P[1, 0])*X*Y + P[1, 1]*Y**2))
+
+    E = field*chirp(lens_in)
+    E = inv_FT(FT(E)*np.exp(-1j*pi*wavelength*(B_s[0, 0]*F_x**2 + 2*B_s[0, 1]*F_x*F_y
+                                                 + B_s[1, 1]*F_y**2)))
+    if not np.allclose(W, np.eye(2), atol=1E-12):
+        E = _rotate_field(E, x, y, W)
+
+    return E*chirp(lens_out)
