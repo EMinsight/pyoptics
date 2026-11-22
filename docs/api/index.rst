@@ -81,6 +81,7 @@ Imaging and ray tracing
    pyoptics.superresolution
    pyoptics.schlieren
    pyoptics.raytrace
+   pyoptics.cad
    pyoptics.raywave
    pyoptics.billiard
    pyoptics.grin

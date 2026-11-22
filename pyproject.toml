@@ -19,6 +19,7 @@ dependencies = [
 plot = ["matplotlib"]
 fast = ["numba"]  # raytrace: compiled ray trace kernel (several times faster traces)
 nufft = ["finufft"]  # tilted: faster exact propagation onto planes tilted about a general axis
+cad = ["build123d"]  # cad: STEP export of lens systems with ray fans (OpenCascade via OCP)
 hdf5 = ["h5py"]  # fdtd: stream large snapshot stacks to compressed HDF5 files
 tie = ["sympy"]
 notebooks = ["matplotlib", "jupyterlab", "ipywidgets"]
