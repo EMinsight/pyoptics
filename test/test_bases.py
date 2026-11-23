@@ -47,9 +47,12 @@ def test_fit_scattered(Z):
     coeffs = [1, -1, 0.5, -0.5]
     inds = [3, 9, 13, 31]
 
-    # generate 300 data points in [-2.5, +2.5]
-    x = 5*np.random.rand(300) - 2.5
-    y = 5*np.random.rand(300) - 2.5
+    # generate 300 data points in [-2.5, +2.5]; seeded: some draws of the
+    # unseeded global generator left the 100 term fit ill-conditioned enough
+    # to miss the tolerance of isclose (seen in CI, about 3e-5 relative)
+    rng = np.random.default_rng(0)
+    x = 5*rng.random(300) - 2.5
+    y = 5*rng.random(300) - 2.5
 
     inds_fitted = indices=np.arange(1,100+1)
     data = Z(inds, coeffs, x, y)

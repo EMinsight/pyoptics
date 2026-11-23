@@ -373,3 +373,98 @@ def test_read_write_by_extension(tmp_path):
         back = lf.read(path).system()
         _same_trace(system, back, [0.0, system.max_field])
     assert "," in (tmp_path / "lens.csv").read_text()
+
+
+def test_patent_unnumbered_stop_row():
+    """A stop row without a number (as in many phone lens patents) does not
+    shift the aspheric data of the numbered surfaces."""
+
+    text = """Surf r d nd vd
+STO inf -0.2
+1* 2.0 0.6 1.535 56.2
+2* -7.0 3.0
+
+Aspheric coefficients
+Surf K A4
+1 -1.5 0.04
+2 0.0 0.12
+"""
+    p = lf.read_patent(text, epd=1.5)
+    assert p.stop_index == 0 and p.surfaces[0].conic == 0.0 and p.surfaces[0].aspheric == ()
+    assert p.surfaces[1].conic == -1.5 and p.surfaces[1].aspheric == (0.04,)
+    assert p.surfaces[2].aspheric == (0.12,)
+
+
+def _singlet_zmx(header_aperture="ENPD 20", ftyp="FTYP 0 0 2 1 0 0 0", yfln="YFLN 0 5",
+                 glass="GLAS N-BK7 0 0 1.5168 64.17 0 0 0 0 0 0"):
+    return """VERS 190000 0 0
+MODE SEQ
+UNIT MM X W X CM MR CPMM
+{}
+{}
+XFLN 0 0
+{}
+WAVM 1 0.5875618 1
+PWAV 1
+SURF 0
+  TYPE STANDARD
+  CURV 0.0
+  DISZ INFINITY
+SURF 1
+  STOP
+  TYPE STANDARD
+  CURV 0.02
+  DISZ 5
+  {}
+  DIAM 12
+SURF 2
+  TYPE STANDARD
+  CURV -0.005
+  DISZ 80
+  DIAM 30
+SURF 3
+  TYPE STANDARD
+  CURV 0.0
+  DISZ 0
+""".format(header_aperture, ftyp, yfln, glass)
+
+
+def test_zemax_fnum_and_image_height_fields():
+    ref = lf.read_zmx(_singlet_zmx())
+    efl = ref.system().paraxial().efl
+    p = lf.read_zmx(_singlet_zmx("FNUM 4 0"))
+    assert p.epd == pytest.approx(efl/4, rel=1e-12)
+    assert p.system().paraxial().f_number == pytest.approx(4.0, rel=1e-9)
+    # field type 2: paraxial image height 3 mm
+    p = lf.read_zmx(_singlet_zmx(ftyp="FTYP 2 0 2 1 0 0 0", yfln="YFLN 0 3"))
+    s = p.system()
+    assert p.fields[0] == (0.0, 0.0)
+    assert s.paraxial(p.fields[1][1]).image_height == pytest.approx(3.0, rel=1e-9)
+    # field type 3: the real chief ray reaches 3 mm on the image plane
+    p = lf.read_zmx(_singlet_zmx(ftyp="FTYP 3 0 2 1 0 0 0", yfln="YFLN 0 3"))
+    s = p.system()
+    chief = s.trace_pupil(p.fields[1][1], 0.0, 0.0)
+    assert s._image_hits(chief)[0][0][1] == pytest.approx(3.0, abs=1e-9)
+
+
+def test_zemax_glass_fallbacks():
+    with pytest.warns(UserWarning, match="using N-BK7 instead"):
+        p = lf.read_zmx(_singlet_zmx(glass="GLAS BK7"))
+    assert p.surfaces[0].material is glasses.get("N-BK7")
+    # placeholder indices of unresolved glasses do not override the catalogue
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        p = lf.read_zmx(_singlet_zmx(glass="GLAS SF11 0 0 1.5 4.0E+1 0 0 0 0 0 0"))
+    assert p.surfaces[0].material is glasses.get("SF11")
+    p = lf.read_zmx(_singlet_zmx(glass="GLAS F_SILICA 0 0 1.458464 67.82 0 0 0 0 0 0"))
+    assert p.surfaces[0].material is rt.fused_silica
+    p = lf.read_zmx(_singlet_zmx(glass="GLAS L-TIM28_MOLD 0 0 1.5 40 0 0 0 0 0 0"))
+    assert p.surfaces[0].material.name == "L-TIM28"
+
+
+def test_zemax_semi_diameters_do_not_have_to_clip():
+    p = lf.read_zmx(_singlet_zmx(), aperture_margin=None)
+    assert p.surfaces[0].semi_diameter == 12.0           # the stop
+    assert p.surfaces[1].semi_diameter is None
+    p = lf.read_zmx(_singlet_zmx(), aperture_margin=1.01)
+    assert p.surfaces[1].semi_diameter == pytest.approx(30.3)
