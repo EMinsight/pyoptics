@@ -222,3 +222,102 @@ def test_max_sampling_distance():
 
     dx = wpm.max_sampling_distance(0.5, 1.5 + 0.1j)
     assert np.isclose(1/(2*dx), 1.5/0.5)
+
+
+# --- Fresnel coefficients ---------------------------------------------------------------
+
+def _fresnel_t(kx, n1, n2, pol):
+    kz1 = np.sqrt(complex((n1*K0)**2 - kx**2))
+    kz2 = np.sqrt(complex((n2*K0)**2 - kx**2))
+    kz2 = kz2 if kz2.imag >= 0 else -kz2
+    t = 2*kz1/(kz1 + kz2) if pol == "s" else 2*n1*n2*kz1/(n2**2*kz1 + n1**2*kz2)
+    return t, kz1, kz2
+
+
+@pytest.mark.parametrize("method", METHODS)
+@pytest.mark.parametrize("pol", ("s", "p"))
+@pytest.mark.parametrize("m", (0, 5, 13, 20))
+def test_fresnel_plane_wave(method, pol, m):
+    """A tilted plane wave from glass into air through an interface
+    perpendicular to z is transmitted with t_s or t_p, also beyond the
+    critical angle (m = 20), where the transmitted wave is evanescent."""
+
+    L, N = 16.0, 64
+    x = grid1d(-L/2, L/2, N)
+    n1, n2 = 1.5, 1.0
+    n_func = lambda X, Y, z: np.where(z < 1.0, n1, n2)*np.ones_like(X)
+    kx = 2*np.pi*m/L
+    u0 = np.exp(1j*kx*x)
+    t, kz1, kz2 = _fresnel_t(kx, n1, n2, pol)
+
+    U = wpm.wpm_propagate_z(n_func, u0, x, None, [0, 0.5, 1.0, 1.5], WL, fresnel=pol, method=method)
+
+    assert np.allclose(U[-1], u0*np.exp(1j*kz1*1.0)*t*np.exp(1j*kz2*0.5), atol=1E-12)
+
+
+@pytest.mark.parametrize("method", METHODS)
+def test_fresnel_slab_power(method):
+    """At normal incidence, a slab transmits (1 - R)^2 of the power (without
+    the multiple reflections), the plain WPM all of it times n_2/n_1 in |E|^2."""
+
+    x = grid1d(-4, 4, 16)
+    n = 1.5
+    slab = lambda X, Y, z: np.where((z > 1.0) & (z < 3.0), n, 1.0)*np.ones_like(X)
+    z_vals = np.linspace(0, 4, 9)
+
+    U = wpm.wpm_propagate_z(slab, np.ones_like(x), x, None, z_vals, WL, fresnel="s", method=method)
+    R = ((n - 1)/(n + 1))**2
+
+    assert np.allclose(np.abs(U[4])**2*n, 1 - R)
+    assert np.allclose(np.abs(U[-1])**2, (1 - R)**2)
+    assert np.allclose(np.angle(U[-1]), np.angle(np.exp(1j*K0*(2*1.0 + 2*n))))
+
+
+@pytest.mark.parametrize("fresnel", ("s", "p", "x", "y", (1, 1j), (0.3, -0.8)))
+def test_fresnel_direct_and_levels_agree(fresnel):
+    """The FFT per index pair and the compiled direct sum give the same
+    result, in 2D with several index pairs and a complex index."""
+
+    x, y, X, Y = grid2d(-6, 6, -5, 5, 24, 20, assume_periodicity=True)
+    field = np.exp(-(X**2 + Y**2)/4)*np.exp(1j*(2*X - 1.5*Y))
+    n_func = lambda X, Y, z: np.select([X**2 + Y**2 + z**2 < 9, X > 3], [1.6 + 0.01j, 1.2], 1.0)
+
+    U = wpm.wpm_propagate(n_func, field, x, y, -2.5, 0.4, WL, fresnel=fresnel, method="levels")
+    V = wpm.wpm_propagate(n_func, field, x, y, -2.5, 0.4, WL, fresnel=fresnel, method="direct")
+
+    assert np.allclose(U, V, atol=1E-12)
+    assert not np.allclose(U, wpm.wpm_propagate(n_func, field, x, y, -2.5, 0.4, WL))
+
+
+def test_fresnel_jones_vector():
+    """Without an index step, fresnel changes nothing. For fields invariant in
+    y, the plane of incidence is xz: E along y is s, so "y" is "s"; at normal
+    incidence all polarizations agree."""
+
+    x = grid1d(-8, 8, 64)
+    u0 = np.exp(-x**2/4)*np.exp(2j*x)
+    n_func = lambda X, Y, z: np.where(z < 0.5, 1.0, 1.7)*np.ones_like(X)
+    run = lambda f, n_in=None: wpm.wpm_propagate(n_func, u0, x, None, 0.5, 0.5, WL, fresnel=f, n_in=n_in)
+
+    assert np.allclose(run("s", n_in=1.7), wpm.wpm_propagate(n_func, u0, x, None, 0.5, 0.5, WL))
+    assert np.allclose(run("y"), run("s"), atol=1E-13)
+    assert np.allclose(run((0, 1j)), run("s"), atol=1E-13)
+    assert not np.allclose(run("s"), run("p"))
+
+    u_normal = np.ones_like(x)
+    results = [wpm.wpm_propagate(n_func, u_normal, x, None, 0.5, 0.5, WL, fresnel=f) for f in ("s", "p", "x", (1, 1))]
+    for r in results[1:]:
+        assert np.allclose(r, results[0])
+    assert np.allclose(np.abs(results[0]), 2/(1 + 1.7))
+
+
+def test_fresnel_input_validation():
+    x = grid1d(-4, 4, 16)
+    n_func = _homogeneous(1.0)
+
+    with pytest.raises(ValueError):
+        wpm.wpm_propagate(n_func, np.ones(16), x, None, 0.0, 1.0, WL, fresnel="q")
+    with pytest.raises(ValueError):
+        wpm.wpm_propagate(n_func, np.ones(16), x, None, 0.0, 1.0, WL, fresnel=(0, 0))
+    with pytest.raises(ValueError):
+        wpm.wpm_propagate(n_func, np.ones(16), x, None, 0.0, 1.0, WL, fresnel=(1, 0, 0))
