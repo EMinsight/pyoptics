@@ -486,7 +486,7 @@ been around; the tier says what to build on.
   sequence files (.seq: spheres, conics, aspheres, Y toroids, mirrors,
   decentres); glasses by catalogue name from `glasses` with a fallback to
   the Abbe model of n_d and V_d; checked by write/read round trips that
-  trace the same rays (notebook 162, CAD export of lens systems, section 9)
+  trace the same rays (notebook 415, CAD export of lens systems, section 9)
 - `nsrt`: new, tested: non-sequential ray tracing; oriented faces with a
   medium on each side (conics and `raytrace` sag surfaces, rectangles,
   cylinders, cones, spheres, boxes) and triangle meshes with a bounding
