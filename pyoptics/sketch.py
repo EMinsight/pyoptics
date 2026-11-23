@@ -281,6 +281,22 @@ Setup sketches for the other example notebooks:
   behind focus (notebook 29, TIE); source_pupil_orders(): diffraction
   orders of dense lines in the pupil for two source points
   (notebook 39, source optimization).
+- high_na_focus(): the field of tilted rays behind an aplanatic lens and
+  its z component (notebook 02, vectorial diffraction); tilted_plane():
+  a beam cut by a rotated plane with its own axes
+  (notebook 03, tilted planes); wpm_slices(): an index distribution cut
+  into slices with the local k_z
+  (notebook 05, wave propagation method); gaussian_beam():
+  waist, Rayleigh length, wavefronts and divergence
+  (notebook 06, Gaussian beams).
+- layer_stack(): partial reflections in a thin film stack
+  (notebook 12, layer stacks); mask_models(): the Kirchhoff, film,
+  boundary layer and rigorous mask models side by side
+  (notebook 37, mask models compared).
+- fdtd_cell(): a periodic FDTD cell with Bloch boundaries, PML, source and
+  monitors (notebooks 62 (FDTD periodic structures) and
+  65 (FDTD mask for lithography)), or a closed cell with a TFSF box around
+  a scatterer (notebook 64, 3D FDTD and nanojet).
 - fresnel_interface(): the plane of incidence with the incident, reflected
   and transmitted rays, their angles and the s and p directions
   (notebook 10, interfaces and thin films).
@@ -404,6 +420,8 @@ __all__ = ["lens", "stop", "plane", "prism", "mirror", "detector", "point_source
            "lensing_geometry", "echelle_layout", "sine_herschel_conditions", "adc_layout",
            "fresnel_interface", "kretschmann", "imaging_pupil", "otf_overlap",
            "fresnel_zones", "iso_caustic", "tir_beam_shifts",
+           "high_na_focus", "tilted_plane", "wpm_slices", "gaussian_beam", "layer_stack",
+           "mask_models", "fdtd_cell",
            "alternating_projections", "doe_beam_shaper", "tie_planes", "source_pupil_orders", "yee_grid", "lithography_scanner", "tcc_overlap",
            "mask_3d", "field_tracing_chain", "propagation_operators", "ball_lens_handover",
            "mach_zehnder_defect", "babinet_split", "diode_collimator", "fibre_coupling",
@@ -13648,3 +13666,414 @@ def source_pupil_orders(ax, pitch=1.4, title=None):
           "s = 0 passes only the 0th order (no image); s = λ/(2p NA) passes 0 and −1\n"
           "image I(x) = Σ$_s$ W$_s$ I$_s$(x): linear in the source weights", fontsize=8.5, va="top")
     _finish(ax, (-2.8, 5.6), (-2.6, 1.5), title)
+
+
+def high_na_focus(ax, theta_max=55.0, title=None):
+    """Sketch of a high NA focus (notebook 02, vectorial diffraction). An
+    aplanatic lens bends each ray of an x polarized collimated beam towards
+    the focus. The field stays perpendicular to the ray (k . E = 0), so on
+    the tilted rays it gets a component along z: E_z = -E_x tan(theta) for
+    one plane wave. Near the axis the E_z of opposite rays cancel, off axis
+    they add up to two lobes along x. A scalar theory, which treats E_x on
+    its own, misses this once sin(theta) is no longer small.
+
+    Parameters
+    ----------
+    ax : matplotlib Axes
+    theta_max : number, optional
+        Half angle of the marginal ray in degrees, NA = n sin(theta_max).
+    title : str, optional
+    """
+
+    h, zf = 1.4, 2.0
+    lens(ax, 0.0, h + 0.15)
+    label(ax, 0.0, -h - 0.3, "aplanatic lens", fontsize=9, va="top")
+    th = np.deg2rad(theta_max)
+    R = h/np.sin(th)
+    zf = R*np.cos(th)
+    for y0 in np.linspace(-h, h, 7):
+        a = np.arcsin(y0/R)
+        z1 = zf - R*np.cos(a)
+        ax.plot([-2.2, 0.0], [y0, y0], color=IMAGING, lw=0.9)
+        ax.plot([0.0, zf], [y0, 0.0], color=IMAGING, lw=0.9)
+        # E field before the lens: along x (up in the drawing)
+        ax.annotate("", xy=(-1.4, y0 + 0.17), xytext=(-1.4, y0 - 0.17),
+                    arrowprops=dict(arrowstyle="-|>", color=LASER, lw=1.1, mutation_scale=8))
+        # after the lens: perpendicular to the ray
+        zm, ym = 0.45*zf, 0.55*y0
+        d = np.array([zf, -y0])/np.hypot(zf, y0)
+        e = np.array([d[1], -d[0]])*(-1)
+        ax.annotate("", xy=(zm + 0.17*e[0], ym + 0.17*e[1]), xytext=(zm - 0.17*e[0], ym - 0.17*e[1]),
+                    arrowprops=dict(arrowstyle="-|>", color=LASER, lw=1.1, mutation_scale=8))
+    ax.plot([zf], [0], "o", color=IMAGING, ms=4)
+    ax.plot([0.0, zf + 0.6], [0, 0], color="0.6", lw=0.6, ls="-.")
+    # marginal angle
+    arc = np.linspace(np.pi - th, np.pi, 30)
+    ax.plot(zf + 0.6*np.cos(arc), 0.6*np.sin(arc), color="0.3", lw=0.8)
+    label(ax, zf - 0.75, 0.22, "θ", fontsize=10)
+    label(ax, -1.4, h + 0.5, "E along x", fontsize=9, color=LASER)
+    label(ax, 0.9*zf, h + 0.5, r"E $\perp$ k: tilted rays carry E$_z$", fontsize=9, color=LASER, ha="left")
+    # decomposition of the marginal field
+    z0, y0 = zf + 1.4, 0.2
+    e = np.array([np.sin(th), np.cos(th)])
+    arrow(ax, z0, y0, z0 + 0.9*e[0], y0 + 0.9*e[1], color=LASER, lw=1.6)
+    arrow(ax, z0, y0, z0, y0 + 0.9*e[1], color="0.45", lw=1.0)
+    arrow(ax, z0, y0, z0 + 0.9*e[0], y0, color="0.45", lw=1.0)
+    ax.plot([z0 + 0.9*e[0]]*2, [y0, y0 + 0.9*e[1]], color="0.6", lw=0.6, ls=":")
+    label(ax, z0 - 0.08, y0 + 0.45*e[1], "E$_x$", fontsize=9, ha="right")
+    label(ax, z0 + 0.45*e[0], y0 - 0.15, "E$_z$", fontsize=9, va="top")
+    label(ax, z0 + 0.45, y0 - 0.55, "marginal ray:\nE$_z$/E$_x$ = ±tan θ", fontsize=8.5, va="top")
+    label(ax, 1.0, -h - 0.75, "NA = n sin θ$_{max}$; scalar optics fails when sin θ is not small",
+          fontsize=9, va="top")
+    _finish(ax, (-2.4, zf + 2.6), (-h - 1.2, h + 0.8), title)
+
+
+def tilted_plane(ax, theta=35.0, title=None):
+    """Sketch of propagation onto a tilted plane (notebook 03, tilted planes).
+    The field is known on the plane z = 0; the observation plane passes
+    through r0 = (0, 0, z0) and is rotated by R, here by theta about the y
+    axis, with its own axes x_hat and normal n_hat. A plane wave with the
+    wave vector k arrives with the transverse wave numbers of
+    k_hat = R^T k, which are no longer on a uniform grid. The beam's
+    footprint on the plane grows by 1/cos(theta), and the two halves of the
+    plane see the beam at different distances.
+
+    Parameters
+    ----------
+    ax : matplotlib Axes
+    theta : number, optional
+        Tilt in degrees.
+    title : str, optional
+    """
+
+    th = np.deg2rad(theta)
+    z0 = 4.0
+    # source plane
+    ax.plot([0, 0], [-1.6, 1.6], color="0.3", lw=1.6)
+    label(ax, 0.0, -1.8, "source plane z = 0\nfield u(x, y, 0)", fontsize=9, va="top")
+    # beam
+    zz = np.linspace(0, 5.6, 50)
+    w = 0.45*np.sqrt(1 + (zz/4.0)**2)
+    band(ax, zz, w, zz, -w, color=LASER, alpha=0.18)
+    ax.plot([0, 5.8], [0, 0], color="0.6", lw=0.6, ls="-.")
+    label(ax, 5.9, 0.0, "z", fontsize=9, ha="left")
+    # tilted plane
+    L = 1.7
+    xh = np.array([np.sin(th), np.cos(th)])          # in-plane axis (z, x components)
+    nh = np.array([np.cos(th), -np.sin(th)])
+    ax.plot([z0 - L*xh[0], z0 + L*xh[0]], [-L*xh[1], L*xh[1]], color=EDGE, lw=2.0)
+    ax.plot([z0, z0], [-1.6, 1.6], color="0.6", lw=0.8, ls=":")
+    label(ax, z0, -1.8, "parallel plane", fontsize=8, va="top", color="0.5")
+    arrow(ax, z0, 0, z0 + 0.9*xh[0], 0.9*xh[1], color=EDGE, lw=1.3)
+    label(ax, z0 + 0.9*xh[0] + 0.1, 0.9*xh[1], r"$\hat{x}$", fontsize=10, ha="left", color=EDGE)
+    arrow(ax, z0, 0, z0 + 0.9*nh[0], 0.9*nh[1], color=EDGE, lw=1.3)
+    label(ax, z0 + 0.9*nh[0] + 0.1, 0.9*nh[1] - 0.1, r"$\hat{n}$", fontsize=10, ha="left", color=EDGE)
+    arc = np.linspace(np.pi/2 - th, np.pi/2, 20)
+    ax.plot(z0 + 1.2*np.cos(arc), 1.2*np.sin(arc), color="0.3", lw=0.8)
+    label(ax, z0 + 0.4, 1.4, "θ", fontsize=10)
+    ax.plot([z0], [0], "o", color=EDGE, ms=4)
+    label(ax, z0 + 0.15, -0.25, "r$_0$", fontsize=9, ha="left")
+    label(ax, z0 + 1.4, -1.55, "tilted plane, axes R e$_x$, R e$_y$,\nnormal R e$_z$", fontsize=9,
+          color=EDGE)
+    # a plane wave
+    arrow(ax, 0.6, 1.1, 1.8, 1.4, color=IMAGING, lw=1.3, text="k", text_pos=(1.3, 1.5),
+          fontsize=10)
+    label(ax, 2.2, 2.0, r"on the tilted plane: $\hat{k} = R^T k$, a non-uniform set of $(\hat{k}_x, \hat{k}_y)$",
+          fontsize=9, color=IMAGING)
+    _finish(ax, (-0.6, 6.3), (-2.5, 2.3), title)
+
+
+def wpm_slices(ax, title=None):
+    """Sketch of the wave propagation method
+    (notebook 05, wave propagation method). The medium
+    with the index n(x, z), here a lens shaped inclusion, is cut into thin
+    slices dz. In each slice the field is decomposed into plane waves
+    (an FFT), and each plane wave advances at each point x by the local
+    k_z(x) = sqrt(n(x)^2 k0^2 - k_x^2). Inside the glass the phase advances
+    faster, so the plane wave entering the slices leaves with a curved
+    wavefront.
+
+    Parameters
+    ----------
+    ax : matplotlib Axes
+    title : str, optional
+    """
+
+    mp = _patches()
+    yy = np.linspace(-1.2, 1.2, 80)
+    th = 0.55*(1 - (yy/1.25)**2)
+    ax.add_patch(mp.Polygon(np.c_[np.r_[2.0 - th, (2.0 + th)[::-1]], np.r_[yy, yy[::-1]]],
+                            closed=True, facecolor=GLASS, edgecolor=EDGE, lw=1.0, zorder=1))
+    label(ax, 2.0, 1.55, "n(x, z)", fontsize=9, color=EDGE)
+    zs = np.arange(0.4, 4.0, 0.3)
+    for z in zs:
+        ax.plot([z, z], [-1.5, 1.5], color="0.6", lw=0.6, ls=":")
+    arrow(ax, 1.9, -1.75, 2.2, -1.75, color="0.3", lw=0.8, style="<|-|>")
+    label(ax, 2.05, -1.9, "Δz", fontsize=9, va="top")
+    # wavefronts: flat before, curved behind
+    for z in (-0.2, 0.15):
+        ax.plot([z, z], [-1.3, 1.3], color=IMAGING, lw=1.4)
+    for dz in (0.0, 0.35, 0.7):
+        ax.plot(4.0 + dz + 0.9*(yy/1.25)**2*0.6, yy, color=IMAGING, lw=1.4)
+    arrow(ax, -0.9, 0, -0.35, 0, color=IMAGING, lw=1.2)
+    label(ax, -0.1, -1.55, "plane wave", fontsize=9, color=IMAGING)
+    label(ax, 4.7, -1.55, "curved wavefront", fontsize=9, color=IMAGING)
+    # one slice explained
+    label(ax, 5.9, 0.75, "in each slice:", fontsize=9, ha="left")
+    label(ax, 5.9, 0.45, "Ũ(k$_x$) = FFT of the field\n"
+          "U(x, z + Δz) = Σ Ũ(k$_x$) e$^{ik_x x}$ e$^{ik_z(x)Δz}$\n"
+          "k$_z$(x) = √(n(x)²k$_0$² − k$_x$²)", fontsize=9, ha="left", va="top")
+    _finish(ax, (-1.0, 9.6), (-2.2, 1.8), title)
+
+
+def gaussian_beam(ax, title=None):
+    """Sketch of a Gaussian beam (notebook 06, Gaussian beams): the beam radius
+    w(z) = w0 sqrt(1 + (z/z_R)^2) with the waist w0 at z = 0 and the
+    Rayleigh length z_R = pi w0^2/lambda, where the area has doubled; the
+    wavefronts, flat at the waist, most curved at z = +-z_R, spherical in
+    the far field; the divergence theta = lambda/(pi w0); and the Gouy phase
+    psi(z) = arctan(z/z_R), which adds up to pi from one far field to the
+    other.
+
+    Parameters
+    ----------
+    ax : matplotlib Axes
+    title : str, optional
+    """
+
+    zR, w0 = 1.2, 0.45
+    zz = np.linspace(-3.6, 3.6, 200)
+    w = w0*np.sqrt(1 + (zz/zR)**2)
+    band(ax, zz, w, zz, -w, color=LASER, alpha=0.2, lw=1.4)
+    ax.plot([-3.8, 3.9], [0, 0], color="0.6", lw=0.6, ls="-.")
+    label(ax, 4.0, 0.0, "z", fontsize=9, ha="left")
+    # asymptotes
+    for s in (1, -1):
+        ax.plot([-3.6, 3.6], [-3.6*w0/zR*s, 3.6*w0/zR*s], color="0.5", lw=0.7, ls="--")
+    # wavefronts
+    for z in (-2.6, -1.2, 0.0, 1.2, 2.6):
+        R = z*(1 + (zR/z)**2) if z else np.inf
+        wz = w0*np.sqrt(1 + (z/zR)**2)
+        y = np.linspace(-wz, wz, 40)
+        zc = z - (y**2/(2*R) if np.isfinite(R) else 0*y)
+        ax.plot(zc + (y**2/(2*R)*2 if np.isfinite(R) else 0*y), y, color=IMAGING, lw=1.1)
+    # waist and Rayleigh length
+    arrow(ax, 0.0, 0.0, 0.0, w0, color="0.2", lw=0.9, style="<|-|>")
+    label(ax, 0.1, w0/2, "w$_0$", fontsize=9, ha="left")
+    for z in (-zR, zR):
+        ax.plot([z, z], [-1.4, -w0*np.sqrt(2) - 0.05], color="0.5", lw=0.6, ls=":")
+    arrow(ax, 0.0, -1.3, zR, -1.3, color="0.2", lw=0.9, style="<|-|>")
+    label(ax, zR/2, -1.45, "z$_R$ = πw$_0$²/λ", fontsize=9, va="top")
+    label(ax, 3.0, 1.75, "θ = λ/(πw$_0$)", fontsize=9, color="0.4")
+    label(ax, -2.6, 1.6, "w(z) = w$_0$√(1 + (z/z$_R$)²)", fontsize=9, color=LASER)
+    label(ax, 0.0, 1.55, "wavefronts: flat at the waist,\nmost curved at ±z$_R$", fontsize=9,
+          color=IMAGING)
+    label(ax, 0.0, -2.0, "Gouy phase ψ(z) = arctan(z/z$_R$): π from far field to far field",
+          fontsize=9, va="top")
+    _finish(ax, (-3.9, 4.3), (-2.5, 2.1), title)
+
+
+def layer_stack(ax, title=None):
+    """Sketch of a thin film stack (notebook 12, layer stacks). Light from the
+    ambient medium 0 meets layers j = 1, 2, 3 with the indices n_j and the
+    thicknesses d_j on a substrate. Each interface splits the light; the
+    partial waves reflected at all interfaces interfere, with the phase
+    delta_j = k0 n_j d_j cos(theta_j) per pass through layer j. The transfer
+    matrix method adds them all up and gives R, T and the absorptance
+    A = 1 - R - T. A quarter wave layer (n_j d_j = lambda/4) sends back
+    the reflections of its two faces in antiphase (anti-reflection) or, in
+    a stack of alternating indices, all in phase (Bragg mirror).
+
+    Parameters
+    ----------
+    ax : matplotlib Axes
+    title : str, optional
+    """
+
+    mp = _patches()
+    tops = [0.0, -0.5, -0.85, -1.45]
+    cols = ["#e3eef8", "#b9d3ea", "#e3eef8"]
+    for j in range(3):
+        ax.add_patch(mp.Rectangle((-0.5, tops[j + 1]), 6.0, tops[j] - tops[j + 1], facecolor=cols[j],
+                                  edgecolor=EDGE, lw=0.8))
+        label(ax, 5.7, (tops[j] + tops[j + 1])/2, f"n$_{j + 1}$, d$_{j + 1}$", fontsize=9, ha="left")
+    ax.add_patch(mp.Rectangle((-0.5, -2.3), 6.0, 0.85, facecolor="0.85", edgecolor=EDGE, lw=0.8))
+    label(ax, 5.7, -1.85, "substrate", fontsize=9, ha="left")
+    label(ax, 5.7, 0.4, "medium 0", fontsize=9, ha="left")
+    # zig-zag ray through the stack
+    t = np.tan(np.deg2rad(35))
+    z, y = 0.0, 1.0
+    zi = z + (y - 0)*t
+    ax.plot([0.0, zi], [1.0, 0.0], color=IMAGING, lw=1.6)
+    pts = [(zi, 0.0)]
+    tt = [0.45, 0.6, 0.45]
+    for k in range(3):
+        z0, y0 = pts[-1]
+        j = k % 3
+        pts.append((z0 + (tops[j] - tops[j + 1])*tt[j], tops[j + 1]))
+    # forward path
+    zz, yy = zip(*pts)
+    ax.plot(zz, yy, color=IMAGING, lw=1.3)
+    ax.plot([zz[-1], zz[-1] + 0.85*0.4], [tops[3], -2.3], color=IMAGING, lw=1.1)
+    # reflections from each interface go back up
+    for k, (zk, yk) in enumerate(pts):
+        zu, yu = zk, yk
+        for j in range(k - 1, -1, -1):
+            zn = zu + (tops[j] - tops[j + 1])*tt[j]
+            ax.plot([zu, zn], [yu, tops[j]], color=STRAY, lw=0.9, alpha=0.8)
+            zu, yu = zn, tops[j]
+        ax.plot([zu, zu + 1.0*t*0.8], [0.0, 0.8], color=STRAY, lw=1.1 - 0.15*k, alpha=0.9)
+    label(ax, 0.2, 1.2, "incident", fontsize=9, color=IMAGING, ha="left")
+    label(ax, 3.3, 1.0, "partial reflections interfere: R", fontsize=9, color=STRAY)
+    label(ax, 1.9, -2.5, "transmitted: T", fontsize=9, color=IMAGING, va="top")
+    label(ax, 2.5, -3.0, "phase per pass δ$_j$ = k$_0$n$_j$d$_j$cos θ$_j$,   A = 1 − R − T", fontsize=9,
+          va="top")
+    _finish(ax, (-0.7, 7.0), (-3.4, 1.5), title)
+
+
+def mask_models(ax, title=None):
+    """Sketch of the four mask models of notebook 37 (mask models compared),
+    a line of absorber on a mask blank, each with the transmission it
+    assumes below. Kirchhoff: an infinitely thin absorber with the nominal
+    transmission and phase, cut off sharply at the edge. Film: the same
+    shape, but with the transmission of the real absorber film, which
+    depends on the angle and the polarization. Boundary layer: the film
+    model plus a strip of width w at each edge with its own complex
+    transmission, fitted to rigorous results. RCWA: the absorber with its
+    real thickness, Maxwell's equations solved for each source point; light
+    is shadowed and diffracted at the walls.
+
+    Parameters
+    ----------
+    ax : matplotlib Axes
+    title : str, optional
+    """
+
+    mp = _patches()
+    names = ["Kirchhoff", "film", "boundary layer", "RCWA"]
+    for k, name in enumerate(names):
+        z0 = 4.0*k
+        ax.add_patch(mp.Rectangle((z0, 0.6), 3.2, 0.25, facecolor=GLASS, edgecolor=EDGE, lw=0.8))
+        thick = 0.45 if k == 3 else 0.06
+        col = "0.25" if k == 0 else "#7d6a55"
+        ax.add_patch(mp.Rectangle((z0 + 1.0, 0.6 - thick), 1.2, thick, facecolor=col, edgecolor="0.2",
+                                  lw=0.6))
+        if k == 2:
+            for ze in (z0 + 0.85, z0 + 2.2):
+                ax.add_patch(mp.Rectangle((ze, 0.6 - thick), 0.15, thick, facecolor=LASER,
+                                          edgecolor="none", alpha=0.8))
+        label(ax, z0 + 1.6, 1.35, name, fontsize=10)
+        # illumination
+        for zi in (z0 + 0.4, z0 + 1.6, z0 + 2.8):
+            ax.annotate("", xy=(zi + 0.1, 0.9), xytext=(zi - 0.1, 1.15),
+                        arrowprops=dict(arrowstyle="-|>", color=ILLUMINATION, lw=0.9, mutation_scale=7))
+        # transmission profile
+        zz = np.linspace(z0, z0 + 3.2, 300)
+        inside = (zz > z0 + 1.0) & (zz < z0 + 2.2)
+        base = -0.4
+        if k == 0:
+            t = np.where(inside, 0.25, 1.0)
+        elif k == 1:
+            t = np.where(inside, 0.3, 1.0)
+        elif k == 2:
+            t = np.where(inside, 0.3, 1.0)
+            edge = ((zz > z0 + 0.85) & (zz < z0 + 1.0)) | ((zz > z0 + 2.2) & (zz < z0 + 2.35))
+            t = np.where(edge, 0.6, t)
+        else:
+            s = 0.08
+            t = 1 - 0.72*(0.5*(np.tanh((zz - z0 - 1.0)/s) - np.tanh((zz - z0 - 2.2)/s)))
+            t = t + 0.12*np.exp(-((zz - z0 - 0.75)/0.15)**2) + 0.12*np.exp(-((zz - z0 - 2.45)/0.15)**2)
+        ax.plot([z0, z0 + 3.2], [base - 0.75, base - 0.75], color="0.6", lw=0.6)
+        ax.plot(zz, base - 0.75 + 0.75*t, color=IMAGING, lw=1.3)
+        sub = ["nominal t, sharp edge", "t(θ, pol.) of the film", "film + edge strips\nfitted to RCWA",
+               "thick absorber,\nMaxwell per source point"][k]
+        label(ax, z0 + 1.6, -1.4, sub, fontsize=8.5, va="top")
+    label(ax, -0.3, -0.75, "|t|", fontsize=9, ha="right", color=IMAGING)
+    _finish(ax, (-0.8, 15.5), (-2.2, 1.7), title)
+
+
+def _hatched_box(ax, z, y, w, h, text=None, fontsize=8.5, color="#9aa7b3"):
+    ax.add_patch(_patches().Rectangle((z, y), w, h, facecolor="#eef1f4", edgecolor=color, hatch="////",
+                                      lw=0.8, zorder=1))
+    if text:
+        label(ax, z + w/2, y + h/2, text, fontsize=fontsize, color="0.3", zorder=4,
+              bbox=dict(facecolor="white", edgecolor="none", pad=1.0))
+
+
+def fdtd_cell(ax, kind="periodic", title=None):
+    """Sketch of an FDTD simulation cell.
+
+    kind="periodic": one period of a grating or mask
+    (notebooks 62 (FDTD periodic structures) and 65 (FDTD mask for lithography)). Bloch-periodic
+    boundaries on the left and right replace the neighbouring periods (one drawn dashed): a field leaving
+    on one side comes back on the other with the phase exp(i k_x L). Absorbing layers (PML) at
+    the top and bottom swallow the outgoing light. A line source launches the plane wave, a
+    monitor above it collects the reflected orders and one below the structure the transmitted
+    orders, k_m = k_x + 2 pi m/L.
+
+    kind="scatterer": an isolated object, here a sphere
+    (notebook 64, 3D FDTD and nanojet). The cell is closed by PML on all sides. The plane wave
+    is injected on the surface of a total-field/scattered-field (TFSF) box: inside, the total
+    field; outside, only the scattered field, which flux planes around the box collect.
+
+    Parameters
+    ----------
+    ax : matplotlib Axes
+    kind : {"periodic", "scatterer"}, optional
+    title : str, optional
+    """
+
+    mp = _patches()
+    if kind == "periodic":
+        L, H, d = 2.4, 4.4, 0.45
+        for s in (-1,):
+            ax.add_patch(mp.Rectangle((s*L, 0), L, H, facecolor="none", edgecolor="0.7", lw=0.8, ls="--"))
+            ax.add_patch(mp.Rectangle((s*L + 0.8, 1.7), 0.8, 0.5, facecolor="0.85", edgecolor="0.6", lw=0.6,
+                                      ls="--"))
+        label(ax, -L/2, H + 0.15, "neighbour period\n(not simulated)", fontsize=8, va="bottom", color="0.5")
+        _hatched_box(ax, 0, H - d, L, d, "PML")
+        _hatched_box(ax, 0, 0, L, d, "PML")
+        ax.add_patch(mp.Rectangle((0, d), L, 1.25 - d, facecolor="#f3f8fc", edgecolor="none"))
+        label(ax, L - 0.1, 0.9, "exit medium", fontsize=8, ha="right", color="0.4")
+        ax.add_patch(mp.Rectangle((0.8, 1.7), 0.8, 0.5, facecolor="#7d6a55", edgecolor="0.2", lw=0.8))
+        label(ax, 1.2, 1.95, "structure", fontsize=8, color="white")
+        ax.add_patch(mp.Rectangle((0, 2.2), L, 1.7 - 0.0, facecolor=GLASS, edgecolor="none", alpha=0.5))
+        ax.plot([0, L], [3.4, 3.4], color=LASER, lw=2.0)
+        label(ax, L + 0.1, 3.4, "source line, e$^{ik_x x}$", fontsize=8.5, ha="left", color=LASER)
+        for z in (0.5, 1.2, 1.9):
+            arrow(ax, z, 3.35, z + 0.15, 2.65, color=LASER, lw=1.0)
+        ax.plot([0, L], [3.75, 3.75], color=IMAGING, lw=1.4, ls="--")
+        label(ax, L + 0.1, 3.75, "monitor: reflected orders", fontsize=8.5, ha="left", color=IMAGING)
+        ax.plot([0, L], [1.35, 1.35], color=IMAGING, lw=1.4, ls="--")
+        label(ax, L + 0.1, 1.35, "monitor: transmitted orders", fontsize=8.5, ha="left", color=IMAGING)
+        for z in (0, L):
+            ax.plot([z, z], [0, H], color=EMISSION, lw=2.2)
+        arrow(ax, L - 0.05, 3.0, L + 0.6, 3.0, color=EMISSION, lw=1.0)
+        arrow(ax, -0.6, 3.0, 0.05, 3.0, color=EMISSION, lw=1.0)
+        label(ax, L/2, -0.25, "one period L, Bloch boundaries: F(x + L) = F(x) e$^{ik_x L}$", fontsize=9,
+              va="top", color=EMISSION)
+        _finish(ax, (-L - 0.1, L + 2.9), (-0.7, H + 0.8), title)
+    elif kind == "scatterer":
+        W, d = 4.4, 0.45
+        _hatched_box(ax, 0, 0, W, W)
+        ax.add_patch(mp.Rectangle((d, d), W - 2*d, W - 2*d, facecolor="white", edgecolor="none", zorder=1))
+        label(ax, W/2, W - d/2, "PML on all sides", fontsize=8.5, color="0.3")
+        ax.add_patch(mp.Rectangle((0.9, 0.9), W - 1.8, W - 1.8, facecolor="none", edgecolor=IMAGING, lw=1.3,
+                                  ls="--", zorder=3))
+        label(ax, W/2, 0.7, "flux planes: scattered power", fontsize=8, color=IMAGING)
+        ax.add_patch(mp.Rectangle((1.35, 1.35), W - 2.7, W - 2.7, facecolor="#fbeeec", edgecolor=LASER, lw=1.4,
+                                  zorder=2))
+        label(ax, W/2, 1.5, "TFSF box: total field", fontsize=8, color=LASER)
+        ax.add_patch(mp.Circle((W/2, W/2 + 0.1), 0.45, facecolor=GLASS, edgecolor=EDGE, lw=1.2, zorder=4))
+        ax.plot([d, W - d], [W/2 + 0.1]*2, color="0.6", lw=0.6, ls="-.", zorder=3)
+        for s_ in (1, -1):
+            ax.plot([W/2 + 0.45, W/2 + 1.0], [W/2 + 0.1 + s_*0.3, W/2 + 0.1 + s_*0.06], color=LASER, lw=0.9,
+                    zorder=3)
+        for y in (1.75, 2.3, 2.85):
+            arrow(ax, 1.4, y, 1.75, y, color=LASER, lw=1.0)
+        label(ax, W + 0.15, 2.6, "plane wave injected on the\nTFSF surface, travelling along +z;\n"
+              "outside the box only the\nscattered field remains", fontsize=8.5, ha="left")
+        label(ax, W + 0.15, 1.4, "sphere: compare with Mie", fontsize=8.5, ha="left", color=EDGE)
+        _finish(ax, (-0.2, W + 3.4), (-0.3, W + 0.3), title)
+    else:
+        raise ValueError("kind must be 'periodic' or 'scatterer'")
