@@ -4,7 +4,7 @@
 """Eyepieces: Huygens, Ramsden, Kellner, Plössl and Erfle designs traced
 backwards from the eye pupil, with their eye relief, apparent field, field
 curvature in diopters, lateral colour and the spherical aberration of the
-pupil (notebook 171, eyepieces).
+pupil (notebook 432, eyepieces).
 
 An eyepiece is used with a collimated beam on the eye side: every point of
 the field stop (the image plane of the objective) becomes a parallel beam

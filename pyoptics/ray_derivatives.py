@@ -104,15 +104,15 @@ forward difference Jacobian traces all operands V times. So:
   many real rays and have a ``linearize`` method (`ray_errors()`,
   `wavefront()`, `polychromatic_ray_errors()`, `spot_rms()`,
   `off_axis.field_wavefront()`, the chief ray operands). Examples: the
-  KrF lens of notebook 43 (Delano diagrams) with 96 variables and 308 residuals:
+  KrF lens of notebook 405 (Delano diagrams) with 96 variables and 308 residuals:
   1.3 s instead of 17 s per Jacobian (`LensOptimizer`), 1.5 s instead of
   12 s (`DampedLeastSquares` with 82 clearance constraints); the freeform
   three mirror anastigmat with 29 variables of
-  notebook 155 (off-axis mirrors and nodal aberrations): 0.16 s instead
+  notebook 436 (off-axis mirrors and nodal aberrations): 0.16 s instead
   of 4.3 s; the six mirror EUV projector: 0.85 s instead of 20 s.
 - **Keep differences** ("2-point", the default) for small problems (fewer
   than about 10 variables: the 2V systems of the linearization cost as much
-  as the V traces they save; notebooks 58 (lens optimization) and 154
+  as the V traces they save; notebooks 410 (lens optimization) and 412
   (global optimization and saddle points)), for merit functions without real
   rays (Seidel sums and other paraxial data: nothing to trace, the
   analytic mode takes central differences, twice the work), and when the
@@ -122,7 +122,7 @@ forward difference Jacobian traces all operands V times. So:
 - Parameters that the differential trace does not cover (see above) are
   differentiated column by column, so a few of them cost little.
 - The more accurate Jacobian can change the path of an optimization: in
-  ill conditioned problems the analytic run may go further (notebook 149
+  ill conditioned problems the analytic run may go further (notebook 434
   (scan lenses): merit 494 instead of 561) or stop elsewhere. For a check of
   an operand's ``linearize``, compare with `Linearization.finite_difference()`.
 

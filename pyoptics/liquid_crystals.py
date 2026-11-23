@@ -3,8 +3,8 @@
 
 """Nematic liquid crystal cells: the director profile in a field, the
 Fréedericksz transition, variable retarders, twisted nematic cells and
-their viewing angle (notebook 140, liquid crystals; the tunable filters
-of notebook 122, imaging spectroscopy).
+their viewing angle (notebook 213, liquid crystals; the tunable filters
+of notebook 915, imaging spectroscopy).
 
 Director and elastic energy. In a cell of thickness d between plates
 parallel to x-y the director n = (cos theta cos phi, cos theta sin phi,

@@ -263,7 +263,7 @@ def test_apodizer_t_number():
         ph.apodizer_for_t_number(2.8, 2.0)
 
 
-# --- sunstars (notebook 91) ---
+# --- sunstars (notebook 612) ---
 
 def test_iris_geometry():
     for n in (5, 6, 9):
@@ -390,7 +390,7 @@ def test_sunstar_spike_level():
         ph.sunstar(7, N, lam, half_width=1.0, n=64)
 
 
-# flare and ghosts (notebook 92)
+# flare and ghosts (notebook 613)
 
 def _R(a, b):
     return ((a - b)/(a + b))**2
@@ -479,7 +479,7 @@ def test_ghost_spectra_shapes(lens8):
     assert specs[1].sum() < 0.05*specs[0].sum()
 
 
-# depth of field and tilted lenses (notebook 94, depth of field and tilt-shift)
+# depth of field and tilted lenses (notebook 614, depth of field and tilt-shift)
 
 def test_dof_limits_consistent_with_blur():
     f, N, c = 50.0, 8, 0.03

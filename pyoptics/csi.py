@@ -14,7 +14,7 @@ position of the envelope peak is the height of the surface at that pixel,
 free of the 2 pi ambiguity of single-wavelength interferometry; the phase
 of the fringes refines it to a fraction of a nanometre. It is the same
 interference as in time-domain optical coherence tomography (`oct`,
-notebook 82, OCT), applied to a surface instead of a volume, with an objective
+notebook 505, OCT), applied to a surface instead of a volume, with an objective
 of high numerical aperture instead of a nearly collimated beam.
 
 Signal

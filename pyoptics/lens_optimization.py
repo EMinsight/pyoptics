@@ -11,20 +11,20 @@ Two optimizers:
   surfaces (toric and cylinder lenses), the phase coefficients of diffractive surfaces
   `DiffractivePhase` with `diffractive()`, freeform terms `ZernikeTerm`
   with `zernike_terms()`, `Tilt`, `Decenter` and `ImageTilt` of off-axis
-  systems (notebook 155, off-axis mirrors and nodal aberrations), model glasses
+  systems (notebook 436, off-axis mirrors and nodal aberrations), model glasses
   `GlassIndex`/`GlassAbbe` with `glass()`), solves (`solve_paraxial_focus()`, `solve_entrance_pupil()`,
   `solve_curvature_for_efl()`), operands (the factories below plus
   `polychromatic_ray_errors()`, `spot_rms()`, `wavefront()`, `seidel()`,
   `chromatic()`, `focal_shift()`) and `Constraint` objects held with
   Lagrange multipliers; a small glass catalogue `GLASSES` with
   `nearest_glass()` and the glass map outline `GLASS_MAP`
-  (`glass_map_constraint()`). Notebook 58 (lens optimization).
+  (`glass_map_constraint()`). Notebook 410 (lens optimization).
   Several configurations of one lens (zoom positions, object distances,
   wavelength bands) are optimized together with a `MultiConfiguration`
   in place of the system: `Shared` and `ConfigVariable` variables
   (`per_configuration()`), operands, solves and constraints in some or all
   configurations (`in_configs()`), overrides with `configure()`. Notebook
-  153 (multi-configuration optimization).
+  411 (multi-configuration optimization).
 - `LensOptimizer`, described here, which uses scipy.
 
 A `LensOptimizer` varies curvatures and thicknesses of a system and
@@ -1339,7 +1339,7 @@ class Aspheric(Variable):
 class Tilt(Variable):
     """Tilt angle (radians) of a surface about its local x, y or z axis
     (`raytrace.Surface.tilt`), e.g. of the mirrors of an off-axis system
-    (notebook 155, off-axis mirrors and nodal aberrations)."""
+    (notebook 436, off-axis mirrors and nodal aberrations)."""
 
     def __init__(self, surface, axis=0, bounds=(None, None)):
         super().__init__(bounds)

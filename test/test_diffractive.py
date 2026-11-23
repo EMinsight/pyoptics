@@ -1,6 +1,6 @@
 """Diffractive (kinoform) surfaces in raytrace: local grating equation, paraxial
 power, Seidel sums against the Sweatt model, colour, efficiency and the
-optimizer variables (notebook 151, hybrid diffractive lenses)."""
+optimizer variables (notebook 422, hybrid diffractive lenses)."""
 
 import numpy as np
 import pytest

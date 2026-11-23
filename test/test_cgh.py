@@ -2,7 +2,7 @@
 #-*- coding:utf-8 -*-
 
 """Tests for raytrace.ZernikePhaseSurface and the CGH null test tools of
-pyoptics.cgh (notebook 165, CGH null testing of aspheres)."""
+pyoptics.cgh (notebook 503, CGH null testing of aspheres)."""
 
 import numpy as np
 import pytest

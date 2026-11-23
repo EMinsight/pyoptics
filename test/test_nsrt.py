@@ -371,7 +371,7 @@ def test_bulk_absorption():
 
 def test_ghost_matches_photography_ghost_system():
     """The double reflection ghost of a singlet traced non-sequentially lands
-    where the unfolded ghost system of notebook 92 (flare and ghosts) puts it."""
+    where the unfolded ghost system of notebook 613 (flare and ghosts) puts it."""
 
     from pyoptics import photography
 

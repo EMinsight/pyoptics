@@ -1,5 +1,5 @@
 """Tests of pyoptics.prisms: image orientation, tunnel lengths, TIR phases
-and the roof phase error (notebook 172, binoculars and erecting prisms)."""
+and the roof phase error (notebook 433, binoculars and erecting prisms)."""
 
 import numpy as np
 import pytest

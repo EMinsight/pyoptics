@@ -3,7 +3,7 @@
 
 """Nodal aberration theory: the third order aberrations of optical
 systems whose surfaces are decentred and tilted
-(notebook 155, off-axis mirrors and nodal aberrations).
+(notebook 436, off-axis mirrors and nodal aberrations).
 
 In a rotationally symmetric system every surface contributes aberrations
 centred on the common axis, and the wavefront of the field point H

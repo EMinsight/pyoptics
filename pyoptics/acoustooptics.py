@@ -3,8 +3,8 @@
 
 """Acousto-optics: diffraction of light by sound, Raman-Nath against
 Bragg diffraction, modulators (AOM), deflectors (AOD) and tunable filters
-(AOTF) (notebook 141, acousto-optics; the AOTF of
-notebook 122, imaging spectroscopy).
+(AOTF) (notebook 214, acousto-optics; the AOTF of
+notebook 915, imaging spectroscopy).
 
 A sound wave of frequency f and speed v writes a moving index grating of
 period Lambda = v/f and amplitude Delta n = sqrt(M2 I_a/2) (acoustic

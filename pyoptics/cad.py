@@ -107,7 +107,7 @@ coaxial system of lenses, cut to the lens solids so that they sit on the
 lands and bevels, with a bore that runs conically from the clear aperture
 of one lens to the next and so stays outside the beam. `plot_section()`
 draws a section of the model with matplotlib.
-Notebook 162 (CAD export of lens systems) shows all of it.
+Notebook 415 (CAD export of lens systems) shows all of it.
 """
 
 from dataclasses import dataclass, field as _field

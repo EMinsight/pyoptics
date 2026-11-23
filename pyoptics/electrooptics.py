@@ -3,8 +3,8 @@
 
 """Electro-optic modulators: the Pockels and Kerr effects, Pockels cells,
 phase modulators and the Mach-Zehnder intensity modulator with its bias,
-extinction, chirp and bandwidth (notebook 139, electro-optic modulators;
-the modulator of notebook 120, fibre link).
+extinction, chirp and bandwidth (notebook 212, electro-optic modulators;
+the modulator of notebook 725, fibre link).
 
 The linear electro-optic (Pockels) effect changes the impermeability
 tensor eta = eps^-1 by Delta eta_i = sum_k r_ik E_k in the contracted

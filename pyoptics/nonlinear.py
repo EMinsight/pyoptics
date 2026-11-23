@@ -5,10 +5,10 @@
 birefringent and quasi-phase matching, parametric amplification and
 oscillators, and third-order (chi(3)) effects: the optical Kerr effect,
 self-focusing and the Kerr lens. See
-notebooks 145 (second harmonic generation and phase matching),
-146 (parametric amplification and OPOs) and
-147 (Kerr effect and self-focusing); pulses in fibres are in
-`pyoptics.splitstep` and notebook 121 (SPM and solitons in fibres).
+notebooks 710 (second harmonic generation and phase matching),
+711 (parametric amplification and OPOs) and
+712 (Kerr effect and self-focusing); pulses in fibres are in
+`pyoptics.splitstep` and notebook 726 (SPM and solitons in fibres).
 
 SI units (m, s, W, V/m, pm/V only in the `CRYSTALS` table) unless a
 function says otherwise; wavelengths are vacuum wavelengths in nm where

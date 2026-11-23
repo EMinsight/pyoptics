@@ -2,7 +2,7 @@
 #-*- coding:utf-8 -*-
 
 """Tests of the restoration module
-(notebook 160, image restoration and PSF deconvolution)."""
+(notebook 306, image restoration and PSF deconvolution)."""
 
 import numpy as np
 import pytest

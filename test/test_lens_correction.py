@@ -2,7 +2,7 @@
 #-*- coding:utf-8 -*-
 
 """Tests of the lens correction module
-(notebook 161, distortion, lateral colour and lens shading correction)."""
+(notebook 615, distortion, lateral colour and lens shading correction)."""
 
 import numpy as np
 

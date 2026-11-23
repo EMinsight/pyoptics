@@ -10,7 +10,7 @@ corrupted by photon and read noise. When the PSFs are known (measured with
 a point source or a noise target, or computed from the lens design and
 perhaps refined by phase retrieval), much of the blur can be undone. This
 module holds the pieces used in
-notebook 160 (image restoration and PSF deconvolution):
+notebook 306 (image restoration and PSF deconvolution):
 
 PSFs of a lens
 

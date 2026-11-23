@@ -36,7 +36,7 @@ of the lens.
 
 The lenses are `raytrace.System` objects with the object at infinity and
 the stop (the scanner) as the first surface; lengths in the unit of the
-system (mm by default), angles in radians. Notebook 149 (scan lenses)
+system (mm by default), angles in radians. Notebook 434 (scan lenses)
 designs both lenses with `lens_optimization`.
 
 References

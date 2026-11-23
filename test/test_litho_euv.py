@@ -4,7 +4,7 @@
 """Tests of pyoptics.litho.euv, the block treatment of plane layers in
 litho.rcwa, the secondary electron blur of litho.stochastics and the Jones
 pupil of coated mirror systems, as used in notebooks
-156 (EUV multilayers and reflective masks) to 158 (EUV stochastics and flare).
+840 (EUV multilayers and reflective masks) to 842 (EUV stochastics and flare).
 """
 
 import numpy as np

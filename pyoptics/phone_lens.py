@@ -17,7 +17,7 @@ surface is aspheric, and the last element, which sits close to the sensor
 and acts as a field flattener and a "telecentricity corrector", has a
 strongly curved centre and a rim that bends back, with inflection points.
 
-This module holds what notebook 159
+This module holds what notebook 430
 (phone camera lens with Forbes Q polynomials) needs:
 
 - `PLASTICS`: model glasses (n_d, V_d) of the two plastic families
@@ -203,7 +203,7 @@ def min_thickness(surfaces, rims, n=24):
     return f
 
 
-# The designs of notebook 159 (phone camera lens with Forbes Q polynomials):
+# The designs of notebook 430 (phone camera lens with Forbes Q polynomials):
 # f = 4 mm, f/1.8, image height 3 mm (36.9 degrees half field), stop on the
 # first surface. Per lens surface: radius of the best fit sphere, thickness
 # behind it, normalization radius and Q-bfs coefficients a_0... [mm]; the
@@ -280,7 +280,7 @@ def lens_surfaces():
 
 def phone_lens(design=None, wavelength=WAVELENGTHS[1]):
     """The five element f/1.8 phone camera lens of
-    notebook 159 (phone camera lens with Forbes Q polynomials) as a `raytrace.System` of
+    notebook 430 (phone camera lens with Forbes Q polynomials) as a `raytrace.System` of
     Q-bfs surfaces, an IR filter and the sensor.
 
     Parameters

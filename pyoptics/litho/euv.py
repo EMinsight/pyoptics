@@ -4,8 +4,8 @@
 """EUV lithography at 13.5 nm: Mo/Si multilayer mirrors, reflective masks
 lit at an oblique chief ray, the mask-side geometry of NA 0.33 and of the
 anamorphic high-NA projector, centrally obscured pupils and the numbers of
-the EUV photon budget (notebooks 156 (EUV multilayers and reflective masks)
-to 158 (EUV stochastics and flare)).
+the EUV photon budget (notebooks 840 (EUV multilayers and reflective masks)
+to 842 (EUV stochastics and flare)).
 
 Every material absorbs at 13.5 nm and all refractive indices are close to
 1 (n = 1 - delta + i*beta with delta and beta of 1e-3 to 1e-1), so EUV

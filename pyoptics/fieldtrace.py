@@ -109,7 +109,7 @@ surface. Unlike the thin element approximation it includes the refraction
 inside the profile, the angle dependence of the phase and of the Fresnel
 transmission, and the polarization; it holds for facets and radii of
 curvature of a few wavelengths and more. Comparisons with RCWA and exact
-solutions: notebook 168 (local plane interface approximation).
+solutions: notebook 462 (local plane interface approximation).
 
 Lens systems
 ------------
