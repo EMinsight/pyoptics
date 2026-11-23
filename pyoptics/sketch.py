@@ -260,6 +260,18 @@ Setup sketches for the other example notebooks:
   eye turning about its centre of rotation to look into the distance and
   down through the corridor to a page at 40 cm
   (notebook 129, progressive spectacle lenses).
+- fresnel_zones(): the Fresnel zones of an opening seen from a point on
+  the axis, and the Fresnel number (notebook 01, free-space propagation).
+- iso_caustic(): a beam caustic with the waist, the Rayleigh length, the
+  divergence and the ISO 11146 measurement planes (notebook 07, beam quality).
+- tir_beam_shifts(): a beam at total internal reflection with its
+  Goos-Hänchen shift and evanescent field, and frustrated total internal
+  reflection across a gap (notebook 13, stacks as transfer functions).
+- imaging_pupil(): a point imaged through a 4f system with a pupil, the
+  wavefront error in the pupil and the PSF
+  (notebooks 15 (imaging and Zernikes) and 17 (PSF, MTF and Strehl));
+  otf_overlap(): the OTF as the
+  overlap of two shifted pupils, and the MTF (notebook 17, PSF, MTF and Strehl).
 - fresnel_interface(): the plane of incidence with the incident, reflected
   and transmitted rays, their angles and the s and p directions
   (notebook 10, interfaces and thin films).
@@ -381,7 +393,8 @@ __all__ = ["lens", "stop", "plane", "prism", "mirror", "detector", "point_source
            "plenoptic_camera", "subaperture_parallax", "light_field_refocus", "plenoptic_tradeoff",
            "coronagraph_layout", "telescope_layout", "segment_phasing_layout",
            "lensing_geometry", "echelle_layout", "sine_herschel_conditions", "adc_layout",
-           "fresnel_interface", "kretschmann", "yee_grid", "lithography_scanner", "tcc_overlap",
+           "fresnel_interface", "kretschmann", "imaging_pupil", "otf_overlap",
+           "fresnel_zones", "iso_caustic", "tir_beam_shifts", "yee_grid", "lithography_scanner", "tcc_overlap",
            "mask_3d", "field_tracing_chain", "propagation_operators", "ball_lens_handover",
            "mach_zehnder_defect", "babinet_split", "diode_collimator", "fibre_coupling",
            "fibre_types", "fibre_acceptance", "skew_ray_end_view", "slab_transverse_resonance",
@@ -13101,3 +13114,324 @@ def binocular_layout(ax, kind="porro", title=None):
         _finish(ax, (-1.6, 9.4), (-3.2, 2.1), title)
     else:
         raise ValueError("kind must be 'kepler', 'porro' or 'roof'.")
+
+
+def imaging_pupil(ax, title=None):
+    """Sketch of scalar imaging through a 4f system with a pupil
+    (notebooks 15 (imaging and Zernikes) and 17 (PSF, MTF and Strehl)): a point in the
+    object plane, the first lens turns its spherical wave into a plane wave
+    in the pupil (the common focal plane), the stop of radius f NA cuts the
+    plane waves to |k_perp| <= k NA, a wavefront error W tilts and bends the
+    wave there, and the second lens focuses it into the amplitude point
+    spread function h = F^-1[P] with P = A exp(i Phi), Phi = 2 pi W/lambda.
+
+    Parameters
+    ----------
+    ax : matplotlib Axes
+    title : str, optional
+    """
+
+    f, h = 2.0, 1.0
+    lenses = [(f, f), (3*f, f)]
+    for z in (f, 3*f):
+        lens(ax, z, 1.35*h)
+    label(ax, f, -1.55*h, "lens 1", fontsize=9, va="top")
+    label(ax, 3*f, -1.55*h, "lens 2", fontsize=9, va="top")
+    stop(ax, 2*f, 1.4*h, openings=((0.0, h),))
+    # the cone from the axial object point, cut by the pupil
+    for u in np.linspace(-h/f, h/f, 7):
+        draw_ray(ax, lenses, 0.0, 0.0, u, 4*f, color=IMAGING, lw=0.9, alpha=0.75,
+                 arrow=abs(u) > 0.99*h/f)
+    plane(ax, 0.0, 1.5*h)
+    plane(ax, 4*f, 1.5*h)
+    point_source(ax, 0.0, 0.0, color=ILLUMINATION, size=40)
+    label(ax, 0.0, -1.75*h, "object plane", fontsize=9, va="top")
+    label(ax, 4*f, -1.75*h, "image plane", fontsize=9, va="top")
+    # aberrated wavefront in the pupil
+    yy = np.linspace(-h, h, 60)
+    W = 0.12*((yy/h)**4 - (yy/h)**2) + 0.05*yy/h
+    ax.plot(2*f - 0.45 + W, yy, color=STRAY, lw=1.4, zorder=6)
+    ax.plot([2*f - 0.45]*2, [-h, h], color="0.4", lw=0.8, ls=":", zorder=6)
+    label(ax, 2*f - 0.75, 1.15*h, "W(P$_x$, P$_y$)", fontsize=9, color=STRAY, ha="right")
+    label(ax, 2*f, 1.62*h, "pupil, radius f·NA", fontsize=9, va="bottom")
+    # NA angle at the object
+    a = np.linspace(0, np.arctan(h/f), 20)
+    ax.plot(0.9*np.cos(a), 0.9*np.sin(a), color="0.3", lw=0.8)
+    label(ax, 1.15, 0.22, "θ", fontsize=10)
+    label(ax, 0.2, 1.15*h, "NA = n sin θ", fontsize=9, ha="left")
+    # PSF profile at the image plane
+    yp = np.linspace(-0.9, 0.9, 200)
+    v = 7.0*yp
+    from scipy.special import j1
+    vs = np.where(np.abs(v) < 1e-9, 1e-9, v)
+    airy = (2*j1(vs)/vs)**2
+    ax.fill_betweenx(yp, 4*f, 4*f + 0.8*airy, color=IMAGING, alpha=0.35, lw=0, zorder=5)
+    ax.plot(4*f + 0.8*airy, yp, color=IMAGING, lw=1.0, zorder=5)
+    label(ax, 4*f + 0.95, 0.55, "|h|²", fontsize=9, ha="left", color=IMAGING)
+    label(ax, 2*f, -2.25*h,
+          "pupil function P = A exp(iΦ), Φ = 2πW/λ, on |k$_⊥$| ≤ k NA\n"
+          "amplitude PSF h = F$^{-1}$[P]:  the image of a point", fontsize=9, va="top")
+    _finish(ax, (-0.6, 4*f + 1.6), (-3.0*h, 1.9*h), title)
+
+
+def otf_overlap(ax, f=0.7, title=None):
+    """Sketch of the optical transfer function as the overlap of two
+    shifted pupils (notebook 17, PSF, MTF and Strehl), with frequencies in
+    units of NA/lambda. Left: the pupil P(k) and its copy shifted by the
+    spatial frequency f; the shaded overlap, normalized by the pupil area,
+    is the OTF of an aberration free circular pupil (with aberrations the
+    phases in the overlap add with opposite signs and lower it). It
+    vanishes at the incoherent cutoff f = 2 NA/lambda. Right: the resulting
+    MTF with the frequency of the left panel marked.
+
+    Parameters
+    ----------
+    ax : matplotlib Axes
+    f : number, optional
+        Spatial frequency in units of NA/lambda, between 0 and 2.
+    title : str, optional
+    """
+
+    mp = _patches()
+    xs = np.linspace(-1.6, 2.9, 900)
+    X, Y = np.meshgrid(xs, np.linspace(-1.3, 1.3, 600))
+    over = (np.hypot(X, Y) < 1) & (np.hypot(X - f, Y) < 1)
+    ax.contourf(X, Y, over.astype(float), levels=[0.5, 1.5], colors=[IMAGING], alpha=0.55, zorder=1)
+    ax.add_patch(mp.Circle((0, 0), 1.0, facecolor="none", edgecolor=IMAGING, lw=1.5, zorder=3))
+    ax.add_patch(mp.Circle((f, 0), 1.0, facecolor="none", edgecolor=EMISSION, lw=1.5, ls="--",
+                           zorder=3))
+    ax.plot([0, f], [0, 0], "o", ms=3, color="0.2", zorder=4)
+    arrow(ax, 0, -1.12, f, -1.12, color="0.2", lw=1.0, style="<|-|>")
+    label(ax, f/2, -1.3, "f", fontsize=10, va="top")
+    label(ax, -0.75, 1.05, "P(k)", fontsize=9, color=IMAGING, ha="right")
+    label(ax, f + 0.75, 1.05, "P(k − f)", fontsize=9, color=EMISSION, ha="left")
+    arrow(ax, f/2 + 1.25, -0.75, f/2 + 0.1, -0.3, color="0.2", lw=0.8)
+    label(ax, f/2 + 1.3, -0.8, "overlap", fontsize=8, ha="left")
+    label(ax, f/2, -1.65,
+          "OTF(f) = ∫ P(k) P*(k − f) d²k / ∫ |P|² d²k\n"
+          "(the autocorrelation of the pupil; cutoff at f = 2 NA/λ)", fontsize=9, va="top")
+    # MTF curve
+    z0, w, hgt = 3.4, 2.6, 2.0
+    nu = np.linspace(0, 1, 200)
+    mtf = 2/np.pi*(np.arccos(nu) - nu*np.sqrt(1 - nu**2))
+    ax.plot([z0, z0 + w], [-1.0, -1.0], color="0.3", lw=0.8)
+    ax.plot([z0, z0], [-1.0, -1.0 + hgt], color="0.3", lw=0.8)
+    ax.plot(z0 + w*nu, -1.0 + hgt*mtf, color=IMAGING, lw=1.6)
+    m = 2/np.pi*(np.arccos(f/2) - f/2*np.sqrt(1 - (f/2)**2))
+    ax.plot([z0 + w*f/2]*2, [-1.0, -1.0 + hgt*m], color="0.4", ls=":", lw=0.9)
+    ax.plot(z0 + w*f/2, -1.0 + hgt*m, "o", ms=4, color=IMAGING)
+    label(ax, z0 - 0.08, -1.0 + hgt, "1", fontsize=8, ha="right")
+    label(ax, z0, -1.12, "0", fontsize=8, va="top")
+    label(ax, z0 + w, -1.12, "2 NA/λ", fontsize=8, va="top")
+    label(ax, z0 + w/2, -1.45, "spatial frequency", fontsize=8, va="top")
+    label(ax, z0 + 0.12, -1.0 + hgt + 0.15, "MTF", fontsize=9, ha="left", color=IMAGING)
+    _finish(ax, (-1.7, z0 + w + 0.3), (-2.3, 1.45), title)
+
+
+def fresnel_zones(ax, n_zones=4, title=None):
+    """Sketch of the Fresnel zones of an opening
+    (notebook 01, free-space propagation): a plane wave falls on a slit or a square opening of half
+    width a, and an observation point P lies on the axis at the distance z.
+    The edge of zone m is where the path to P is longer by m lambda/2 than
+    the axial path, at the height rho_m = sqrt(m lambda z) (paraxially).
+    Neighbouring zones send light of opposite phase to P, so the number of
+    zones in the opening, the Fresnel number N_F = a^2/(lambda z), decides
+    whether P sees the geometric shadow with fringes (N_F >> 1) or the far
+    field (N_F <~ 1). The heights are drawn to scale for the given number of
+    zones; the wavelength is exaggerated.
+
+    Parameters
+    ----------
+    ax : matplotlib Axes
+    n_zones : int, optional
+        Fresnel number of the drawn opening.
+    title : str, optional
+    """
+
+    mp = _patches()
+    a, z = 1.5, 5.0
+    lz = a**2/n_zones
+    rho = np.sqrt(lz*np.arange(n_zones + 1))
+    for y_a, y_b in ((a, 2.1), (-2.1, -a)):
+        ax.add_patch(mp.Rectangle((-0.06, y_a), 0.12, y_b - y_a, facecolor=METAL,
+                                  edgecolor="none", zorder=3))
+    for m in range(n_zones):
+        col = IMAGING if m % 2 == 0 else STRAY
+        for s in (1, -1):
+            ax.add_patch(mp.Rectangle((-0.05, s*rho[m] if s > 0 else -rho[m + 1]), 0.1,
+                                      rho[m + 1] - rho[m], facecolor=col, alpha=0.6,
+                                      edgecolor="none", zorder=4))
+        label(ax, -0.18, (rho[m] + rho[m + 1])/2, "+" if m % 2 == 0 else "−", fontsize=10,
+              ha="right", color=col)
+    for zz in (-2.0, -1.5, -1.0, -0.5):
+        ax.plot([zz, zz], [-1.8, 1.8], color=ILLUMINATION, lw=1.0)
+    arrow(ax, -2.3, 2.05, -1.2, 2.05, color="#8a6300", lw=1.2)
+    label(ax, -1.75, 2.3, "plane wave", fontsize=9, color="#8a6300")
+    P = np.array([z, 0.0])
+    ax.plot(*P, "o", color=LASER, ms=6, zorder=6)
+    label(ax, z + 0.15, 0.12, "P", fontsize=10, ha="left", color=LASER)
+    for m in range(1, n_zones + 1):
+        ax.plot([0, z], [rho[m], 0], color="0.45", lw=0.7, alpha=0.8)
+    label(ax, 1.2, rho[1] - 0.05, "z + λ/2", fontsize=7.5, ha="left", va="top", color="0.3")
+    label(ax, 1.2, 0.8*rho[-1] + 0.12, f"z + {n_zones}λ/2", fontsize=7.5, ha="left",
+          va="bottom", color="0.3")
+    ax.plot([0, z], [0, 0], color="0.2", lw=0.9)
+    label(ax, z/2, -0.18, "z", fontsize=10, va="top", style="italic")
+    arrow(ax, -0.75, 0, -0.75, a, color="0.2", lw=0.9, style="<|-|>")
+    label(ax, -0.95, a/2 + 0.2, "a", fontsize=10, ha="right", style="italic")
+    label(ax, 2.6, -1.2,
+          "zone edges: ρ$_m$ = √(m λ z)\n"
+          "neighbouring zones (+, −) arrive at P in antiphase\n"
+          f"Fresnel number N$_F$ = a²/(λz) = number of zones (here {n_zones})",
+          fontsize=9, va="center")
+    _finish(ax, (-2.6, 6.6), (-2.3, 2.6), title)
+
+
+def iso_caustic(ax, title=None):
+    """Sketch of a beam caustic and an ISO 11146 measurement
+    (notebook 07, beam quality): the second moment diameter d(z) = d0 sqrt(1 + ((z -
+    z0)/z_R)^2) around the waist, its asymptotes with the full divergence
+    angle Theta, the Rayleigh length z_R, and the measurement planes of the
+    standard: at least ten, about half of them within one Rayleigh length of
+    the waist and about half beyond two Rayleigh lengths. A hyperbola fitted
+    to d^2(z) gives d0, z0, Theta and M^2 = pi d0 Theta/(4 lambda).
+
+    Parameters
+    ----------
+    ax : matplotlib Axes
+    title : str, optional
+    """
+
+    d0, zr = 0.5, 1.0
+    z = np.linspace(-4.2, 4.2, 300)
+    d = d0*np.sqrt(1 + (z/zr)**2)
+    ax.fill_between(z, -d/2, d/2, color=LASER, alpha=0.22, lw=0)
+    ax.plot(z, d/2, color=LASER, lw=1.4)
+    ax.plot(z, -d/2, color=LASER, lw=1.4)
+    th = d0/zr/2
+    for s in (1, -1):
+        ax.plot(z, s*th*z, color="0.45", lw=0.8, ls="--")
+    ax.plot([-4.4, 4.4], [0, 0], color="0.6", lw=0.7, ls="-.")
+    arrow(ax, 0, -d0/2, 0, d0/2, color="0.15", lw=0.9, style="<|-|>")
+    label(ax, 0.0, -d0/2 - 0.08, "d$_0$", fontsize=10, va="top")
+    for s in (1, -1):
+        ax.plot([s*zr]*2, [-1.55, 1.55], color="0.5", lw=0.7, ls=":")
+        ax.plot([s*2*zr]*2, [-1.55, 1.55], color="0.5", lw=0.7, ls=":")
+    label(ax, zr, 1.65, "z$_R$", fontsize=9, va="bottom")
+    label(ax, 2*zr, 1.65, "2z$_R$", fontsize=9, va="bottom")
+    label(ax, -zr, 1.65, "−z$_R$", fontsize=9, va="bottom")
+    label(ax, -2*zr, 1.65, "−2z$_R$", fontsize=9, va="bottom")
+    arc = np.linspace(-np.arctan(th), np.arctan(th), 30)
+    ax.plot(3.0*np.cos(arc), 3.0*np.sin(arc), color="0.3", lw=0.8)
+    label(ax, 3.15, 0.0, "Θ", fontsize=10, ha="left")
+    zin = np.array([-0.9, -0.55, -0.25, 0.25, 0.55, 0.9])
+    zout = np.array([-4.0, -3.2, -2.4, 2.4, 3.2, 4.0])
+    for zz in np.r_[zin, zout]:
+        dd = d0*np.sqrt(1 + (zz/zr)**2)
+        ax.plot([zz, zz], [-dd/2, dd/2], color=IMAGING, lw=1.6, zorder=4)
+        ax.plot([zz], [dd/2], "o", ms=3.5, color=IMAGING, zorder=5)
+    label(ax, 0.0, -1.85, "ISO 11146: ≥ 10 planes, about half within ±z$_R$ of the waist,\n"
+          "about half beyond 2 z$_R$; fit d²(z) = a + bz + cz²", fontsize=9, va="top", color=IMAGING)
+    label(ax, -3.0, 1.3, "d(z) = d$_0$ √(1 + (z/z$_R$)²)", fontsize=9)
+    label(ax, 2.9, -1.25, "M² = π d$_0$ Θ / (4λ)", fontsize=9)
+    _finish(ax, (-4.6, 4.6), (-2.7, 2.1), title)
+
+
+def tir_beam_shifts(ax, kind="goos_haenchen", theta=50.0, n=1.5, title=None):
+    """Sketch of a beam at total internal reflection
+    (notebook 13, stacks as transfer functions).
+
+    kind="goos_haenchen": a beam in glass (index n) hits the interface to
+    air beyond the critical angle. Each plane wave of the beam is reflected
+    completely, but with a phase that depends on its angle; the reflected
+    beam therefore leaves shifted along the interface by the Goos-Hänchen
+    shift, of the order of a wavelength, and the field reaches into the air
+    as an evanescent wave that decays like exp(-kappa |z|).
+
+    kind="ftir": a second glass block a distance d below the first one
+    catches the evanescent wave before it has decayed, and part of the light
+    tunnels through the gap (frustrated total internal reflection), with a
+    transmission that falls roughly like exp(-2 kappa d).
+
+    Parameters
+    ----------
+    ax : matplotlib Axes
+    kind : {"goos_haenchen", "ftir"}, optional
+    theta : number, optional
+        Angle of incidence in degrees (beyond the critical angle).
+    n : number, optional
+        Index of the glass.
+    title : str, optional
+    """
+
+    mp = _patches()
+    ti = np.radians(theta)
+    w = 0.32
+    L = 2.2
+
+    def clipped_band(clip, *args, **kwargs):
+        # a beam band cut off at an interface: clip its new artists to the glass
+        before = set(map(id, ax.patches + ax.collections + ax.lines))
+        band(ax, *args, **kwargs)
+        rect = mp.Rectangle(clip[0], clip[1], clip[2], transform=ax.transData,
+                            facecolor="none", edgecolor="none")
+        for art in ax.patches + ax.collections + ax.lines:
+            if id(art) not in before:
+                art.set_clip_path(rect)
+    d_in = np.array([np.sin(ti), -np.cos(ti)])
+    d_r = np.array([np.sin(ti), np.cos(ti)])
+    nrm = lambda d: np.array([-d[1], d[0]])
+    gap = 0.55 if kind == "ftir" else None
+    ax.add_patch(mp.Rectangle((-2.8, 0), 5.6, 2.3, facecolor=GLASS, edgecolor="none"))
+    ax.plot([-2.8, 2.8], [0, 0], color=EDGE, lw=1.2)
+    if gap is not None:
+        ax.add_patch(mp.Rectangle((-2.8, -gap - 1.6), 5.6, 1.6, facecolor=GLASS, edgecolor="none"))
+        ax.plot([-2.8, 2.8], [-gap, -gap], color=EDGE, lw=1.2)
+    # evanescent field below the interface
+    depth = gap if gap is not None else 1.2
+    zz = np.linspace(0, -depth, 40)
+    for k in range(len(zz) - 1):
+        ax.add_patch(mp.Rectangle((-0.9, zz[k + 1]), 1.8, zz[k] - zz[k + 1], facecolor=LASER,
+                                  alpha=0.45*np.exp(-3.0*abs(zz[k])), edgecolor="none", zorder=1))
+    shift = 0.0 if kind == "ftir" else 0.45
+    p0 = -L*d_in
+    # incident beam as a band
+    o = w*nrm(d_in)
+    clipped_band(((-3.0, 0.0), 6.0, 3.0), [p0[0] + o[0], o[0]], [p0[1] + o[1], o[1]],
+         [p0[0] - o[0], -o[0]], [p0[1] - o[1], -o[1]], color=LASER, alpha=0.3)
+    arrow(ax, *(0.6*p0), *(0.3*p0), color=LASER, lw=1.4)
+    # reflected beam, shifted along the interface
+    q0 = np.array([shift, 0.0])
+    q1 = q0 + L*d_r
+    o = w*nrm(d_r)
+    clipped_band(((-3.0, 0.0), 6.0, 3.0), [q0[0] + o[0], q1[0] + o[0]], [q0[1] + o[1], q1[1] + o[1]],
+         [q0[0] - o[0], q1[0] - o[0]], [q0[1] - o[1], q1[1] - o[1]],
+         color=LASER, alpha=0.3 if kind == "goos_haenchen" else 0.22)
+    arrow(ax, *(q0 + 0.55*L*d_r), *(q0 + 0.8*L*d_r), color=LASER, lw=1.4)
+    if kind == "goos_haenchen":
+        ax.plot([0, 0], [0, 1.4], color="0.4", lw=0.7, ls=":")
+        ax.plot([shift, shift], [0, 1.4], color="0.4", lw=0.7, ls=":")
+        arrow(ax, 0, 1.3, shift, 1.3, color="0.15", lw=0.9, style="<|-|>")
+        label(ax, shift/2, 1.45, "Δ$_{GH}$", fontsize=9, va="bottom")
+        label(ax, 0.0, -1.45, "evanescent field ~ exp(−κ|z|),  κ = k$_0$√(n² sin²θ − 1)\n"
+              "|r| = 1, but the phase of r depends on the angle:\n"
+              "the reflected beam is shifted by Δ$_{GH}$ ≈ λ", fontsize=8.5, va="top")
+        lo = -2.6
+    else:
+        t0 = np.array([0.0, -gap])
+        t1 = t0 + 1.4*d_in
+        o = w*nrm(d_in)
+        clipped_band(((-3.0, -gap - 2.0), 6.0, 2.0), [t0[0] + o[0], t1[0] + o[0]], [t0[1] + o[1], t1[1] + o[1]],
+             [t0[0] - o[0], t1[0] - o[0]], [t0[1] - o[1], t1[1] - o[1]], color=LASER, alpha=0.12)
+        arrow(ax, *(t0 + 0.6*d_in), *(t0 + 1.0*d_in), color=LASER, lw=1.0)
+        arrow(ax, -2.0, 0, -2.0, -gap, color="0.15", lw=0.9, style="<|-|>")
+        label(ax, -2.15, -gap/2, "d", fontsize=10, ha="right", style="italic")
+        label(ax, 2.4, -gap/2, "air gap", fontsize=8, ha="right", color="0.35")
+        label(ax, 0.0, -gap - 1.75, "the second block catches the evanescent wave:\n"
+              "T ~ exp(−2κd) for κd ≫ 1, R = 1 − T", fontsize=8.5, va="top")
+        lo = -gap - 2.5
+    label(ax, -2.7, 2.05, f"glass, n = {n:g}", fontsize=8.5, ha="left")
+    label(ax, -2.7, -0.2, "air", fontsize=8.5, ha="left", va="top")
+    tc = np.degrees(np.arcsin(1/n))
+    label(ax, 1.6, 2.05, f"θ = {theta:g}° > θ$_c$ = {tc:.1f}°", fontsize=8.5, ha="center")
+    _finish(ax, (-2.9, 2.9), (lo, 2.35), title)
