@@ -377,7 +377,7 @@ def _band_limit_mask(K_X, K_Y, x_prime, y_prime, z, wavelength, n):
 
 
 def rayleigh_sommerfeld_I_TF_planes(field, x_prime, y_prime, zs, wavelength, n=1.0,
-                                    band_limit=False, max_bytes=256*2**20):
+                                    band_limit=False, max_bytes=256*2**20, x_out=None, y_out=None):
     """rayleigh_sommerfeld_I_TF() of one field to many distances.
 
     The spectrum of the field and k_z are computed once; the inverse
@@ -399,18 +399,30 @@ def rayleigh_sommerfeld_I_TF_planes(field, x_prime, y_prime, zs, wavelength, n=1
         See rayleigh_sommerfeld_I_TF() (applied per distance).
     max_bytes : int, optional
         Memory for the planes of one batch.
+    x_out, y_out : arrays, optional
+        Linear, equidistant output coordinates (a single point is allowed,
+        e.g. for an x-z section). The plane wave sum of each plane is then
+        evaluated there by chirp-z transforms (fft.zoom_inv_FT()) instead of
+        an inverse FFT: finely sampled sections and through-focus spots of a
+        coarsely sampled (but band limited) field. The transfer function and
+        the periodicity are those of the input window, as without x_out.
 
     Returns
     -------
     fields : array
-        Propagated fields, shape (len(zs), Ny, Nx).
+        Propagated fields, shape (len(zs), Ny, Nx), or
+        (len(zs), len(y_out), len(x_out)).
     x, y : arrays
-        Coordinates in the final planes (the same as given).
+        Coordinates in the final planes (the same as given, or x_out, y_out).
     """
 
     field = np.asarray(field)
     zs = np.atleast_1d(np.asarray(zs, dtype=float))
     k = wavenumber(wavelength, n)
+    if (x_out is None) != (y_out is None):
+        raise ValueError("Give both x_out and y_out or none of them")
+    if x_out is not None:
+        return _planes_on_window(field, x_prime, y_prime, zs, wavelength, n, band_limit, x_out, y_out)
     K_X, K_Y = freq_grid(x_prime, y_prime, wavenumbers=True, normal_order=False)
     KZ = k_z(k, K_X, K_Y)
     evanescent = K_X**2 + K_Y**2 > np.real(k)**2
@@ -446,6 +458,27 @@ def rayleigh_sommerfeld_I_TF_planes(field, x_prime, y_prime, zs, wavelength, n=1
             block[...] = fftshift(ifft2(block), axes=(-2, -1))
 
     return out, x_prime, y_prime
+
+
+def _planes_on_window(field, x_prime, y_prime, zs, wavelength, n, band_limit, x_out, y_out):
+    """rayleigh_sommerfeld_I_TF_planes() evaluated on an output window."""
+
+    x_in, y_in = _linear_coords(x_prime, y_prime)
+    x_out = np.atleast_1d(np.asarray(x_out, dtype=float))
+    y_out = np.atleast_1d(np.asarray(y_out, dtype=float))
+    k = wavenumber(wavelength, n)
+    kx, ky = frequencies(x_in), frequencies(y_in)
+    K_X, K_Y = np.meshgrid(kx, ky)
+    # plane wave amplitudes referring to the origin (as in shifted_angular_spectrum())
+    A = FT(np.asarray(field, dtype=complex))*np.exp(-1j*(K_X*x_in[len(x_in)//2] + K_Y*y_in[len(y_in)//2]))
+    out = np.empty((len(zs), len(y_out), len(x_out)), dtype=complex)
+    for i, z in enumerate(zs):
+        _, TF = _transfer_function(k, K_X, K_Y, z)
+        if band_limit:
+            TF = np.where(_band_limit_mask(K_X, K_Y, x_in, y_in, z, wavelength, n), 0.0, TF)
+        out[i] = zoom_inv_FT(A*TF, kx, ky, x_out, y_out)
+
+    return out, x_out, y_out
 
 
 def rayleigh_sommerfeld_I_DI(field, x_prime, y_prime, z, wavelength, n=1.0, use_simpson=True):
