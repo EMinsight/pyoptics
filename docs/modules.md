@@ -477,6 +477,16 @@ been around; the tier says what to build on.
   and overlaps of the parts (notebook 415, CAD export of lens systems); spacer
   bores follow the traced beam envelope (also off axis), and spacers
   between overlapping lenses are cylinders
+- `lens_files`: new, tested: reading and writing lens prescriptions of
+  `raytrace.System`: patent tables (plain text or CSV, tolerant of the
+  usual notations: "∞", blank cells for air, "×10^-5" and "D-05", aspheric
+  data as a table or as "K = ..., A4 = ..."), Zemax OpticStudio sequential
+  files (.zmx: STANDARD, EVENASPH, TOROIDAL, BICONIC, COORDBRK, PARAXIAL,
+  decentred and tilted surfaces as coordinate break pairs) and CODE V
+  sequence files (.seq: spheres, conics, aspheres, Y toroids, mirrors,
+  decentres); glasses by catalogue name from `glasses` with a fallback to
+  the Abbe model of n_d and V_d; checked by write/read round trips that
+  trace the same rays (notebook 162, CAD export of lens systems, section 9)
 - `nsrt`: new, tested: non-sequential ray tracing; oriented faces with a
   medium on each side (conics and `raytrace` sag surfaces, rectangles,
   cylinders, cones, spheres, boxes) and triangle meshes with a bounding
