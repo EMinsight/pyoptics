@@ -13131,7 +13131,7 @@ def imaging_pupil(ax, title=None):
     (notebooks 15 (imaging and Zernikes) and 17 (PSF, MTF and Strehl)): a point in the
     object plane, the first lens turns its spherical wave into a plane wave
     in the pupil (the common focal plane), the stop of radius f NA cuts the
-    plane waves to |k_perp| <= k NA, a wavefront error W tilts and bends the
+    plane waves to ``|k_perp| <= k NA``, a wavefront error W tilts and bends the
     wave there, and the second lens focuses it into the amplitude point
     spread function h = F^-1[P] with P = A exp(i Phi), Phi = 2 pi W/lambda.
 
@@ -13356,7 +13356,7 @@ def tir_beam_shifts(ax, kind="goos_haenchen", theta=50.0, n=1.5, title=None):
     completely, but with a phase that depends on its angle; the reflected
     beam therefore leaves shifted along the interface by the Goos-Hänchen
     shift, of the order of a wavelength, and the field reaches into the air
-    as an evanescent wave that decays like exp(-kappa |z|).
+    as an evanescent wave that decays like ``exp(-kappa |z|)``.
 
     kind="ftir": a second glass block a distance d below the first one
     catches the evanescent wave before it has decayed, and part of the light
@@ -13460,7 +13460,7 @@ def alternating_projections(ax, kind="fienup", title=None):
 
     kind="fienup": support based phase retrieval (notebook 28, phase retrieval). The
     current object estimate g_k is Fourier transformed, its modulus is
-    replaced by the measured |F| (the phase is kept), and the result is
+    replaced by the measured ``|F|`` (the phase is kept), and the result is
     transformed back; in the object plane the support and positivity
     constraints give the next estimate (error reduction or hybrid
     input-output).
