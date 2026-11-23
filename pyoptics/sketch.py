@@ -104,6 +104,12 @@ Setup sketches for the other example notebooks:
   thermal_lens_resonator(): plane mirrors and a rod with a thermal lens;
   unstable_resonator(): a positive-branch confocal unstable resonator and
   its output beam (notebook 170, laser resonator modes).
+- eyepiece_layout(): an eyepiece behind a telescope objective, the
+  eyepiece traced backwards from the eye pupil, and the exit pupil with
+  pupil aberration (notebook 171, eyepieces).
+- binocular_layout(): a Keplerian telescope, a Porro binocular and a roof
+  prism binocular with its Schmidt–Pechan prism
+  (notebook 172, binoculars and erecting prisms).
 - diode_collimator(), fibre_coupling(): an astigmatic laser diode with an
   aspheric collimator and a focusing lens, and a Gaussian beam focused into
   a single-mode fibre by a spherical lens or an asphere (notebook 112, field tracing applications).
@@ -388,7 +394,8 @@ __all__ = ["lens", "stop", "plane", "prism", "mirror", "detector", "point_source
            "structured_light_layout", "crystal_optics_layout", "modulator_layout", "laser_layout",
            "hybrid_lens_layout", "litho_stochastics_layout", "mode_decomposition",
            "multimode_fibre", "led_behind_collimator", "young_broadband", "fox_li_unfolded",
-           "aperture_selection", "thermal_lens_resonator", "unstable_resonator", "text_scale"]
+           "aperture_selection", "thermal_lens_resonator", "unstable_resonator", "eyepiece_layout",
+           "binocular_layout", "text_scale"]
 
 
 GLASS = "#cfe3f3"
@@ -12470,7 +12477,7 @@ def mode_decomposition(ax, kind="incoherent", title=None):
 
     - "incoherent": the coherent modes of a partially coherent beam
       (Hermite-Gaussians with the weights w_j); each is traced through the
-      chain, and the detector adds the irradiances w_j |E_j|^2.
+      chain, and the detector adds the irradiances w_j abs(E_j)^2.
     - "pulse": the spectral components of a pulse at the frequencies
       omega_j; the detector adds the fields with their complex amplitudes
       a_j, and the sum is a short pulse.
@@ -12898,7 +12905,7 @@ def unstable_resonator(ax, M=2.0, title=None):
     (notebook 170, laser resonator modes). A large concave mirror and a small convex
     mirror share their focal point F (behind the small mirror). A
     collimated ray that hits the small mirror seems to come from F, and the
-    large mirror sends it back collimated, M = R1/|R2| times further from
+    large mirror sends it back collimated, M = R1/abs(R2) times further from
     the axis. Rays that pass the edge of the small mirror leave the cavity
     as an annular (for strips: two-strip) output beam; the geometric output
     coupling is 1 - 1/M for strips and 1 - 1/M^2 for round mirrors.
@@ -12946,3 +12953,151 @@ def unstable_resonator(ax, M=2.0, title=None):
     label(ax, (L + z_F)/2 + 0.3, -h1 - 0.1, "output coupling\n1 − 1/M (strips)",
           fontsize=8, va="top", color=STRAY)
     _finish(ax, (-0.4, z_out + 0.9), (-h1 - 0.6, h1 + 0.5), title)
+
+
+
+
+def eyepiece_layout(ax, kind="telescope", title=None):
+    """Sketches of an eyepiece in a telescope (notebook 171, eyepieces).
+
+    Parameters
+    ----------
+    ax : matplotlib Axes
+    kind : {"telescope", "reversed", "pupil"}, optional
+        "telescope": a Keplerian telescope, objective, field stop in the
+        common focal plane, eyepiece, exit pupil (the image of the
+        objective) at the eye relief behind the eyepiece, the real field
+        angle and the apparent field angle. "reversed": the same eyepiece
+        traced backwards, as it is designed: the eye pupil is the aperture
+        stop, parallel beams at the apparent field angles come to a focus
+        in the field stop. "pupil": spherical aberration of the exit pupil,
+        the chief rays of the outer field cross the axis closer to the
+        eyepiece; an eye at the paraxial pupil loses parts of the outer
+        field (kidney beans).
+    title : str, optional
+    """
+
+    f_o, f_e = 6.0, 1.5
+    z_e = f_o + f_e
+    z_xp = z_e + f_e*(f_o + f_e)/f_o
+    lenses = [(0.0, f_o), (z_e, f_e)]
+    if kind == "telescope":
+        D = 1.2
+        lens(ax, 0.0, 1.45, text="objective\n$f_\\mathrm{o}$, diameter $D$", text_y=-1.65)
+        lens(ax, z_e, 0.95, text="eyepiece\n$f_\\mathrm{e}$", text_y=-1.65)
+        w = 0.085
+        stop(ax, f_o, 0.95, openings=((0.0, f_o*w*1.05),), width=0.06)
+        label(ax, f_o, -1.15, "field stop", fontsize=8, va="top")
+        for y0 in (-D/2, 0.0, D/2):
+            draw_ray(ax, lenses, -1.8, y0, 0.0, z_xp + 1.5, color=IMAGING, lw=1.0, arrow=y0 == 0)
+            draw_ray(ax, lenses, -1.8, y0 - 1.8*w, w, z_xp + 1.5, color=STRAY, lw=1.0,
+                     arrow=y0 == 0)
+        ax.plot([-1.6, 0], [0, 0], color="0.5", lw=0.6)
+        label(ax, -1.2, 0.75, "real field\nangle $\\omega$", fontsize=8, color=STRAY)
+        label(ax, z_xp + 1.25, -0.95, "apparent field\nangle $\\omega'$", fontsize=8, color=STRAY)
+        ax.plot([z_xp, z_xp + 1.5], [0, 0], color="0.5", lw=0.6)
+        stop(ax, z_xp, 0.6, openings=((0.0, D/2*f_e/f_o*1.05),), width=0.05, color="0.55")
+        label(ax, z_xp, 0.72, "exit pupil\n$D' = D f_\\mathrm{e}/f_\\mathrm{o}$", fontsize=8,
+              va="bottom")
+        arrow(ax, z_e, -1.0, z_xp, -1.0, style="<|-|>", text="eye relief", text_pos=(
+            0.5*(z_e + z_xp), -1.15), fontsize=8, va="top")
+        _finish(ax, (-2.3, z_xp + 2.0), (-2.3, 1.9), title)
+    elif kind == "reversed":
+        z0 = 0.0
+        zl = 1.0
+        fz = zl + f_e
+        stop(ax, z0, 0.7, openings=((0.0, 0.22),), width=0.05)
+        label(ax, z0 - 0.3, -0.85, "eye pupil\n= aperture stop", fontsize=8, va="top")
+        lens(ax, zl, 1.0, text="eyepiece", text_y=-1.45)
+        stop(ax, fz, 0.9, openings=((0.0, 0.8),), width=0.05)
+        label(ax, fz, -1.05, "field stop\n(image plane)", fontsize=8, va="top")
+        cols = [IMAGING, "#5aa469", STRAY]
+        for ang, c in zip((0.0, 0.25, 0.5), cols):
+            for p in (-0.2, 0.0, 0.2):
+                draw_ray(ax, [(zl, f_e)], z0 - 0.9, p - 0.9*ang, ang, fz, color=c, lw=0.9,
+                         arrow=p == 0.0)
+        label(ax, z0 - 0.5, 0.85, "parallel beams at the\napparent field angles", fontsize=8)
+        arrow(ax, z0 - 1.2, 1.35, fz + 0.4, 1.35, text="trace direction (reversed)",
+              text_pos=(0.5*(z0 - 1.2 + fz + 0.4), 1.5), fontsize=8, va="bottom")
+        _finish(ax, (-1.4, fz + 0.6), (-1.6, 1.75), title)
+    elif kind == "pupil":
+        zl = 0.0
+        lens(ax, zl, 1.2, text="eyepiece", text_y=-1.35)
+        xs = [2.0, 1.75, 1.35]
+        cols = [IMAGING, "#5aa469", STRAY]
+        for (h, zc, c) in zip((0.25, 0.6, 0.95), xs, cols):
+            for s in (1, -1):
+                ax.plot([-1.2, zl], [s*h*0.55 + s*0.0, s*h], color=c, lw=0.9, alpha=0.6)
+                ax.plot([zl, zc + 0.9], [s*h, s*h - s*h/zc*(zc + 0.9)], color=c, lw=1.1)
+        ax.plot([2.0, 2.0], [-0.55, 0.55], color="0.3", lw=2)
+        label(ax, 2.0, 0.65, "eye pupil at the\nparaxial eye relief", fontsize=8, va="bottom")
+        label(ax, 1.15, -0.95, "outer chief rays\ncross the axis earlier", fontsize=8, color=STRAY)
+        _finish(ax, (-1.3, 3.1), (-1.6, 1.5), title)
+    else:
+        raise ValueError("kind must be 'telescope', 'reversed' or 'pupil'.")
+
+
+def binocular_layout(ax, kind="porro", title=None):
+    """Sketches of the two kinds of binoculars
+    (notebook 172, binoculars and erecting prisms).
+
+    Parameters
+    ----------
+    ax : matplotlib Axes
+    kind : {"porro", "roof", "kepler"}, optional
+        "kepler": objective and eyepiece alone, the image upside down.
+        "porro": a Porro prism system between objective and eyepiece; the
+        path is folded twice (the two prisms are crossed in reality and
+        drawn in one plane here), the objectives sit further apart than
+        the eyepieces. "roof": a Schmidt-Pechan roof prism, objective and
+        eyepiece on one axis.
+    title : str, optional
+    """
+
+    mpatches = _patches()
+    prism_face, prism_edge = "#cfe3f3", EDGE
+    if kind == "kepler":
+        f_o, f_e = 5.0, 1.25
+        lens(ax, 0, 1.0, text="objective", text_y=-1.25)
+        lens(ax, f_o + f_e, 0.6, text="eyepiece", text_y=-1.25)
+        lenses = [(0, f_o), (f_o + f_e, f_e)]
+        for y0 in (-0.6, 0, 0.6):
+            draw_ray(ax, lenses, -1.0, y0 + 0.08, -0.08, 8.2, color=IMAGING, lw=0.9, arrow=y0 == 0)
+        ax.annotate("", xy=(f_o, -0.45), xytext=(f_o, 0.0),
+                    arrowprops=dict(arrowstyle="-|>", color=STRAY, lw=1.6))
+        label(ax, f_o + 0.1, -0.7, "inverted\nimage", fontsize=8, color=STRAY)
+        _finish(ax, (-1.2, 8.4), (-1.6, 1.3), title)
+    elif kind == "porro":
+        lens(ax, 0, 1.0, text="objective", text_y=-1.3)
+        tri1 = np.array([[2.0, -0.9], [3.6, 0.7], [2.0, 2.3]])
+        tri2 = np.array([[1.4, 1.0], [1.4, 4.2], [-0.2, 2.6]])
+        for tri in (tri1, tri2):
+            ax.add_patch(mpatches.Polygon(tri, closed=True, facecolor=prism_face,
+                                          edgecolor=prism_edge, lw=1, zorder=2))
+        path = np.array([[-1.0, 0.0], [2.9, 0.0], [2.9, 1.4], [1.0, 1.4], [1.0, 3.8], [5.6, 3.8]])
+        ax.plot(path[:, 0], path[:, 1], color=IMAGING, lw=1.3, zorder=3)
+        ax.add_patch(mpatches.Ellipse((4.8, 3.8), 0.22, 1.1, facecolor=GLASS, edgecolor=EDGE,
+                                      lw=1, zorder=3))
+        label(ax, 4.8, 3.05, "eyepiece", fontsize=9, va="top")
+        label(ax, 3.75, 0.0, "Porro\nprism 1", fontsize=8, ha="left")
+        label(ax, -0.35, 3.6, "Porro\nprism 2", fontsize=8, ha="right")
+        label(ax, 2.2, -2.0, "two TIR reflections in each prism; the prisms are\ncrossed "
+              "(drawn in one plane), together they turn the image by 180°", fontsize=8)
+        _finish(ax, (-1.6, 6.0), (-2.6, 4.5), title)
+    elif kind == "roof":
+        from . import prisms as _prisms
+        lens(ax, 0, 1.0, text="objective", text_y=-1.3)
+        sp = _prisms.schmidt_pechan(0.7)
+        z0 = 1.2
+        for pr_ in sp:
+            pr_.section = pr_.section + np.array([z0, 0.0])
+        _prisms.draw_section(ax, sp, start=(-1.0, 0.0), direction=(1.0, 0.0),
+                             ray_color=IMAGING)
+        pts, _ = _prisms.section_trace(sp, (-1.0, 0.0), (1.0, 0.0))
+        ax.plot([pts[-2][0], 9.2], [0, 0], color=IMAGING, lw=1.4)
+        lens(ax, 8.6, 0.55, text="eyepiece", text_y=-1.3)
+        label(ax, 3.6, 1.5, "Schmidt–Pechan prism: half-penta prism and\nSchmidt roof prism "
+              "(dashed: the roof edge)", fontsize=8)
+        _finish(ax, (-1.6, 9.4), (-3.2, 2.1), title)
+    else:
+        raise ValueError("kind must be 'kepler', 'porro' or 'roof'.")

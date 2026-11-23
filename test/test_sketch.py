@@ -463,3 +463,17 @@ def test_thermal_lens_mode_matches_abcd():
     with pytest.raises(ValueError):
         sketch.mode_decomposition(ax, "coherent")
     plt.close(fig)
+
+
+def test_eyepiece_and_binocular_sketches():
+    for draw, kinds in ((sketch.eyepiece_layout, ("telescope", "reversed", "pupil")),
+                        (sketch.binocular_layout, ("kepler", "porro", "roof"))):
+        for kind in kinds:
+            fig, ax = plt.subplots()
+            draw(ax, kind, title=kind)
+            assert ax.get_title() == kind and (ax.lines or ax.patches)
+            plt.close(fig)
+        fig, ax = plt.subplots()
+        with pytest.raises(ValueError):
+            draw(ax, "unknown")
+        plt.close(fig)

@@ -490,6 +490,21 @@ What each module does and how mature it is. Planned work is listed in
   any base surface, spline normals, covered by the differential ray trace)
   and ``energy_map`` (gridded transmittance or reflectance of any surface,
   pupil apodization of the PSF and part of the polarization ray trace)
+- `eyepieces`: new, tested: Huygens, Ramsden, Kellner, Plössl and Erfle
+  eyepieces as `raytrace` systems traced backwards from the eye pupil
+  (scalable to any focal length); eye relief from the pupil imaging,
+  apparent field, distortion and lateral colour in angle, field curves in
+  diopters, angular blur, pupil aberration (kidney beans) and afocal
+  telescopes with an objective in front; checked against Newton's equation
+  for the pupil (notebook 171, eyepieces)
+- `prisms`: new, tested: a non-sequential polarization ray trace through
+  convex glass prisms with refracting, TIR, mirror coated and roof faces
+  (3×3 polarization ray tracing matrices, coatings from `coatings`); Porro
+  prisms, the Porro system and the Schmidt–Pechan prism, image orientation
+  from the reflections, 2D sections, tunnel diagrams and glass paths, Jones
+  pupils, the roof phase error, the polarized PSF and a multilayer phase
+  coating; checked against the TIR phase formula and the reflection
+  matrices (notebook 172, binoculars and erecting prisms)
 - `freeform`: new, tested: beam shaping by ray mapping; the radial ray map
   from equal enclosed power, Fermi–Dirac flat tops, the two-lens Gaussian
   to flat-top shaper (Kreuzer, Hoffnagle–Jefferson) from equal optical path

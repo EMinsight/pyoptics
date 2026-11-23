@@ -114,6 +114,8 @@ Imaging and ray tracing
    pyoptics.phone_lens
    pyoptics.zoom
    pyoptics.spectacles
+   pyoptics.eyepieces
+   pyoptics.prisms
 
 Lithography
 -----------
