@@ -1,5 +1,5 @@
 """Tests of pyoptics.eyepieces: first order data of the five eyepieces,
-the eye relief and the afocal telescope (notebook 171, eyepieces)."""
+the eye relief and the afocal telescope (notebook 432, eyepieces)."""
 
 import numpy as np
 import pytest

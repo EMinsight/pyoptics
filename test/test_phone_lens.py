@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #-*- coding:utf-8 -*-
 
-"""Tests of the phone camera lens helpers (notebook 159,
+"""Tests of the phone camera lens helpers (notebook 430,
 phone camera lens with Forbes Q polynomials)."""
 
 import numpy as np

@@ -3,10 +3,10 @@
 
 """Split-step solvers for nonlinear propagation: pulses in fibres and
 crystals, coupled envelopes of several frequencies, and beams in Kerr media
-(notebooks 121 (SPM and solitons in fibres),
-145 (second harmonic generation and phase matching),
-146 (parametric amplification and OPOs) and
-147 (Kerr effect and self-focusing)).
+(notebooks 726 (SPM and solitons in fibres),
+710 (second harmonic generation and phase matching),
+711 (parametric amplification and OPOs) and
+712 (Kerr effect and self-focusing)).
 
 Units are free as long as they are consistent: the fibre notebooks use ps,
 km and W (gamma in 1/(W km), beta_2 in ps²/km), the crystal notebooks fs

@@ -20,7 +20,7 @@ Primitives (all draw onto a given matplotlib Axes):
 - paraxial_ray(), draw_ray(): trace a ray through a sequence of thin lenses
   (in either direction along z) and draw it.
 
-Microscope sketches used by the example notebooks 52 (Abbe image formation) to 55 (Fourier ptychography):
+Microscope sketches used by the example notebooks 300 (Abbe image formation) and 310 (phase contrast and DIC) to 312 (Fourier ptychography):
 
 - koehler_microscope(): a transmitted light microscope with Köhler
   illumination, the illumination and image forming ray paths and the two
@@ -41,56 +41,56 @@ two edge rays), arrow(), wavefront().
 
 Setup sketches for the other example notebooks:
 
-- fold_mirror(): coated 45° fold mirror with s and p (notebook 14, coated laser mirror).
+- fold_mirror(): coated 45° fold mirror with s and p (notebook 203, coated laser mirror).
 - twyman_green(): Twyman-Green interferometer with a PZT phase shifter
-  (notebook 23, interferometry).
+  (notebook 500, interferometry).
 - fizeau_interferometer(): Fizeau interferometer with a transmission
-  sphere, confocal and cat's eye positions (notebook 24, radius interferometer).
+  sphere, confocal and cat's eye positions (notebook 502, radius interferometer).
 - cgh_null_test(): a CGH null test of a concave asphere in the beam of a
   transmission sphere, the diffraction orders of the tilt carrier or the
-  alignment zones (notebook 165, CGH null testing of aspheres).
+  alignment zones (notebook 503, CGH null testing of aspheres).
 - shack_hartmann_sensor(), phase_diversity_setup(): two ways to measure a
-  lens (notebook 25, Shack-Hartmann vs phase diversity).
+  lens (notebook 510, Shack-Hartmann vs phase diversity).
 - holography_setup(): off-axis digital holography, lensless or with a
-  microscope (notebooks 26 (digital holography) and 27 (holographic microscopy)).
+  microscope (notebooks 530 (digital holography) and 531 (holographic microscopy)).
 - krf_illuminator(): the KrF illuminator with its pupil and field planes
-  (notebook 42, KrF illuminator).
+  (notebook 823, KrF illuminator).
 - spatial_filter(): beam expander with a pinhole that removes a ghost
-  (notebook 56, Gaussian beam decomposition).
+  (notebook 452, Gaussian beam decomposition).
 - vortex_interferometer(): Mach-Zehnder with a spiral phase plate, with a
   tilted or a spherical reference wave; mode_converter(): the pi/2
-  cylindrical lens converter between HG and LG modes (notebook 69, optical vortices).
+  cylindrical lens converter between HG and LG modes (notebook 116, optical vortices).
 - axicon_bessel(): an axicon makes a Bessel zone, an obstacle in it casts a
-  short shadow (notebook 68, Bessel and Airy beams).
+  short shadow (notebook 115, Bessel and Airy beams).
 - cubic_phase_airy(): a cubic phase plate and a lens make an Airy beam,
-  whose rays touch a parabolic caustic (notebook 68, Bessel and Airy beams).
+  whose rays touch a parabolic caustic (notebook 115, Bessel and Airy beams).
 - young_extended_source(), vcz_setup(), stellar_interferometer(),
   michelson_interferometer(), hbt_interferometer(): Young's double pinhole
   with an extended source, the van Cittert-Zernike theorem, Michelson's
   stellar interferometer, a Michelson interferometer for temporal coherence
-  and a Hanbury Brown-Twiss intensity interferometer (notebook 74, coherence and stellar interferometry).
+  and a Hanbury Brown-Twiss intensity interferometer (notebook 120, coherence and stellar interferometry).
 - fibre_types(), fibre_acceptance(), skew_ray_end_view(): step-index,
   graded-index and single-mode fibres with their profiles and rays, the
-  acceptance cone and a skew ray seen along the axis (notebook 115, light in a fibre);
+  acceptance cone and a skew ray seen along the axis (notebook 720, light in a fibre);
   slab_transverse_resonance(): the ray picture of a slab mode (notebook
-  116, fibre modes); dispersion_mechanisms(): intermodal, chromatic and polarization
-  mode dispersion (notebooks 117 (dispersion in fibres) and 118 (pulse broadening)); fibre_bragg_grating(): a
-  grating in the core with its spectra (notebook 119, fibre Bragg gratings); fibre_link(): a
-  basic intensity modulated link (notebook 120, fibre link).
+  721, fibre modes); dispersion_mechanisms(): intermodal, chromatic and polarization
+  mode dispersion (notebooks 722 (dispersion in fibres) and 723 (pulse broadening)); fibre_bragg_grating(): a
+  grating in the core with its spectra (notebook 724, fibre Bragg gratings); fibre_link(): a
+  basic intensity modulated link (notebook 725, fibre link).
 - field_tracing_chain(), propagation_operators(), ball_lens_handover(),
   mach_zehnder_defect(), babinet_split(): a field tracing chain as a product
   of operators, what each free-space operator does, rays through a ball lens
   handing over to waves at the caustic, a Mach-Zehnder interferometer with
-  a small defect, and Babinet's principle (notebook 109, field tracing).
+  a small defect, and Babinet's principle (notebook 460, field tracing).
 - lpia_principle(), relief_grating_orders(), rod_lens_lpia_chain(),
   lpia_output_plane(), plano_convex_orientation(): a structured interface in
   the thin element and in the local plane interface approximation, a relief
   grating and its orders, the LPIA chain through a rod lens, where to put
   the output plane behind a focusing surface, and the two orientations of a
-  plano-convex lens (notebook 168, local plane interface approximation).
+  plano-convex lens (notebook 462, local plane interface approximation).
 - polishing_layout(): a bonnet tool on an asphere and its removal spot,
   raster and spiral tool paths, the ripple of overlapping tracks and the
-  turned-down edge under an overhanging tool (notebook 175,
+  turned-down edge under an overhanging tool (notebook 414,
   polishing errors).
 - mode_decomposition(): a source as modes traced one by one and added
   incoherently or, for a pulse, coherently; multimode_fibre(): a
@@ -98,269 +98,269 @@ Setup sketches for the other example notebooks:
   led_behind_collimator(): an LED die in the focal plane of a collimator,
   the tilted plane waves of its emitters on a screen; young_broadband():
   Young's double slit in broadband light
-  (notebook 169, source models in field tracing).
+  (notebook 461, source models in field tracing).
 - fox_li_unfolded(): the Fox-Li iteration as a row of apertures;
   aperture_selection(): an aperture that clips TEM01 more than TEM00;
   thermal_lens_resonator(): plane mirrors and a rod with a thermal lens;
   unstable_resonator(): a positive-branch confocal unstable resonator and
-  its output beam (notebook 170, laser resonator modes).
+  its output beam (notebook 701, laser resonator modes).
 - eyepiece_layout(): an eyepiece behind a telescope objective, the
   eyepiece traced backwards from the eye pupil, and the exit pupil with
-  pupil aberration (notebook 171, eyepieces).
+  pupil aberration (notebook 432, eyepieces).
 - binocular_layout(): a Keplerian telescope, a Porro binocular and a roof
   prism binocular with its Schmidt–Pechan prism
-  (notebook 172, binoculars and erecting prisms).
+  (notebook 433, binoculars and erecting prisms).
 - diode_collimator(), fibre_coupling(): an astigmatic laser diode with an
   aspheric collimator and a focusing lens, and a Gaussian beam focused into
-  a single-mode fibre by a spherical lens or an asphere (notebook 112, field tracing applications).
+  a single-mode fibre by a spherical lens or an asphere (notebook 463, field tracing applications).
 - resonator_unfolded(): a two mirror resonator and the same resonator
   unfolded into a periodic lens guide, one ray through both;
   resonator_types(): plane-parallel, plane-concave, confocal and
   concentric resonators with their eigenmodes, phase fronts and centres of
   curvature; folded_resonator(): a three mirror resonator folded at a
-  concave mirror, tangential and sagittal planes (notebook 08, ABCD matrices).
+  concave mirror, tangential and sagittal planes (notebook 111, ABCD matrices).
 - rainbow_observer(): sun behind the observer, the rain, the antisolar
-  point and the cones of the primary and secondary bow (notebook 71, rainbows and glories).
+  point and the cones of the primary and secondary bow (notebook 906, rainbows and glories).
 - glory_aircraft(): the glory and the cloud bow around the shadow of an
-  aircraft on a cloud deck (notebook 71, rainbows and glories).
+  aircraft on a cloud deck (notebook 906, rainbows and glories).
 - twinkling_star(): starlight through turbulent layers, shadow bands at
   the ground, an eye and a telescope; adaptive_optics_system(): telescope,
   deformable mirror, dichroic, Shack-Hartmann sensor, science camera and
-  the real-time loop (notebook 72, twinkling stars and AO).
+  the real-time loop (notebook 903, twinkling stars and AO).
 - wavefront_shaping_setup(): an SLM imaged onto a diffuser, a thick slab or
   a multimode fibre, a camera behind it and the feedback loop, optionally
   with the flat reference frame for measuring the transmission matrix
-  (notebook 73, wavefront shaping).
+  (notebook 535, wavefront shaping).
 - foucault_tester(): the Foucault knife-edge (or wire, or Ronchi) test of
   a concave mirror at its centre of curvature; schlieren_system(): a lens
   type Toepler schlieren system with a slit source and a knife edge, and a
-  direct shadowgraph (notebook 76, Schlieren and knife-edge).
+  direct shadowgraph (notebook 511, Schlieren and knife-edge).
 - sim_microscope(), sted_microscope(): structured illumination with a
   grating and an order mask, and a STED microscope with a vortex plate,
-  dichroic mirrors and a pinhole (notebook 78, super-resolution microscopy).
+  dichroic mirrors and a pinhole (notebook 313, super-resolution microscopy).
 - grin_rod_imaging(): sine rays in a GRIN rod, inverted and upright
   images at half and full pitch; road_mirage(): direct and bent rays from
-  a car to the eye over a hot road, the inverted image (notebook 77, GRIN optics).
+  a car to the eye over a hot road, the inverted image (notebook 407, GRIN optics).
 - lensless_camera(): a pinhole camera, a coded aperture camera and a
-  diffuser camera (notebook 79, lensless imaging).
+  diffuser camera (notebook 536, lensless imaging).
 - oct_setup(): a time-domain and a spectral-domain optical coherence
-  tomograph with a layered sample (notebook 82, OCT).
+  tomograph with a layered sample (notebook 505, OCT).
 - optical_tweezers(): laser, beam expander overfilling a water immersion
   objective, sample chamber with a bead, condenser and quadrant photodiode;
   ashkin_rays(): two rays refracted by a sphere near the focus and the
   forces they exert; momentum_balance(): the force from the momentum flux
-  through a sphere far away (notebook 75, optical tweezers).
+  through a sphere far away (notebook 314, optical tweezers).
 - pulse_through_lens(): a pulse through a singlet lags behind the phase
   front, most on the axis (Bor's pulse-front delay), not through an
   achromat; pulse_front_tilt(): the tilted pulse front behind a prism or a
-  grating (notebook 81, ultrashort pulses).
+  grating (notebook 117, ultrashort pulses).
 - approximation_map(): the levels of approximation from Maxwell's
   equations to rays and Fraunhofer diffraction and the modules for each;
   sign_conventions(): axes, radii, thicknesses, ray and field angles and
   the two mirror conventions; diffraction_geometry(): the Rayleigh-Sommerfeld
   integral; eikonal_wavefronts(): wavefronts of constant optical path and
-  the rays normal to them (notebook 00, foundations and conventions).
+  the rays normal to them (notebook 000, foundations and conventions).
 - sine_herschel_conditions(): a lens that images an axial point and its
   neighbour in the object plane (sine condition) or on the axis (Herschel
-  condition), with the path differences of one ray (notebook 102, sine and Herschel conditions).
+  condition), with the path differences of one ray (notebook 402, sine and Herschel conditions).
 - phase_space_portraits(): a strip source through free space, a singlet
   and a glass rod, and the phase space behind each; liouville_lens(): field
   and NA through a reducing lens; burning_glass(): the paraxial ideal lens
   and a hyperbolic lens in sunlight; etendue_diffuser(): a diffuser at and
   behind the waist of a Gaussian beam; light_pipe_images(): a light pipe
-  unfolded into mirror copies (notebook 83, étendue).
+  unfolded into mirror copies (notebook 602, étendue).
 - cpc_edge_rays(): the compound parabolic concentrator, its tilted
   parabolas, foci and edge rays, also truncated or dielectric;
   cpc_skew_ray(): a skew ray in a 3D CPC seen along the axis;
-  cpc_secondary(): a CPC secondary in the focus of a lens (notebook 84, nonimaging concentrators).
+  cpc_secondary(): a CPC secondary in the focus of a lens (notebook 603, nonimaging concentrators).
 - koehler_critical(): a microscope illuminator, the filament imaged into
   the aperture diaphragm (Köhler) or the field diaphragm (critical)
-  (notebook 85, Köhler and critical illumination).
+  (notebook 604, Köhler and critical illumination).
 - fly_eye_homogenizer(): one or two lenslet arrays and a condenser that
   overlap the channels into a flat field, with a tilted input (notebook
-  86, homogenizers); the rod integrator is light_pipe_images().
+  605, homogenizers); the rod integrator is light_pipe_images().
 - speckle_formation(): laser light on a rough surface, one resolution cell
   imaged into one grain; speckle_diversity(): polarization, wavelength and
   angle (moving diffuser) diversity; laser_projector(): illumination and
-  observation apertures of a projector and a viewer (notebook 87, speckle reduction).
+  observation apertures of a projector and a viewer (notebook 606, speckle reduction).
 - led_above_plane(): one or several LEDs above a plane and their
   irradiance; photometric_distance(): a Lambertian disk and the inverse
   square law; led_collimator(): a lens, a paraboloid and both together
-  in front of an LED (notebook 88, LED optics).
+  in front of an LED (notebook 607, LED optics).
 - beam_shaping_ray_map(): equal power strips of a Gaussian mapped onto a
   flat top; flattop_beam_shaper(): the two-lens refractive Gaussian to
   flat-top shaper; freeform_projection(): a plano-freeform lens that
-  projects an image (notebook 89, freeform beam shaping).
+  projects an image (notebook 608, freeform beam shaping).
 - bokeh_formation(): blur disks of a background and a foreground point
   around a sharp subject; spherical_aberration_bokeh(): bright and soft
   edged blurs on the two sides of an undercorrected focus;
   cats_eye_vignetting(): an oblique beam cut by the front and rear rims
   and the cat's eye pupil; rippled_asphere(): onion rings from a surface
   ripple; apodized_lens(): a graded filter at the stop and the soft blur
-  it gives (notebook 90, bokeh).
+  it gives (notebook 611, bokeh).
 - iris_diffraction(): a plane wave through a lens and its iris, and the
   star in the focal plane; iris_spikes(): which spike comes from which
   blade, 2n spikes for odd n and n for even n; rounded_iris(): rounded
   blades as arcs and the fans they make; iris_stop_down(): a rounded iris
   at three F-numbers and the stars it makes; sunstar_scene(): the Sun
-  imaged through a stopped down lens (notebook 91, sunstars).
+  imaged through a stopped down lens (notebook 612, sunstars).
 - ghost_reflections(): a double reflection ghost path in a lens;
   ar_coating_layers(): an antireflection multilayer and its interfering
   reflections; ghost_focus(): near-focused and defocused ghosts;
   flare_scene(): ghosts on the line through the Sun and the centre of the
-  frame (notebook 92, flare and ghosts).
+  frame (notebook 613, flare and ghosts).
 - pixel_sampling(): pixels integrating a fine sine and the alias they
   report; bayer_cfa(): the Bayer mosaic and its chrominance carriers in the
   frequency plane; olpf_plates(): two birefringent plates and a quarter
   wave plate splitting a ray into four; microlens_pixels(): microlenses
   focusing the light of the lens onto photodiodes, on and off the axis
-  (notebook 93, the sensor).
+  (notebook 610, the sensor).
 - depth_of_field(): the blur of a near and a far point and the depth of
   field; defocus_and_diffraction(): geometric blur and Airy disk against
   the aperture; scheimpflug_hinge(): a tilted lens, the Scheimpflug line
   and the hinge line; dof_wedge(): the wedge of sharp focus of a tilted
-  lens (notebook 94, depth of field and tilt-shift).
+  lens (notebook 614, depth of field and tilt-shift).
 - plenoptic_camera(): main lens, microlens array and sensor of a light
   field camera; subaperture_parallax(): pixels at the same place under the
   microlenses form a view, out of focus points move between views;
   light_field_refocus(): refocusing on a virtual sensor; plenoptic_tradeoff():
-  positions against directions on the same sensor (notebook 95, light field camera).
+  positions against directions on the same sensor (notebook 616, light field camera).
 - coronagraph_layout(): telescope, focal plane mask (occulting disk or
   vortex), Lyot stop and camera, with the starlight that the mask throws
   to the rim of the pupil image and the planet light that passes
-  (notebook 96, coronagraphs).
+  (notebook 904, coronagraphs).
 - telescope_layout(): Newtonian (paraboloid and flat diagonal), Cassegrain
   or Ritchey-Chrétien (concave primary with a hole, convex secondary) and
   Schmidt camera (corrector plate at the centre of curvature of a
-  spherical mirror, curved focal surface) (notebook 97, telescope zoo).
+  spherical mirror, curved focal surface) (notebook 900, telescope zoo).
 - segment_phasing_layout(): a segmented primary with a pistoned segment
   imaged onto a pupil mask, a grism and a detector with dispersed fringes
   (coarse phasing), or weak lenses and defocused images for phase
-  retrieval (fine phasing) (notebook 98, segmented mirrors).
+  retrieval (fine phasing) (notebook 901, segmented mirrors).
 - lensing_geometry(): observer, lens and source planes of a gravitational
   lens with the two images of a point mass, the angles beta, theta and
   alpha and the distances D_l, D_s, D_ls; or (ring=True) a source behind
-  the lens seen as an Einstein ring (notebook 99, Einstein rings).
+  the lens seen as an Einstein ring (notebook 905, Einstein rings).
 - echelle_layout(): slit, collimator, echelle, cross-disperser, camera and
   the echellogram of stacked orders; or (kind="grooves") the right-angle
   grooves of an echelle in Littrow with theta_B, d and the facet width
-  (notebook 100, echelle spectrograph).
+  (notebook 914, echelle spectrograph).
 - adc_layout(): atmospheric refraction of a star above the curved Earth,
   blue lifted more than red; or (kind="adc") two counter-rotating Amici
-  prisms and the vector sum of their dispersions (notebook 101, atmospheric dispersion corrector).
+  prisms and the vector sum of their dispersions (notebook 902, atmospheric dispersion corrector).
 - zoom_cams(): a four-group zoom lens drawn at three zoom positions with
   the cam curves of the variator and the compensator
-  (notebook 127, zoom lenses).
+  (notebook 431, zoom lenses).
 - qbfs_geometry(): an asphere, its best fit sphere through vertex and rim
   and the departure measured along the normal of the sphere
-  (notebook 128, Forbes Q aspheres).
+  (notebook 420, Forbes Q aspheres).
 - progressive_lens_layout(): the zones of a progressive spectacle lens
   seen from the front (distance zone, corridor, near zone, astigmatic
   flanks, fitting cross and prism reference point), or (view="side") the
   eye turning about its centre of rotation to look into the distance and
   down through the corridor to a page at 40 cm
-  (notebook 129, progressive spectacle lenses).
+  (notebook 435, progressive spectacle lenses).
 - fresnel_zones(): the Fresnel zones of an opening seen from a point on
-  the axis, and the Fresnel number (notebook 01, free-space propagation).
+  the axis, and the Fresnel number (notebook 100, free-space propagation).
 - iso_caustic(): a beam caustic with the waist, the Rayleigh length, the
-  divergence and the ISO 11146 measurement planes (notebook 07, beam quality).
+  divergence and the ISO 11146 measurement planes (notebook 112, beam quality).
 - tir_beam_shifts(): a beam at total internal reflection with its
   Goos-Hänchen shift and evanescent field, and frustrated total internal
-  reflection across a gap (notebook 13, stacks as transfer functions).
+  reflection across a gap (notebook 202, stacks as transfer functions).
 - imaging_pupil(): a point imaged through a 4f system with a pupil, the
   wavefront error in the pupil and the PSF
-  (notebooks 15 (imaging and Zernikes) and 17 (PSF, MTF and Strehl));
+  (notebooks 301 (imaging and Zernikes) and 302 (PSF, MTF and Strehl));
   otf_overlap(): the OTF as the
-  overlap of two shifted pupils, and the MTF (notebook 17, PSF, MTF and Strehl).
+  overlap of two shifted pupils, and the MTF (notebook 302, PSF, MTF and Strehl).
 - alternating_projections(): ER/HIO phase retrieval and Gerchberg-Saxton
   as projections between two planes
-  (notebooks 28 (phase retrieval) and 30 (IFTA beam shaping));
+  (notebooks 532 (phase retrieval) and 534 (IFTA beam shaping));
   doe_beam_shaper(): a laser, a phase-only element and a lens with the
-  target in the focal plane (notebook 30, IFTA beam shaping);
+  target in the focal plane (notebook 534, IFTA beam shaping);
   tie_planes(): a phase object and the intensity in front of, in and
-  behind focus (notebook 29, TIE); source_pupil_orders(): diffraction
+  behind focus (notebook 533, TIE); source_pupil_orders(): diffraction
   orders of dense lines in the pupil for two source points
-  (notebook 39, source optimization).
+  (notebook 830, source optimization).
 - shg_phase_matching(): wave vectors and the harmonic along the crystal,
   phase matched, mismatched and quasi-phase matched
-  (notebook 145, second harmonic generation and phase matching);
+  (notebook 710, second harmonic generation and phase matching);
   parametric_processes(): energy and momentum of photon splitting and a
   singly resonant OPO
-  (notebook 146, parametric amplification and OPOs);
+  (notebook 711, parametric amplification and OPOs);
   kerr_self_focusing(): a beam that writes its own lens
-  (notebook 147, Kerr effect and self-focusing).
+  (notebook 712, Kerr effect and self-focusing).
 - dispersion_broadening(): a short pulse that leaves a fibre long and
-  chirped (notebook 118, pulse broadening); spm_chirp(): the SPM chirp,
+  chirped (notebook 723, pulse broadening); spm_chirp(): the SPM chirp,
   the opposite chirp of anomalous dispersion and the soliton
-  (notebook 121, SPM and solitons in fibres).
+  (notebook 726, SPM and solitons in fibres).
 - high_na_focus(): the field of tilted rays behind an aplanatic lens and
-  its z component (notebook 02, vectorial diffraction); tilted_plane():
+  its z component (notebook 104, vectorial diffraction); tilted_plane():
   a beam cut by a rotated plane with its own axes
-  (notebook 03, tilted planes); wpm_slices(): an index distribution cut
+  (notebook 102, tilted planes); wpm_slices(): an index distribution cut
   into slices with the local k_z
-  (notebook 05, wave propagation method); gaussian_beam():
+  (notebook 105, wave propagation method); gaussian_beam():
   waist, Rayleigh length, wavefronts and divergence
-  (notebook 06, Gaussian beams).
+  (notebook 110, Gaussian beams).
 - layer_stack(): partial reflections in a thin film stack
-  (notebook 12, layer stacks); mask_models(): the Kirchhoff, film,
+  (notebook 201, layer stacks); mask_models(): the Kirchhoff, film,
   boundary layer and rigorous mask models side by side
-  (notebook 37, mask models compared).
+  (notebook 811, mask models compared).
 - fdtd_cell(): a periodic FDTD cell with Bloch boundaries, PML, source and
-  monitors (notebooks 62 (FDTD periodic structures) and
-  65 (FDTD mask for lithography)), or a closed cell with a TFSF box around
-  a scatterer (notebook 64, 3D FDTD and nanojet).
+  monitors (notebooks 222 (FDTD periodic structures) and
+  812 (FDTD mask for lithography)), or a closed cell with a TFSF box around
+  a scatterer (notebook 225, 3D FDTD and nanojet).
 - fresnel_interface(): the plane of incidence with the incident, reflected
   and transmitted rays, their angles and the s and p directions
-  (notebook 10, interfaces and thin films).
+  (notebook 200, interfaces and thin films).
 - kretschmann(): surface plasmon resonance with a prism and a gold film
-  (notebook 59, FDTD metals and plasmons).
+  (notebook 221, FDTD metals and plasmons).
 - yee_grid(): the staggered Yee grid of the 2D FDTD and the leapfrog in
-  time (notebook 57, FDTD basics).
+  time (notebook 220, FDTD basics).
 - lithography_scanner(): laser, illuminator, slit, reticle, 4x projection
-  lens and wafer, with the scan directions (notebooks 31 (vectorial imaging in lithography) to 41 (telecentricity across the slit)).
+  lens and wafer, with the scan directions (notebooks 800 (vectorial imaging in lithography) to 822 (telecentricity across the slit)).
 - tcc_overlap(): the transmission cross coefficient as the overlap of two
-  shifted pupils within the source (notebook 34, Hopkins imaging and SOCS).
+  shifted pupils within the source (notebook 802, Hopkins imaging and SOCS).
 - mask_3d(): a thin mask against a mask whose absorber is about a
-  wavelength thick: shadowing and blurred, shifted edges (notebooks 36 (rigorous mask),
-  37 (mask models compared), 65 (FDTD mask for lithography)).
+  wavelength thick: shadowing and blurred, shifted edges (notebooks 810 (rigorous mask),
+  811 (mask models compared), 812 (FDTD mask for lithography)).
 - waveguide_combiner(): a diffractive waveguide combiner seen from the
   side (in-coupler, total internal reflection, out-coupler replicating the
   pupil) and from the front (in-coupler, fold grating and out-coupler with
-  their grating vectors) (notebook 123, AR waveguide combiners);
+  their grating vectors) (notebook 920, AR waveguide combiners);
   volume_grating_layout(): a thick transmission or reflection volume
-  grating at the Bragg angle with its wave vector triangle (notebook 124,
+  grating at the Bragg angle with its wave vector triangle (notebook 921,
   volume holographic gratings); pancake_lens(): the polarization folded VR
-  lens with its three passes and the ghost (notebook 125, pancake lenses);
+  lens with its three passes and the ghost (notebook 922, pancake lenses);
   hud_layout(): a windshield head-up display and the double image of the
-  windshield's two surfaces (notebook 126, head-up displays).
+  windshield's two surfaces (notebook 923, head-up displays).
 - lidar_layout(): a pulsed time-of-flight LiDAR in sunlight and an FMCW
   LiDAR with its local oscillator and balanced receiver (notebooks
-  130, time-of-flight LiDAR, and 131, FMCW LiDAR); beam_scanner(): galvo
+  930, time-of-flight LiDAR, and 931, FMCW LiDAR); beam_scanner(): galvo
   mirrors, a polygon, a resonant MEMS mirror, an optical phased array
-  and Risley prisms (notebook 132, beam scanning); scan_lens_layout(): a
+  and Risley prisms (notebook 932, beam scanning); scan_lens_layout(): a
   laser processing head, an F-theta and a telecentric scan lens and the
-  two galvo pivots unfolded (notebook 149, scan lenses); hybrid_lens_layout():
+  two galvo pivots unfolded (notebook 434, scan lenses); hybrid_lens_layout():
   the colour of refractive, diffractive and hybrid lenses, the zones of a
-  kinoform, its Sweatt model and its diffraction orders (notebook 151,
+  kinoform, its Sweatt model and its diffraction orders (notebook 422,
   hybrid diffractive lenses);
   structured_light_layout(): a laser triangulation sensor, fringe
   projection and a dot projector with its camera
-  (notebook 133, triangulation and structured light).
+  (notebook 933, triangulation and structured light).
 - crystal_optics_layout(): double refraction in calcite, a Glan-Taylor
   and a Wollaston prism, a Faraday isolator
-  (notebook 138, crystal optics); modulator_layout(): a Pockels cell, a Mach-Zehnder modulator
-  (notebook 139, electro-optic modulators), a nematic cell and a twisted
-  nematic cell (notebook 140, liquid crystals), an acousto-optic modulator
-  and tunable filter (notebook 141, acousto-optics).
+  (notebook 211, crystal optics); modulator_layout(): a Pockels cell, a Mach-Zehnder modulator
+  (notebook 212, electro-optic modulators), a nematic cell and a twisted
+  nematic cell (notebook 213, liquid crystals), an acousto-optic modulator
+  and tunable filter (notebook 214, acousto-optics).
 - laser_layout(): three and four level schemes and a diode pumped laser
-  (notebook 142, laser fundamentals), Q switched and mode-locked cavities
-  (notebook 143, Q-switching and mode-locking) and a laser diode chip
-  (notebook 144, laser diodes).
+  (notebook 700, laser fundamentals), Q switched and mode-locked cavities
+  (notebook 702, Q-switching and mode-locking) and a laser diode chip
+  (notebook 703, laser diodes).
 - litho_stochastics_layout(): photon shot noise, acid and quencher in the
   resist, line edge and width roughness with the edge PSD, contact holes
   with missing and merged ones, flare from a rough lens surface and the
   focus spread from the laser bandwidth and the stage
-  (notebook 152, litho stochastics, flare and focus blur).
+  (notebook 832, litho stochastics, flare and focus blur).
 
 text_scale() is a context manager that enlarges the labels of a sketch,
 for wide layouts that are shown scaled down.
@@ -1919,9 +1919,9 @@ def holography_setup(ax, microscope=False, title=None):
     The expanded laser beam is split into an object arm, which passes the
     sample, and a reference arm. A second beam splitter recombines them on
     the camera, the reference tilted by the angle theta that puts the
-    carrier fringes into the hologram. Without a microscope (notebook 26, digital holography)
+    carrier fringes into the hologram. Without a microscope (notebook 530, digital holography)
     the camera records the object wave a distance d behind the sample, with
-    a microscope (notebook 27, holographic microscopy) objective and tube lens image the sample onto
+    a microscope (notebook 531, holographic microscopy) objective and tube lens image the sample onto
     the camera (with an optional defocus).
 
     Parameters
@@ -2065,7 +2065,7 @@ def _fold(y, h):
 
 
 def krf_illuminator(ax, title=None):
-    """Sketch of the KrF illuminator of notebook 42, unfolded and not to
+    """Sketch of the KrF illuminator of notebook 823, unfolded and not to
     scale.
 
     Secondary source (laser, beam shaper and diffuser), zoom-axicon
@@ -2164,7 +2164,7 @@ def krf_illuminator(ax, title=None):
 
 def spatial_filter(ax, pinhole=True, title=None):
     """Sketch of a spatial filter: a 3x beam expander with a pinhole in the
-    common focus (the setup of notebook 56, Gaussian beam decomposition).
+    common focus (the setup of notebook 452, Gaussian beam decomposition).
 
     The clean part of the input beam (orange) is focused onto the axis and
     passes the pinhole. Light that travels in other directions, from a
@@ -2242,7 +2242,7 @@ def _profile_image(ax, z, y, size, image, cmap=None):
 
 def vortex_interferometer(ax, reference="tilted", title=None):
     """Sketch of a Mach-Zehnder interferometer that measures the charge of an
-    optical vortex (notebook 69, optical vortices).
+    optical vortex (notebook 116, optical vortices).
 
     The expanded laser beam is split. In one arm a spiral phase plate makes
     the vortex beam, the other arm is the reference. A second beam splitter
@@ -2302,7 +2302,7 @@ def vortex_interferometer(ax, reference="tilted", title=None):
 
 def mode_converter(ax, title=None, images=None):
     """Sketch of the pi/2 cylindrical lens mode converter of Beijersbergen et
-    al. (notebook 69, optical vortices).
+    al. (notebook 116, optical vortices).
 
     Two cylindrical lenses of focal length f (power in the plane of the
     drawing) a distance d = sqrt(2)*f apart turn a Hermite-Gaussian mode
@@ -2347,7 +2347,7 @@ def mode_converter(ax, title=None, images=None):
 
 def axicon_bessel(ax, obstacle=True, title=None):
     """Sketch of a Bessel beam made by an axicon, optionally with an
-    obstacle in the Bessel zone (the setup of notebook 68, Bessel and Airy beams).
+    obstacle in the Bessel zone (the setup of notebook 115, Bessel and Airy beams).
 
     A collimated beam of radius w falls on an axicon (a glass cone), which
     tilts all rays towards the axis by the same angle θ. The two halves of
@@ -2415,7 +2415,7 @@ def axicon_bessel(ax, obstacle=True, title=None):
 
 def cubic_phase_airy(ax, title=None):
     """Sketch of an Airy beam made by a cubic phase plate and a lens (the
-    setup of notebook 68, Bessel and Airy beams).
+    setup of notebook 115, Bessel and Airy beams).
 
     The cubic phase φ ∝ y³ tilts the rays by an angle ∝ y², the same for
     both halves of the beam. Behind the lens they no longer meet in a focus
@@ -2483,7 +2483,7 @@ def _fringe_curve(ax, z0, y, phase, period, amplitude, visibility=1.0, color="0.
 
 def young_extended_source(ax, title=None):
     """Sketch of Young's double pinhole lit by an extended incoherent source
-    (section 1 of notebook 74, coherence and stellar interferometry).
+    (section 1 of notebook 120, coherence and stellar interferometry).
 
     The source sits in the front focal plane of a collimator. Each source
     point sends a plane wave onto the pinholes, tilted by its height over
@@ -2537,7 +2537,7 @@ def young_extended_source(ax, title=None):
 
 
 def vcz_setup(ax, title=None):
-    """Sketch of the van Cittert-Zernike theorem (section 2 of notebook 74, coherence and stellar interferometry).
+    """Sketch of the van Cittert-Zernike theorem (section 2 of notebook 120, coherence and stellar interferometry).
 
     An incoherent source of diameter D: every point radiates a spherical
     wave with its own random phase (drawn in different colours). A distance
@@ -2582,7 +2582,7 @@ def vcz_setup(ax, title=None):
 
 
 def stellar_interferometer(ax, title=None):
-    """Sketch of Michelson's stellar interferometer (section 3 of notebook 74, coherence and stellar interferometry).
+    """Sketch of Michelson's stellar interferometer (section 3 of notebook 120, coherence and stellar interferometry).
 
     Light of a star falls on two outer mirrors a baseline B apart. They and
     two inner mirrors a fixed distance h apart send it into a telescope,
@@ -2640,7 +2640,7 @@ def stellar_interferometer(ax, title=None):
 
 def michelson_interferometer(ax, title=None):
     """Sketch of a Michelson interferometer measuring temporal coherence
-    (section 4 of notebook 74, coherence and stellar interferometry).
+    (section 4 of notebook 120, coherence and stellar interferometry).
 
     A collimated beam from a broadband source is split; one mirror is fixed,
     the other moves by Delta/2, which gives the optical path difference
@@ -2686,7 +2686,7 @@ def michelson_interferometer(ax, title=None):
 
 def hbt_interferometer(ax, title=None):
     """Sketch of a Hanbury Brown-Twiss intensity interferometer (section 5
-    of notebook 74, coherence and stellar interferometry).
+    of notebook 120, coherence and stellar interferometry).
 
     Two light collectors a baseline B apart focus starlight onto
     photodetectors. Their photocurrents are band-pass filtered (electronic
@@ -2762,7 +2762,7 @@ def _person(ax, z, y, height=0.9, color="0.2"):
 
 
 def rainbow_observer(ax, sun_elevation=25.0, title=None):
-    """Sketch of where a rainbow appears (the geometry of notebook 71, rainbows and glories).
+    """Sketch of where a rainbow appears (the geometry of notebook 906, rainbows and glories).
 
     The Sun shines from behind the observer onto a curtain of rain. The
     line from the Sun through the observer's eye meets the ground at the
@@ -2851,7 +2851,7 @@ def rainbow_observer(ax, sun_elevation=25.0, title=None):
 
 
 def glory_aircraft(ax, title=None):
-    """Sketch of the glory seen from an aircraft (notebook 71, rainbows and glories).
+    """Sketch of the glory seen from an aircraft (notebook 906, rainbows and glories).
 
     The Sun shines from behind the aircraft onto a deck of cloud. Its shadow
     falls on the cloud around the antisolar point; the cloud droplets
@@ -2931,7 +2931,7 @@ def _wavy(s, amplitude, n_waves, phase=0.0):
 
 
 def twinkling_star(ax, title=None):
-    """Sketch of starlight passing turbulent layers (the setup of notebook 72, twinkling stars and AO).
+    """Sketch of starlight passing turbulent layers (the setup of notebook 903, twinkling stars and AO).
 
     A plane wave from a star (at the top) crosses a few thin turbulent layers
     at different heights, each moving with its own wind. Every layer
@@ -2994,7 +2994,7 @@ def twinkling_star(ax, title=None):
 
 
 def adaptive_optics_system(ax, title=None):
-    """Sketch of an adaptive optics system (the setup of notebook 72, twinkling stars and AO).
+    """Sketch of an adaptive optics system (the setup of notebook 903, twinkling stars and AO).
 
     The telescope (drawn as a lens) images the star; a collimator makes the
     beam parallel and images the pupil onto the deformable mirror (DM). A
@@ -3114,7 +3114,7 @@ def _slm(ax, z, h, n=10, reference=False, text=None, text_y=None, fontsize=9):
 
 
 def wavefront_shaping_setup(ax, medium="diffuser", reference=False, feedback=True, title=None):
-    """Sketch of wavefront shaping through a scattering medium (notebook 73, wavefront shaping).
+    """Sketch of wavefront shaping through a scattering medium (notebook 535, wavefront shaping).
 
     A collimated laser beam falls onto a segmented phase SLM, which a 4f
     relay images onto the entrance face of the medium. A lens behind the
@@ -3232,7 +3232,7 @@ def _ronchi_bars(ax, z, y, h, n=9, zorder=6):
 
 def foucault_tester(ax, test="knife", title=None):
     """Sketch of the Foucault knife-edge test of a concave mirror (notebook
-    76, Schlieren and knife-edge).
+    511, Schlieren and knife-edge).
 
     A pinhole source next to the centre of curvature C of the mirror is
     imaged back onto the other side of C. A knife edge (or a wire, a slit,
@@ -3308,7 +3308,7 @@ def _candle_plume(ax, z, y_base, height, width=0.3, color="#c0392b"):
 
 def schlieren_system(ax, method="schlieren", title=None):
     """Sketch of a lens type Toepler schlieren system and of a direct
-    shadowgraph (notebook 76, Schlieren and knife-edge).
+    shadowgraph (notebook 511, Schlieren and knife-edge).
 
     A lamp and condenser light a slit source in the focus of the first lens,
     which makes a parallel beam through the test section (a candle plume).
@@ -3385,7 +3385,7 @@ def _fold_up_backslash(z_m, z_unf, y_unf):
 
 
 def sim_microscope(ax, title=None):
-    """Sketch of a structured illumination microscope with a grating (notebook 78, super-resolution microscopy).
+    """Sketch of a structured illumination microscope with a grating (notebook 313, super-resolution microscopy).
 
     A phase grating in a plane conjugate to the specimen diffracts the
     collimated laser beam. A mask in the following pupil plane blocks the
@@ -3475,7 +3475,7 @@ def sim_microscope(ax, title=None):
 
 
 def sted_microscope(ax, images=None, title=None):
-    """Sketch of a STED microscope (notebook 78, super-resolution microscopy).
+    """Sketch of a STED microscope (notebook 313, super-resolution microscopy).
 
     An excitation beam (blue) and a depletion beam (red) are combined by a
     dichroic mirror and focused by the same objective. The depletion beam
@@ -3582,7 +3582,7 @@ HOT_AIR = "#f4c99a"
 def grin_rod_imaging(ax, title=None):
     """Sketch of a GRIN rod lens: an object in contact with the front face,
     rays that run on sine curves about the axis, an inverted image at half a
-    pitch and an upright one after a full pitch (notebook 77, GRIN optics).
+    pitch and an upright one after a full pitch (notebook 407, GRIN optics).
 
     The index falls from the axis outwards (shaded); a point on the axis is
     focused again every half pitch, a parallel bundle at a quarter pitch.
@@ -3631,7 +3631,7 @@ def grin_rod_imaging(ax, title=None):
 
 
 def road_mirage(ax, title=None):
-    """Sketch of the inferior mirage over a hot road (notebook 77, GRIN optics).
+    """Sketch of the inferior mirage over a hot road (notebook 407, GRIN optics).
 
     The air just above the road is hotter and has a lower index. Rays from
     the top of a distant car reach the eye on a direct, nearly straight
@@ -3694,7 +3694,7 @@ def road_mirage(ax, title=None):
 
 
 def lensless_camera(ax, kind="pinhole", title=None):
-    """Sketch of a lensless camera (notebook 79, lensless imaging).
+    """Sketch of a lensless camera (notebook 536, lensless imaging).
 
     - "pinhole": an object, a pinhole of diameter d and a screen at the
       distance v. Each object point casts a blurred spot (the shadow of the
@@ -3795,7 +3795,7 @@ def lensless_camera(ax, kind="pinhole", title=None):
 
 
 def oct_setup(ax, kind="spectral", title=None):
-    """Sketch of an optical coherence tomograph (notebook 82, OCT).
+    """Sketch of an optical coherence tomograph (notebook 505, OCT).
 
     A superluminescent diode (SLD) feeds a Michelson interferometer: the
     reference arm ends in a mirror, the sample arm focuses into a layered
@@ -3912,7 +3912,7 @@ def _ray_through_sphere(p0, d, c, R, n_rel):
 
 
 def optical_tweezers(ax, title=None):
-    """Sketch of an optical tweezers setup (notebook 75).
+    """Sketch of an optical tweezers setup (notebook 314).
 
     A laser beam is expanded so that it overfills the back aperture of a
     high NA water immersion objective, which focuses it into a sample
@@ -3991,7 +3991,7 @@ def optical_tweezers(ax, title=None):
 
 
 def ashkin_rays(ax, offset=(0.6, 0.0), n_rel=1.35, title=None):
-    """Ashkin's picture of the forces on a sphere in a focus (notebook 75, optical tweezers).
+    """Ashkin's picture of the forces on a sphere in a focus (notebook 314, optical tweezers).
 
     Two rays a and b from the edge of the objective's aperture converge
     towards the focus f, are refracted by a sphere (index ratio n_rel; the
@@ -4049,7 +4049,7 @@ def ashkin_rays(ax, offset=(0.6, 0.0), n_rel=1.35, title=None):
 
 
 def momentum_balance(ax, title=None):
-    """The force on a scatterer from the momentum flux far away (notebook 75, optical tweezers).
+    """The force on a scatterer from the momentum flux far away (notebook 314, optical tweezers).
 
     The focused beam comes in through the left part of a large sphere
     around the focus and leaves through the right part. A bead near the
@@ -4103,7 +4103,7 @@ PHASE_FRONT = "0.45"
 
 
 def pulse_through_lens(ax, achromat=False, title=None):
-    """Sketch of Bor's pulse-front delay in a lens (notebook 81, ultrashort pulses).
+    """Sketch of Bor's pulse-front delay in a lens (notebook 117, ultrashort pulses).
 
     A collimated beam carries a short pulse (red band) on a plane phase
     front. Behind a singlet the phase fronts (grey arcs) converge on the
@@ -4173,7 +4173,7 @@ def pulse_through_lens(ax, achromat=False, title=None):
 
 def pulse_front_tilt(ax, element="prism", title=None):
     """Sketch of the pulse-front tilt behind a prism or a grating (notebook
-    81, ultrashort pulses).
+    117, ultrashort pulses).
 
     The colours leave the element at different angles (angular dispersion
     d theta/d lambda). The phase fronts stay normal to the beam, but the
@@ -4261,7 +4261,7 @@ def pulse_front_tilt(ax, element="prism", title=None):
 
 
 # ---------------------------------------------------------------------------
-# Foundations and conventions (notebook 00)
+# Foundations and conventions (notebook 000)
 # ---------------------------------------------------------------------------
 
 def _box(ax, x, y, w, h, title, lines=(), modules=None, color="#eef4fa", edgecolor=EDGE,
@@ -4286,7 +4286,7 @@ def _box(ax, x, y, w, h, title, lines=(), modules=None, color="#eef4fa", edgecol
 def approximation_map(ax, title=None):
     """The levels of approximation from Maxwell's equations down to rays and
     Fraunhofer diffraction, with the pyoptics modules that work on each
-    level (notebook 00, foundations and conventions).
+    level (notebook 000, foundations and conventions).
 
     Every arrow names the assumption that leads from one level to the next.
     Polarization (Jones and Stokes vectors) branches off where the field is
@@ -4385,7 +4385,7 @@ def approximation_map(ax, title=None):
 
 def sign_conventions(ax, title=None):
     """Coordinates and sign conventions of pyoptics in one meridional
-    section (notebook 00, foundations and conventions): the axes, the direction of propagation, the
+    section (notebook 000, foundations and conventions): the axes, the direction of propagation, the
     signs of radii, thicknesses, ray angles and field angles, and the two
     mirror conventions of `abcd` (unfolded) and `raytrace` (real geometry).
 
@@ -4465,7 +4465,7 @@ def sign_conventions(ax, title=None):
 
 def diffraction_geometry(ax, title=None):
     """Geometry of the Rayleigh-Sommerfeld diffraction integral (notebook
-    00, foundations and conventions): a plane wave on an aperture in the plane z = 0, secondary wavelets
+    000, foundations and conventions): a plane wave on an aperture in the plane z = 0, secondary wavelets
     exp(ikr)/r from its points, the distance r and the angle theta from a
     point Q of the aperture to the observation point P.
 
@@ -4514,7 +4514,7 @@ def diffraction_geometry(ax, title=None):
 
 def eikonal_wavefronts(ax, n2=1.5, title=None):
     """Rays and wavefronts of a point source in front of a glass block
-    (notebook 00, foundations and conventions): the wavefronts are the surfaces of constant optical path
+    (notebook 000, foundations and conventions): the wavefronts are the surfaces of constant optical path
     S, computed along the refracted rays, and the rays are their normals
     (grad S = n s). In the glass the wavefronts are closer by 1/n, and they
     are no longer spheres: the virtual source of the refracted rays is
@@ -4570,7 +4570,7 @@ def eikonal_wavefronts(ax, n2=1.5, title=None):
 
 
 # ---------------------------------------------------------------------------
-# illumination optics: étendue and nonimaging concentrators (notebooks 83 (étendue) and 84 (nonimaging concentrators))
+# illumination optics: étendue and nonimaging concentrators (notebooks 602 (étendue) and 603 (nonimaging concentrators))
 
 SOURCE_COLORS = ("#3b4cc0", "0.45", "#b40426")   # bottom, centre and top of a source
 ABSORBER = "0.12"
@@ -4725,7 +4725,7 @@ def _phase_poly(ax, z0, y0, sx, sy, xp, color, filled=True, zorder=4):
 
 
 def phase_space_portraits(ax, title=None):
-    """Sketch of the three systems of notebook 83 (étendue), section 1, and what they
+    """Sketch of the three systems of notebook 602 (étendue), section 1, and what they
     do to the phase space of a strip source.
 
     A strip source (width w, every point emitting into abs(p) <= NA, the
@@ -4808,7 +4808,7 @@ def phase_space_portraits(ax, title=None):
 
 
 def liouville_lens(ax, text="reduction lens (Caldwell's KrF lens, 4×)", title=None):
-    """Sketch of Liouville's theorem in a reducing lens (notebook 83, étendue, section 2).
+    """Sketch of Liouville's theorem in a reducing lens (notebook 602, étendue, section 2).
 
     Three points of an object field of radius h each emit into a cone of
     numerical aperture NA; the lens images the field 4x reduced, and the
@@ -4857,7 +4857,7 @@ def liouville_lens(ax, text="reduction lens (Caldwell's KrF lens, 4×)", title=N
 
 
 def burning_glass(ax, lens="hyperbolic", title=None):
-    """Sketch of a lens as a burning glass (notebook 83, étendue, sections 3 and 4).
+    """Sketch of a lens as a burning glass (notebook 602, étendue, sections 3 and 4).
 
     lens="ideal": the paraxial ideal lens of lens design programs sends
     every parallel bundle to the point where its chief ray meets the focal
@@ -4933,7 +4933,7 @@ def burning_glass(ax, lens="hyperbolic", title=None):
 
 
 def etendue_diffuser(ax, title=None):
-    """Sketch of a diffuser in a Gaussian beam (notebook 83, étendue, section 5).
+    """Sketch of a diffuser in a Gaussian beam (notebook 602, étendue, section 5).
 
     Two cases: the diffuser at the waist, and further on where the beam is
     wider. A diffuser adds the rms spread sigma_d to the direction sines;
@@ -4986,7 +4986,7 @@ def etendue_diffuser(ax, title=None):
 
 
 def light_pipe_images(ax, title=None):
-    """Sketch of a light pipe and its mirror images (notebook 83, étendue, section 6).
+    """Sketch of a light pipe and its mirror images (notebook 602, étendue, section 6).
 
     A lens focuses a small spot on the entrance of a glass rod. Inside, the
     rays are reflected at the walls (solid); unfolded (dashed), they run
@@ -5041,7 +5041,7 @@ def _cpc_walls(theta, a_exit, z0=0.0, y0=0.0, truncation=None, n=300):
 
 
 def cpc_edge_rays(ax, acceptance=20.0, ray_angle=None, n=1.0, truncation=None, title=None):
-    """Sketch of a 2D compound parabolic concentrator (notebook 84, nonimaging concentrators).
+    """Sketch of a 2D compound parabolic concentrator (notebook 603, nonimaging concentrators).
 
     Each wall is a parabola (dashed: its continuation to the vertex) whose
     axis is tilted by the acceptance angle theta_a and whose focus lies on
@@ -5137,7 +5137,7 @@ def cpc_edge_rays(ax, acceptance=20.0, ray_angle=None, n=1.0, truncation=None, t
 
 
 def cpc_skew_ray(ax, acceptance=20.0, title=None):
-    """Sketch of a skew ray in a 3D CPC, seen along the axis (notebook 84, nonimaging concentrators,
+    """Sketch of a skew ray in a 3D CPC, seen along the axis (notebook 603, nonimaging concentrators,
     section 3).
 
     The entrance (radius a) and exit (radius a') circles; a meridional ray
@@ -5212,10 +5212,10 @@ def cpc_skew_ray(ax, acceptance=20.0, title=None):
 
 
 def cpc_secondary(ax, title=None):
-    """Sketch of a CPC secondary behind a lens (notebook 84, nonimaging concentrators, section 6).
+    """Sketch of a CPC secondary behind a lens (notebook 603, nonimaging concentrators, section 6).
 
     Sunlight (the edge of the Sun exaggerated) through the hyperbolic lens of
-    notebook 83 (étendue) at f/0.5; a CPC in the focal plane with the rim angle of the
+    notebook 602 (étendue) at f/0.5; a CPC in the focal plane with the rim angle of the
     lens as its acceptance angle collects the coma-blurred image of the Sun
     and concentrates it on a smaller absorber at its exit (magnified in the
     inset).
@@ -5279,7 +5279,7 @@ def cpc_secondary(ax, title=None):
 
 def koehler_critical(ax, mode="koehler", title=None):
     """Sketch of a microscope illuminator with Köhler or critical
-    illumination (notebook 85, Köhler and critical illumination).
+    illumination (notebook 604, Köhler and critical illumination).
 
     Lamp filament, collector, field diaphragm, aperture diaphragm (in the
     front focal plane of the condenser), condenser and specimen. Rays from
@@ -5362,7 +5362,7 @@ def _lens_at(ax, z, y, h, thickness=None, zorder=3):
 
 
 def fly_eye_homogenizer(ax, imaging=True, tilt=0.0, title=None):
-    """Sketch of a fly's eye (lenslet array) homogenizer (notebook 86, homogenizers).
+    """Sketch of a fly's eye (lenslet array) homogenizer (notebook 605, homogenizers).
 
     A beam with a bell-shaped profile meets an array of lenslets of pitch p
     and focal length f; with imaging=True a second array sits in the focal
@@ -5490,7 +5490,7 @@ def _rough_screen(ax, z, h, amplitude=0.07, depth=0.25, seed=1, text=None, fonts
 
 
 def speckle_formation(ax, title=None):
-    """Sketch of how speckle forms (notebook 87, speckle reduction).
+    """Sketch of how speckle forms (notebook 606, speckle reduction).
 
     Laser light falls on a rough surface; every point reflects it with a
     random phase 4 pi h/lambda. A lens of numerical aperture NA images the
@@ -5543,7 +5543,7 @@ def speckle_formation(ax, title=None):
 
 def speckle_diversity(ax, method="angle", title=None):
     """Sketches of the three ways to make uncorrelated speckle patterns
-    (notebook 87, speckle reduction).
+    (notebook 606, speckle reduction).
 
     - "polarization": a depolarizing screen scatters polarized light into
       two orthogonal polarizations with independent speckle; a detector
@@ -5663,7 +5663,7 @@ def speckle_diversity(ax, method="angle", title=None):
 
 
 def laser_projector(ax, title=None):
-    """Sketch of a laser projector, its screen and a viewer (notebook 87, speckle reduction).
+    """Sketch of a laser projector, its screen and a viewer (notebook 606, speckle reduction).
 
     The projection lens of aperture D illuminates a point of the screen at
     the distance z from the cone NA_ill = D/(2z) (when a moving diffuser
@@ -5721,7 +5721,7 @@ def _lobe(ax, z, y, m, scale, direction=-90.0, color=LED_COLOR, alpha=0.25, zord
 
 def led_above_plane(ax, n_leds=1, spacing=1.6, m=1.0, title=None):
     """Sketch of LEDs above a plane and the irradiance they make (notebook
-    88, LED optics).
+    607, LED optics).
 
     One LED at the height h with the intensity pattern I_0 cos(theta)**m
     lights a point of the plane at the distance r = h/cos(theta) under the
@@ -5788,7 +5788,7 @@ def led_above_plane(ax, n_leds=1, spacing=1.6, m=1.0, title=None):
 
 
 def photometric_distance(ax, title=None):
-    """Sketch of the inverse square law and its limit (notebook 88, LED optics).
+    """Sketch of the inverse square law and its limit (notebook 607, LED optics).
 
     A Lambertian disk of radius a and radiance L gives on its axis the
     irradiance pi L a**2/(a**2 + d**2); a point source of the same intensity
@@ -5823,7 +5823,7 @@ def photometric_distance(ax, title=None):
 
 
 def led_collimator(ax, kind="hybrid", title=None):
-    """Sketch of LED collimators (notebook 88, LED optics), drawn to scale (mm) for the
+    """Sketch of LED collimators (notebook 607, LED optics), drawn to scale (mm) for the
     design of the notebook: a 1 mm die, a stigmatic (hyperbolic) lens with
     the focal length 10 mm and the semi-diameter 8 mm, and a paraboloid
     with the focal length 4 mm whose rim ends where the lens takes over.
@@ -5899,7 +5899,7 @@ def led_collimator(ax, kind="hybrid", title=None):
 
 
 def beam_shaping_ray_map(ax, title=None):
-    """Sketch of the ray map of a beam shaper (notebook 89, freeform beam shaping).
+    """Sketch of the ray map of a beam shaper (notebook 608, freeform beam shaping).
 
     A Gaussian beam is cut into rings (here: strips) of equal power, dense
     in the centre, sparse in the wings; the shaper sends each of them to a
@@ -5938,7 +5938,7 @@ def beam_shaping_ray_map(ax, title=None):
 
 def flattop_beam_shaper(ax, title=None):
     """Sketch of the two-lens refractive Gaussian to flat-top shaper
-    (notebook 89, freeform beam shaping): a plano-aspheric lens spreads the centre of the beam and
+    (notebook 608, freeform beam shaping): a plano-aspheric lens spreads the centre of the beam and
     bends the wings in, a second lens at the distance D collimates the rays
     again. The equal optical path of all rays keeps the output wavefront
     plane. The sags are exaggerated.
@@ -5987,7 +5987,7 @@ def flattop_beam_shaper(ax, title=None):
 
 def freeform_projection(ax, image=None, title=None):
     """Sketch of a plano-freeform lens that projects a prescribed
-    irradiance (notebook 89, freeform beam shaping): a collimated beam, the lens with its freeform
+    irradiance (notebook 608, freeform beam shaping): a collimated beam, the lens with its freeform
     exit surface and the rays to the target plane at the distance L, where
     an image (optional 2D array) forms.
 
@@ -6045,7 +6045,7 @@ def _blur_bar(ax, z, y0, y1, color, width=0.12):
 
 def bokeh_formation(ax, title=None):
     """Sketch of the blur of points in front of and behind the focused
-    distance (notebook 90, bokeh): a lens focused on a subject images it sharply
+    distance (notebook 611, bokeh): a lens focused on a subject images it sharply
     onto the sensor; a point farther away (background) comes to a focus in
     front of the sensor, a nearer one (foreground) behind it, and both cut
     the sensor in a blur disk, the circle of confusion. Thin lens, f = 2.
@@ -6085,7 +6085,7 @@ def bokeh_formation(ax, title=None):
 
 def spherical_aberration_bokeh(ax, title=None):
     """Sketch of why spherical aberration makes the blur bright edged on one
-    side of the focus and soft on the other (notebook 90, bokeh). A lens with
+    side of the focus and soft on the other (notebook 611, bokeh). A lens with
     undercorrected spherical aberration focuses the marginal rays short of
     the paraxial focus. In front of the foci (the sensor plane of a
     foreground point, whose image lies behind the sensor) the outer rays
@@ -6126,7 +6126,7 @@ def spherical_aberration_bokeh(ax, title=None):
 
 
 def cats_eye_vignetting(ax, angle=0.22, title=None):
-    """Sketch of mechanical vignetting (notebook 90, bokeh): a lens with a front
+    """Sketch of mechanical vignetting (notebook 611, bokeh): a lens with a front
     group, a stop and a rear group. The axial beam fills the stop; an
     oblique beam is cut at the top by the front rim and at the bottom by
     the rear rim (rays lost there dashed). Seen from the off-axis point,
@@ -6188,7 +6188,7 @@ def cats_eye_vignetting(ax, angle=0.22, title=None):
 
 
 def rippled_asphere(ax, title=None):
-    """Sketch of onion rings (notebook 90, bokeh): a lens surface with a small
+    """Sketch of onion rings (notebook 611, bokeh): a lens surface with a small
     radial ripple (exaggerated) tilts the rays a little, alternately
     inwards and outwards. Near the focus that does not matter, but on a
     sensor far from the focus (a strongly blurred point) the rays have
@@ -6232,7 +6232,7 @@ def rippled_asphere(ax, title=None):
 
 
 def apodized_lens(ax, title=None):
-    """Sketch of an apodized lens (notebook 90, bokeh): a radially graded neutral
+    """Sketch of an apodized lens (notebook 611, bokeh): a radially graded neutral
     density filter at the stop, clear in the middle and dark towards the
     rim (as in the STF and APD portrait lenses). The blur of an
     out-of-focus point is a shadow of the pupil transmission: a flat disk
@@ -6308,7 +6308,7 @@ def _star(ax, z, y, angles, length, color="0.2", lw=2.0, alpha=0.9, zorder=3):
 
 
 def iris_diffraction(ax, title=None):
-    """Sketch of how an iris makes a star (notebook 91, sunstars): a plane wave from a
+    """Sketch of how an iris makes a star (notebook 612, sunstars): a plane wave from a
     distant point passes the lens and its iris diaphragm (front view
     above); in the focal plane the light is the Fraunhofer diffraction
     pattern of the opening, abs(FT of the opening)**2, a bright core with
@@ -6342,7 +6342,7 @@ def iris_diffraction(ax, title=None):
 
 
 def iris_spikes(ax, n_blades=7, title=None):
-    """Sketch of which spike comes from which blade (notebook 91, sunstars): each
+    """Sketch of which spike comes from which blade (notebook 612, sunstars): each
     straight edge of the iris (left) diffracts light into a streak along its
     normal, in both directions (right, same colours). For an odd number of
     blades no two edges are parallel and the iris makes 2 n spikes; for an
@@ -6380,7 +6380,7 @@ def iris_spikes(ax, n_blades=7, title=None):
 
 
 def rounded_iris(ax, title=None):
-    """Sketch of an iris with rounded blades (notebook 91, sunstars): every blade edge
+    """Sketch of an iris with rounded blades (notebook 612, sunstars): every blade edge
     is an arc of radius rho (dashed circles); the opening is where all the
     disks overlap, a circle of radius rho at the opening the blades are made
     for and a polygon with bulged sides when closed further (left; straight
@@ -6426,7 +6426,7 @@ def rounded_iris(ax, title=None):
 
 def iris_stop_down(ax, title=None):
     """Sketch of an iris with rounded blades being stopped down (notebook
-    91, sunstars): round at the opening the blades are made for (here f/2.8), with
+    612, sunstars): round at the opening the blades are made for (here f/2.8), with
     corners and nearly straight sides at f/8 and f/16, where the arcs are
     long compared to the opening; and the star grows: its spikes reach out
     the farther, the smaller the opening.
@@ -6458,7 +6458,7 @@ def iris_stop_down(ax, title=None):
 
 
 def sunstar_scene(ax, title=None):
-    """Sketch of a sunstar (notebook 91, sunstars): the Sun, 0.53 deg across, is imaged
+    """Sketch of a sunstar (notebook 612, sunstars): the Sun, 0.53 deg across, is imaged
     by a wide angle lens stopped down to a small iris as a disk a few
     hundred micrometres across, far brighter than the rest of the scene
     (about 10^5 times the white of a sunlit page); the diffraction streaks
@@ -6494,7 +6494,7 @@ GHOST_COLOR = "#8e5ba8"
 
 
 def ghost_reflections(ax, title=None):
-    """Sketch of a ghost path in a camera lens (notebook 92, flare and ghosts): most of the
+    """Sketch of a ghost path in a camera lens (notebook 613, flare and ghosts): most of the
     light passes the lens to its image on the sensor; a little is reflected
     at a surface j, travels back, is reflected forward again at an earlier
     surface i and reaches the sensor as a second, out-of-focus image, the
@@ -6532,7 +6532,7 @@ def ghost_reflections(ax, title=None):
 
 
 def ar_coating_layers(ax, title=None):
-    """Sketch of an antireflection coating (notebook 92, flare and ghosts): thin films on the
+    """Sketch of an antireflection coating (notebook 613, flare and ghosts): thin films on the
     glass, each a fraction of a wavelength thick; the weak reflections at
     their interfaces come back with phases that nearly cancel, over a band
     of wavelengths for a multilayer. A ghost is reflected twice, so it
@@ -6565,7 +6565,7 @@ def ar_coating_layers(ax, title=None):
 
 
 def ghost_focus(ax, title=None):
-    """Sketch of the paraxial ghost analysis (notebook 92, flare and ghosts): a beam of height
+    """Sketch of the paraxial ghost analysis (notebook 613, flare and ghosts): a beam of height
     y_in through a ghost path ends as a blur of radius abs(a) y_in on the
     sensor. A ghost focused near the sensor (a close to 0, top) piles its
     light into a small, bright spot; a ghost focused far from it (bottom)
@@ -6594,7 +6594,7 @@ def ghost_focus(ax, title=None):
 
 
 def flare_scene(ax, title=None):
-    """Sketch of where ghosts appear (notebook 92, flare and ghosts): for a centred lens, every
+    """Sketch of where ghosts appear (notebook 613, flare and ghosts): for a centred lens, every
     ghost of a bright source lies on the line through the source's image and
     the centre of the frame, on either side of the centre, as copies of the
     iris (when the ghost path passes the stop) of different sizes and
@@ -6626,7 +6626,7 @@ BAYER_COLORS = {"R": "#d6604d", "G": "#5aa469", "B": "#2a7ab9"}
 
 
 def pixel_sampling(ax, title=None):
-    """Sketch of sampling by pixels (notebook 93, the sensor): each pixel integrates the
+    """Sketch of sampling by pixels (notebook 610, the sensor): each pixel integrates the
     irradiance over its aperture and reports one value; a pattern finer than
     two pixels per period (above the Nyquist frequency 1/2p) gives the same
     values as a coarser one, its alias.
@@ -6657,7 +6657,7 @@ def pixel_sampling(ax, title=None):
 
 
 def bayer_cfa(ax, title=None):
-    """Sketch of the Bayer colour filter array (notebook 93, the sensor): left, the
+    """Sketch of the Bayer colour filter array (notebook 610, the sensor): left, the
     mosaic of red, green and blue filters (RGGB); right, its frequency plane:
     luminance at the centre, the chrominance R - B on the carriers
     (1/2p, 0) and (0, 1/2p), and G - (R + B)/2 on the corners (1/2p, 1/2p),
@@ -6696,7 +6696,7 @@ def bayer_cfa(ax, title=None):
 
 
 def olpf_plates(ax, title=None):
-    """Sketch of a birefringent optical low pass filter (notebook 93, the sensor): the
+    """Sketch of a birefringent optical low pass filter (notebook 610, the sensor): the
     first plate splits a ray into an ordinary ray and an extraordinary ray
     displaced by d; a quarter wave plate turns both linear polarizations
     into circular ones, so that the second plate, its optic axis turned by
@@ -6736,7 +6736,7 @@ def olpf_plates(ax, title=None):
 
 
 def microlens_pixels(ax, title=None):
-    """Sketch of pixels with microlenses (notebook 93, the sensor): each microlens images
+    """Sketch of pixels with microlenses (notebook 610, the sensor): each microlens images
     the exit pupil of the camera lens onto the photodiode below the colour
     filter. For light from the centre of the frame (left) the image lands
     on the photodiode; for a large chief ray angle (right) it walks off,
@@ -6781,7 +6781,7 @@ FOCUS_COLOR = "#5aa469"
 
 
 def depth_of_field(ax, title=None):
-    """Sketch of the depth of field (notebook 94, depth of field and tilt-shift): a lens focused on a point
+    """Sketch of the depth of field (notebook 614, depth of field and tilt-shift): a lens focused on a point
     images a nearer point behind the sensor and a farther point in front of
     it; on the sensor both are disks. As long as the disks are smaller than
     the acceptable circle of confusion c, the points look sharp.
@@ -6813,7 +6813,7 @@ def depth_of_field(ax, title=None):
 
 
 def defocus_and_diffraction(ax, title=None):
-    """Sketch of the optimum aperture (notebook 94, depth of field and tilt-shift): a point a little out of
+    """Sketch of the optimum aperture (notebook 614, depth of field and tilt-shift): a point a little out of
     focus gives a geometric blur that shrinks as the aperture closes (the
     cone narrows), while the Airy disk of diffraction grows; their sum is
     smallest where the two are about equal.
@@ -6843,7 +6843,7 @@ def defocus_and_diffraction(ax, title=None):
 
 
 def scheimpflug_hinge(ax, title=None):
-    """Sketch of a tilted lens (notebook 94, depth of field and tilt-shift), side view: the sensor plane,
+    """Sketch of a tilted lens (notebook 614, depth of field and tilt-shift), side view: the sensor plane,
     the lens plane and the plane of sharp focus meet in one line (the
     Scheimpflug line); the plane of focus also passes through the hinge
     line, where the front focal plane of the lens meets the plane through
@@ -6888,7 +6888,7 @@ def scheimpflug_hinge(ax, title=None):
 
 
 def dof_wedge(ax, title=None):
-    """Sketch of the depth of field of a tilted lens (notebook 94, depth of field and tilt-shift): the near
+    """Sketch of the depth of field of a tilted lens (notebook 614, depth of field and tilt-shift): the near
     and far limits are planes through the hinge line too, so that the zone
     of sharp focus is a wedge, about J high above and below the plane of
     focus at the hyperfocal distance H; tall objects near the camera leave
@@ -6961,7 +6961,7 @@ def _plenoptic_ray(ax, zo, yo, u, f, z_mla, gap, centres, color, lw=1.0, ls="-",
 
 
 def plenoptic_camera(ax, title=None):
-    """Sketch of a plenoptic camera (notebook 95, light field camera): a microlens array in the
+    """Sketch of a plenoptic camera (notebook 616, light field camera): a microlens array in the
     image plane of the main lens and a sensor one microlens focal length
     behind it. Light from an object point in focus meets on one microlens,
     which spreads it over the pixels behind it by direction: each pixel
@@ -6988,7 +6988,7 @@ def plenoptic_camera(ax, title=None):
 
 
 def subaperture_parallax(ax, title=None):
-    """Sketch of sub-aperture views (notebook 95, light field camera): the pixels at the same
+    """Sketch of sub-aperture views (notebook 616, light field camera): the pixels at the same
     place under every microlens see the scene through the same part of
     the aperture, they form one view. A point in focus (grey) is seen by
     all views on the same microlens; a point out of focus (here a near
@@ -7019,7 +7019,7 @@ def subaperture_parallax(ax, title=None):
 
 
 def light_field_refocus(ax, title=None):
-    """Sketch of refocusing (notebook 95, light field camera): a far point is imaged in front of
+    """Sketch of refocusing (notebook 616, light field camera): a far point is imaged in front of
     the microlenses; its rays meet in a virtual image plane and spread
     over several microlenses. Adding up the pixels that these rays reach,
     one from each view at a shifted position, gives the photograph a
@@ -7047,7 +7047,7 @@ def light_field_refocus(ax, title=None):
 
 
 def plenoptic_tradeoff(ax, title=None):
-    """Sketch of the trade-off of a plenoptic camera (notebook 95, light field camera): the same
+    """Sketch of the trade-off of a plenoptic camera (notebook 616, light field camera): the same
     sensor behind few large microlenses (many directions, few positions)
     or many small ones (many positions, few directions).
 
@@ -7081,7 +7081,7 @@ PLANET_COLOR = "#2a7ab9"
 
 
 def coronagraph_layout(ax, mask="lyot", dm=False, title=None):
-    """Sketch of a Lyot-style coronagraph (notebook 96, coronagraphs).
+    """Sketch of a Lyot-style coronagraph (notebook 904, coronagraphs).
 
     The telescope (drawn as a lens, its aperture is the entrance pupil)
     focuses the star onto a focal plane mask; a second lens images the pupil
@@ -7169,7 +7169,7 @@ def _sag(z_vertex, R, y):
 
 
 def telescope_layout(ax, kind="cassegrain", title=None):
-    """Sketch of a reflecting telescope (notebook 97, telescope zoo).
+    """Sketch of a reflecting telescope (notebook 900, telescope zoo).
 
     Parameters
     ----------
@@ -7285,7 +7285,7 @@ def telescope_layout(ax, kind="cassegrain", title=None):
 
 
 def segment_phasing_layout(ax, method="dfs", title=None):
-    """Sketch of the phasing of a segmented telescope (notebook 98, segmented mirrors).
+    """Sketch of the phasing of a segmented telescope (notebook 901, segmented mirrors).
 
     The segmented primary is drawn as a lens made of segments (one of them
     displaced: a piston error). A collimator forms an image of the pupil.
@@ -7373,7 +7373,7 @@ def segment_phasing_layout(ax, method="dfs", title=None):
 
 
 def lensing_geometry(ax, ring=False, title=None):
-    """Sketch of a thin gravitational lens (notebook 99, Einstein rings).
+    """Sketch of a thin gravitational lens (notebook 905, Einstein rings).
 
     The observer (left), the lens plane and the source plane; the rays of a
     point mass lens are bent in the lens plane by the angle alpha-hat and
@@ -7438,7 +7438,7 @@ def lensing_geometry(ax, ring=False, title=None):
 
 
 def sine_herschel_conditions(ax, kind="sine", title=None):
-    """Sketch of the sine condition or the Herschel condition (notebook 102, sine and Herschel conditions).
+    """Sketch of the sine condition or the Herschel condition (notebook 402, sine and Herschel conditions).
 
     A lens images the axial point P perfectly onto P'. kind="sine": the
     neighbouring point Q a small height eta above P is imaged onto Q' at
@@ -7507,7 +7507,7 @@ def sine_herschel_conditions(ax, kind="sine", title=None):
 
 
 def echelle_layout(ax, kind="instrument", title=None):
-    """Sketch of an echelle spectrograph (notebook 100).
+    """Sketch of an echelle spectrograph (notebook 914).
 
     Parameters
     ----------
@@ -7616,7 +7616,7 @@ def echelle_layout(ax, kind="instrument", title=None):
 
 def adc_layout(ax, kind="adc", title=None):
     """Sketch of atmospheric refraction or of an atmospheric dispersion
-    corrector (notebook 101, atmospheric dispersion corrector).
+    corrector (notebook 902, atmospheric dispersion corrector).
 
     Parameters
     ----------
@@ -7716,7 +7716,7 @@ def adc_layout(ax, kind="adc", title=None):
 
 
 def fresnel_interface(ax, theta=50.0, n1=1.0, n2=1.5, title=None):
-    """Sketch of a plane wave at an interface (notebooks 10 (interfaces and thin films) and 13 (stacks as transfer functions)): the
+    """Sketch of a plane wave at an interface (notebooks 200 (interfaces and thin films) and 202 (stacks as transfer functions)): the
     plane of incidence (the drawing plane) holds the incident, reflected and
     transmitted rays and the normal. s polarization is normal to it (dots,
     out of the drawing), p polarization lies in it (arrows across each ray).
@@ -7781,7 +7781,7 @@ def fresnel_interface(ax, theta=50.0, n1=1.0, n2=1.5, title=None):
 
 def kretschmann(ax, theta=68.0, title=None):
     """Sketch of surface plasmon resonance in the Kretschmann configuration
-    (notebook 59, FDTD metals and plasmons), not to scale: p-polarized light in a glass prism is
+    (notebook 221, FDTD metals and plasmons), not to scale: p-polarized light in a glass prism is
     totally reflected at a thin gold film; at the angle where the parallel
     wavenumber in the glass matches that of the surface plasmon on the
     water side, the evanescent field excites the plasmon and the reflected
@@ -7823,7 +7823,7 @@ def kretschmann(ax, theta=68.0, title=None):
 
 
 def yee_grid(ax, title=None):
-    """Sketch of the 2D Yee grid of the FDTD (notebook 57, FDTD basics) for the Ez
+    """Sketch of the 2D Yee grid of the FDTD (notebook 220, FDTD basics) for the Ez
     polarization: Ez on the cell corners, Hx (pointing along x) half a cell
     up, Hy (along y) half a cell to the right, so every curl in Maxwell's equations is a centred
     difference; on the right the leapfrog in time, E at whole steps and H
@@ -7878,7 +7878,7 @@ def yee_grid(ax, title=None):
 
 
 def lithography_scanner(ax, title=None):
-    """Sketch of an optical scanner for lithography (notebooks 31 (vectorial imaging in lithography) to 41 (telecentricity across the slit)):
+    """Sketch of an optical scanner for lithography (notebooks 800 (vectorial imaging in lithography) to 822 (telecentricity across the slit)):
     the illuminator shapes the source (sigma, poles, polarization) and lights
     a slit on the reticle; the projection lens images the reticle 4x reduced
     onto the resist on the wafer. Reticle and wafer move through the slit in
@@ -7928,7 +7928,7 @@ def lithography_scanner(ax, title=None):
 
 
 def tcc_overlap(ax, sigma=0.7, f1=0.75, f2=-0.6, title=None):
-    """Sketch of the transmission cross coefficient (notebook 34, Hopkins imaging and SOCS) in the
+    """Sketch of the transmission cross coefficient (notebook 802, Hopkins imaging and SOCS) in the
     pupil plane, in units of NA/lambda: a source point s lets the orders f1
     and f2 pass if both s + f1 and s + f2 lie in the pupil, i.e. if s lies in
     the pupil shifted by -f1 and in the one shifted by -f2. TCC(f1, f2) is
@@ -7970,7 +7970,7 @@ def tcc_overlap(ax, sigma=0.7, f1=0.75, f2=-0.6, title=None):
 
 
 def mask_3d(ax, title=None):
-    """Sketch of mask topography (notebooks 36 (rigorous mask), 37 (mask models compared) and 65 (FDTD mask for lithography)): the absorber is
+    """Sketch of mask topography (notebooks 810 (rigorous mask), 811 (mask models compared) and 812 (FDTD mask for lithography)): the absorber is
     about as thick as the wavelength, so the light near an edge is not just
     cut off as in the thin (Kirchhoff) mask model: oblique light is shadowed
     by the absorber walls, the edges diffract and the transmitted phase
@@ -8015,7 +8015,7 @@ def mask_3d(ax, title=None):
 
 
 def radiance_geometry(ax, title=None):
-    """Sketch of the definition of radiance (notebook 105, radiometry and photometry).
+    """Sketch of the definition of radiance (notebook 600, radiometry and photometry).
 
     A surface element dA sends the flux d^2 Phi into the small cone dOmega
     around a direction at the angle theta from its normal. Seen from that
@@ -8082,7 +8082,7 @@ def radiance_geometry(ax, title=None):
 
 
 def cos4_law(ax, title=None):
-    """Sketch of the cos^4 law of image irradiance (notebook 106, radiometry of images).
+    """Sketch of the cos^4 law of image irradiance (notebook 601, radiometry of images).
 
     A lens images a uniform Lambertian object at infinity. An off-axis
     image point at the field angle theta receives less light than the
@@ -8127,7 +8127,7 @@ def cos4_law(ax, title=None):
 
 
 # --------------------------------------------------------------------------
-# field tracing (notebook 109)
+# field tracing (notebook 460)
 # --------------------------------------------------------------------------
 
 FIELD_COLOR = "#d6604d"
@@ -8550,7 +8550,7 @@ def fibre_coupling(ax, lens="aspheric", title=None):
     _finish(ax, (-0.1, z_f + 2.1), (-1.25, 1.25), title)
 
 
-# ---------------------------------------------------------------- fibres (notebooks 115 (light in a fibre) to 120 (fibre link))
+# ---------------------------------------------------------------- fibres (notebooks 720 (light in a fibre) to 725 (fibre link))
 
 CORE = "#cfe3f3"
 CLADDING = "#eef4f8"
@@ -8578,7 +8578,7 @@ def _zigzag(z0, z1, y0, slope, a):
 
 
 def fibre_types(ax, title=None):
-    """Sketch of the three classic fibres (notebook 115, light in a fibre).
+    """Sketch of the three classic fibres (notebook 720, light in a fibre).
 
     For a step-index multimode, a graded-index multimode and a step-index
     single-mode fibre: the cross section, the index profile n(r) and rays
@@ -8645,7 +8645,7 @@ def fibre_types(ax, title=None):
 
 
 def fibre_acceptance(ax, n0=1.0, n1=1.48, n2=1.46, title=None):
-    """Sketch of the acceptance angle of a fibre (notebook 115, light in a fibre).
+    """Sketch of the acceptance angle of a fibre (notebook 720, light in a fibre).
 
     A ray from the medium n0 hits the flat end face at the angle theta_0,
     is refracted into the core and meets the core-cladding interface at
@@ -8706,7 +8706,7 @@ def fibre_acceptance(ax, n0=1.0, n1=1.48, n2=1.46, title=None):
 
 def skew_ray_end_view(ax, title=None):
     """Sketch of a meridional and a skew ray seen along the fibre axis
-    (notebook 115, light in a fibre).
+    (notebook 720, light in a fibre).
 
     The meridional ray passes through the axis and stays in one plane. The
     skew ray never meets the axis: its projection is a polygon of equal
@@ -8739,7 +8739,7 @@ def skew_ray_end_view(ax, title=None):
 
 def slab_transverse_resonance(ax, title=None):
     """Sketch of a ray in a slab waveguide and the transverse resonance
-    condition (notebook 116, fibre modes).
+    condition (notebook 721, fibre modes).
 
     A plane wave bounces between the two interfaces at the angle theta to
     the axis. After a round trip across the slab (thickness d) its phase has
@@ -8774,8 +8774,8 @@ def slab_transverse_resonance(ax, title=None):
 
 
 def dispersion_mechanisms(ax, title=None):
-    """Sketch of the three ways a pulse spreads in a fibre (notebooks 117 (dispersion in fibres)
-    and 118 (pulse broadening)).
+    """Sketch of the three ways a pulse spreads in a fibre (notebooks 722 (dispersion in fibres)
+    and 723 (pulse broadening)).
 
     Intermodal: the same wavelength in different modes (ray angles) takes
     different times. Chromatic: different wavelengths of the source travel
@@ -8802,7 +8802,7 @@ def dispersion_mechanisms(ax, title=None):
 
 
 def fibre_bragg_grating(ax, title=None):
-    """Sketch of a fibre Bragg grating (notebook 119, fibre Bragg gratings).
+    """Sketch of a fibre Bragg grating (notebook 724, fibre Bragg gratings).
 
     A periodic index modulation of period Lambda in the core reflects the
     narrow band around the Bragg wavelength lambda_B = 2 n_eff Lambda, where
@@ -8840,7 +8840,7 @@ def fibre_bragg_grating(ax, title=None):
 
 
 def fibre_link(ax, title=None):
-    """Sketch of a basic intensity modulated fibre link (notebook 120).
+    """Sketch of a basic intensity modulated fibre link (notebook 725).
 
     A laser driven by the bit pattern (directly or through an external
     modulator), connectors and splices, fibre spans, a photodiode (PIN or
@@ -8926,7 +8926,7 @@ RESONATORS = {"plane-parallel": (40.0, 40.0), "plane-concave": (np.inf, 4.0),
 def resonator_types(ax, kind="confocal", title=None):
     """Sketch of a two mirror resonator of length 2 with its Gaussian
     eigenmode (shaded, the radius w(z)), phase fronts that fit the mirrors
-    and the centres of curvature C1 and C2 of the mirrors (notebook 08, ABCD matrices).
+    and the centres of curvature C1 and C2 of the mirrors (notebook 111, ABCD matrices).
 
     Parameters
     ----------
@@ -8934,7 +8934,7 @@ def resonator_types(ax, kind="confocal", title=None):
     kind : str, optional
         "plane-parallel" (nearly flat mirrors, R = 20 L), "plane-concave"
         (R2 = 2 L), "confocal" (R = 1.02 L) or "concentric" (R = 0.52 L):
-        the four resonators of notebook 08 (ABCD matrices) in units of L/2.
+        the four resonators of notebook 111 (ABCD matrices) in units of L/2.
     title : str, optional
     """
 
@@ -8975,7 +8975,7 @@ def resonator_types(ax, kind="confocal", title=None):
 
 def resonator_unfolded(ax, R=3.0, L=1.6, round_trips=3, title=None):
     """Sketch of a two mirror resonator and the same resonator unfolded into
-    a periodic sequence of lenses with f = R/2 (notebook 08, ABCD matrices). One ray is
+    a periodic sequence of lenses with f = R/2 (notebook 111, ABCD matrices). One ray is
     traced through both: the bounces inside the resonator are the passes
     through the lenses, and one round trip is one period of the lens guide.
 
@@ -9030,7 +9030,7 @@ def resonator_unfolded(ax, R=3.0, L=1.6, round_trips=3, title=None):
 
 
 def folded_resonator(ax, theta=20.0, title=None):
-    """Sketch of a folded three mirror resonator (notebook 08, ABCD matrices): a plane end
+    """Sketch of a folded three mirror resonator (notebook 111, ABCD matrices): a plane end
     mirror M1, the distance d1 to a concave folding mirror hit at the angle
     of incidence theta, and the arm d to a second plane end mirror M2. The
     plane of the drawing is the tangential plane; the sagittal direction
@@ -9102,7 +9102,7 @@ def folded_resonator(ax, theta=20.0, title=None):
 
 
 # ---------------------------------------------------------------------------
-# spectroscopy (notebooks 110 (grating and prism spectrometers), 111 (Fourier transform spectroscopy), 113 (Fabry–Perot and filters), 114 (spectral lines and absorption) and 122 (imaging spectroscopy))
+# spectroscopy (notebooks 910 (grating and prism spectrometers), 911 (Fourier transform spectroscopy), 912 (Fabry–Perot and filters), 913 (spectral lines and absorption) and 915 (imaging spectroscopy))
 # ---------------------------------------------------------------------------
 
 _SPECTRUM = {"blue": "#3b5bdb", "green": "#2f9e44", "red": "#e03131"}
@@ -9172,7 +9172,7 @@ def _segment_hit(p, d, a, b):
 
 
 def spectrometer_layout(ax, kind="czerny_turner", title=None):
-    """Sketch of a dispersive spectrometer (notebook 110, grating and prism spectrometers).
+    """Sketch of a dispersive spectrometer (notebook 910, grating and prism spectrometers).
 
     Parameters
     ----------
@@ -9290,7 +9290,7 @@ def spectrometer_layout(ax, kind="czerny_turner", title=None):
 
 
 def fts_layout(ax, kind="michelson", title=None):
-    """Sketch of a Fourier transform spectrometer (notebook 111, Fourier transform spectroscopy).
+    """Sketch of a Fourier transform spectrometer (notebook 911, Fourier transform spectroscopy).
 
     Parameters
     ----------
@@ -9382,7 +9382,7 @@ def fts_layout(ax, kind="michelson", title=None):
 
 
 def fabry_perot_layout(ax, kind="etalon", title=None):
-    """Sketch of a Fabry-Perot etalon or a Lyot filter (notebook 113, Fabry–Perot and filters).
+    """Sketch of a Fabry-Perot etalon or a Lyot filter (notebook 912, Fabry–Perot and filters).
 
     Parameters
     ----------
@@ -9474,7 +9474,7 @@ def fabry_perot_layout(ax, kind="etalon", title=None):
 
 def absorption_layout(ax, kind="cell", title=None):
     """Sketch of an absorption measurement or of the rotational structure of
-    a vibrational band (notebook 114, spectral lines and absorption).
+    a vibrational band (notebook 913, spectral lines and absorption).
 
     Parameters
     ----------
@@ -9568,7 +9568,7 @@ def absorption_layout(ax, kind="cell", title=None):
 
 
 def imaging_spectrometer_layout(ax, kind="pushbroom", title=None):
-    """Sketch of an imaging spectrometer (notebook 122, imaging spectroscopy).
+    """Sketch of an imaging spectrometer (notebook 915, imaging spectroscopy).
 
     Parameters
     ----------
@@ -9728,7 +9728,7 @@ def imaging_spectrometer_layout(ax, kind="pushbroom", title=None):
 
 
 # --------------------------------------------------------------------------
-# AR/VR and head-up displays (notebooks 123 (AR waveguide combiners) to 126 (head-up displays))
+# AR/VR and head-up displays (notebooks 920 (AR waveguide combiners) to 923 (head-up displays))
 # --------------------------------------------------------------------------
 
 AR_IMAGE = "#2f9e44"
@@ -9755,7 +9755,7 @@ def _eye_icon(ax, z, y, size=0.35, facing="left", zorder=6):
 
 
 def waveguide_combiner(ax, kind="side", title=None):
-    """Sketch of a diffractive waveguide combiner (notebook 123, AR waveguide combiners).
+    """Sketch of a diffractive waveguide combiner (notebook 920, AR waveguide combiners).
 
     Parameters
     ----------
@@ -9854,7 +9854,7 @@ def waveguide_combiner(ax, kind="side", title=None):
 
 
 def volume_grating_layout(ax, kind="transmission", title=None):
-    """Sketch of a thick volume holographic grating (notebook 124, volume holographic gratings).
+    """Sketch of a thick volume holographic grating (notebook 921, volume holographic gratings).
 
     Parameters
     ----------
@@ -9922,7 +9922,7 @@ def volume_grating_layout(ax, kind="transmission", title=None):
 
 
 def pancake_lens(ax, ghost=True, title=None):
-    """Sketch of a pancake (polarization folded) VR lens (notebook 125, pancake lenses).
+    """Sketch of a pancake (polarization folded) VR lens (notebook 922, pancake lenses).
 
     Display with a polarizer and a quarter wave plate (circular light), a
     curved half mirror, a quarter wave plate and a reflective polarizer;
@@ -9984,7 +9984,7 @@ def pancake_lens(ax, ghost=True, title=None):
 
 
 def hud_layout(ax, kind="layout", title=None):
-    """Sketch of a windshield head-up display (notebook 126, head-up displays).
+    """Sketch of a windshield head-up display (notebook 923, head-up displays).
 
     Parameters
     ----------
@@ -10304,7 +10304,7 @@ def progressive_lens_layout(ax, view="front", title=None):
 
 
 # --------------------------------------------------------------------------
-# 3D sensing and LiDAR (notebooks 130, time-of-flight LiDAR, to 133, triangulation and
+# 3D sensing and LiDAR (notebooks 930, time-of-flight LiDAR, to 133, triangulation and
 # structured light)
 # --------------------------------------------------------------------------
 
@@ -10324,7 +10324,7 @@ def _pulse(ax, z, y, width=0.5, height=0.35, color=NIR, sigma=0.06):
 
 
 def lidar_layout(ax, kind="tof", title=None):
-    """Sketch of a LiDAR (notebooks 130, time-of-flight LiDAR, and 131,
+    """Sketch of a LiDAR (notebooks 930, time-of-flight LiDAR, and 931,
     FMCW LiDAR).
 
     Parameters
@@ -10425,7 +10425,7 @@ def lidar_layout(ax, kind="tof", title=None):
 
 
 def beam_scanner(ax, kind="galvo", title=None):
-    """Sketch of a beam scanner (notebook 132, beam scanning).
+    """Sketch of a beam scanner (notebook 932, beam scanning).
 
     Parameters
     ----------
@@ -10527,7 +10527,7 @@ def beam_scanner(ax, kind="galvo", title=None):
 
 
 def scan_lens_layout(ax, kind="ftheta", title=None):
-    """Sketch of a scan lens behind a scanner (notebook 149, scan lenses).
+    """Sketch of a scan lens behind a scanner (notebook 434, scan lenses).
 
     Parameters
     ----------
@@ -10636,7 +10636,7 @@ def scan_lens_layout(ax, kind="ftheta", title=None):
 
 def structured_light_layout(ax, kind="triangulation", title=None):
     """Sketch of a triangulation sensor
-    (notebook 133, triangulation and structured light).
+    (notebook 933, triangulation and structured light).
 
     Parameters
     ----------
@@ -10740,8 +10740,8 @@ def _beam_element(ax, z, y, angle, size, color, text=None, text_offset=(0.0, 0.0
 
 def metrology_layout(ax, kind="csi", title=None):
     """Sketch of a surface or thin film metrology instrument (notebooks
-    134, coherence scanning interferometry, 135, ellipsometry, 136,
-    scatterometry, and 137, deflectometry).
+    504, coherence scanning interferometry, 520, ellipsometry, 521,
+    scatterometry, and 512, deflectometry).
 
     Parameters
     ----------
@@ -10965,7 +10965,7 @@ def _ray(ax, pts, color=LASER, lw=1.4, arrow_at=None, ls="-", zorder=5):
 
 
 def crystal_optics_layout(ax, kind="calcite", title=None):
-    """Sketch of crystal optics and polarization devices (notebook 138,
+    """Sketch of crystal optics and polarization devices (notebook 211,
     crystal optics).
 
     Parameters
@@ -11080,8 +11080,8 @@ def crystal_optics_layout(ax, kind="calcite", title=None):
 
 def modulator_layout(ax, kind="pockels", title=None):
     """Sketch of an electro-optic, liquid crystal or acousto-optic light
-    modulator (notebooks 139, electro-optic modulators, 140, liquid
-    crystals, and 141, acousto-optics).
+    modulator (notebooks 212, electro-optic modulators, 213, liquid
+    crystals, and 214, acousto-optics).
 
     Parameters
     ----------
@@ -11247,7 +11247,7 @@ def _mirror_block(ax, z, h, width=0.18, color="0.3", text=None, text_y=None, fon
 
 def laser_layout(ax, kind="end_pumped", title=None):
     """Sketch of laser level schemes and layouts (notebooks
-    142 (laser fundamentals), 143 (Q-switching and mode-locking) and 144 (laser diodes)).
+    700 (laser fundamentals), 702 (Q-switching and mode-locking) and 703 (laser diodes)).
 
     Parameters
     ----------
@@ -11386,7 +11386,7 @@ def _photon(ax, z0, y0, z1, y1, color, n_waves=3.0, amplitude=0.07, lw=1.2, zord
 
 
 def detector_layout(ax, kind="pin", title=None):
-    """Sketch of photodetectors and photon experiments (notebook 148,
+    """Sketch of photodetectors and photon experiments (notebook 730,
     detectors and photon statistics).
 
     Parameters
@@ -11498,7 +11498,7 @@ def _kinoform_plate(ax, z0, h, n_zones, depth, thickness, side=1.0, color=GLASS,
 
 def hybrid_lens_layout(ax, kind="hybrid", title=None):
     """Sketch of diffractive and hybrid lenses
-    (notebook 151, hybrid diffractive lenses).
+    (notebook 422, hybrid diffractive lenses).
 
     Parameters
     ----------
@@ -11613,7 +11613,7 @@ def hybrid_lens_layout(ax, kind="hybrid", title=None):
                          "'sweatt' or 'orders'")
 
 
-# ------------------ notebook 152, litho stochastics, flare and focus blur
+# ------------------ notebook 832, litho stochastics, flare and focus blur
 
 LITHO_COLORS = {"photon": "#7b4fb3", "acid": "#d6604d", "quencher": "#2a7ab9",
                 "resist": "#f2e3b3", "resist_edge": "#a88a3c", "substrate": "#9a9a9a",
@@ -11633,7 +11633,7 @@ def _rough_edge(y, x0, amplitude, seed, smooth=6):
 
 def litho_stochastics_layout(ax, kind="shot_noise", title=None):
     """Sketch of stochastic effects, flare and focus blur in lithography
-    (notebook 152, litho stochastics, flare and focus blur).
+    (notebook 832, litho stochastics, flare and focus blur).
 
     Parameters
     ----------
@@ -11805,7 +11805,7 @@ def litho_stochastics_layout(ax, kind="shot_noise", title=None):
                          "'focus_blur'")
 
 
-# ------------------ notebook 153, multi-configuration optimization
+# ------------------ notebook 411, multi-configuration optimization
 
 MULTICONFIG_COLORS = {"shared": "#2a7ab9", "config": ("#d6604d", "#5aa469", "#8e5ba8"),
                       "merit": "#e0a000", "zero": "#f4f4f2"}
@@ -11813,7 +11813,7 @@ MULTICONFIG_COLORS = {"shared": "#2a7ab9", "config": ("#d6604d", "#5aa469", "#8e
 
 def multiconfig_layout(ax, kind="configurations", title=None):
     """Sketch of the optimization of several configurations of one lens
-    (notebook 153, multi-configuration optimization).
+    (notebook 411, multi-configuration optimization).
 
     Parameters
     ----------
@@ -11943,8 +11943,8 @@ EUV_COLORS = {"mo": "#5a6f8f", "si": "#e8d7a8", "ru": "#b07a3a", "absorber": "#3
 def euv_layout(ax, kind="multilayer", title=None):
     """Sketches of EUV optics.
 
-    Used in notebooks 156 (EUV multilayers and reflective masks) and
-    157 (EUV projector and pupil).
+    Used in notebooks 840 (EUV multilayers and reflective masks) and
+    841 (EUV projector and pupil).
 
     Parameters
     ----------
@@ -12053,7 +12053,7 @@ def euv_layout(ax, kind="multilayer", title=None):
         raise ValueError("unknown kind {!r}".format(kind))
 
 
-# ------------------ notebook 168, local plane interface approximation
+# ------------------ notebook 462, local plane interface approximation
 
 
 def _surface_hits(h_fun, dh_fun, z0, y, d=np.array([1.0, 0.0]), n1=1.5, n2=1.0):
@@ -12494,8 +12494,8 @@ def polishing_layout(ax, kind="tool", title=None):
 
 
 # ---------------------------------------------------------------------------
-# notebook 169 (source models in field tracing) and
-# notebook 170 (laser resonator modes)
+# notebook 461 (source models in field tracing) and
+# notebook 701 (laser resonator modes)
 # ---------------------------------------------------------------------------
 
 _MODE_COLORS = ("#2a7ab9", "#5aa469", "#d6604d")
@@ -12528,7 +12528,7 @@ def _flow_box(ax, z, y, w, h, text, color="0.94", fontsize=8):
 
 def mode_decomposition(ax, kind="incoherent", title=None):
     """Sketch of a source decomposed into modes that a field tracing chain
-    traces one by one (notebook 169, source models in field tracing).
+    traces one by one (notebook 461, source models in field tracing).
 
     - "incoherent": the coherent modes of a partially coherent beam
       (Hermite-Gaussians with the weights w_j); each is traced through the
@@ -12600,7 +12600,7 @@ def mode_decomposition(ax, kind="incoherent", title=None):
 
 def multimode_fibre(ax, M2=2.0, title=None):
     """Sketch of a multimode laser beam focused into a single-mode fibre
-    (notebook 169, source models in field tracing).
+    (notebook 461, source models in field tracing).
 
     The beam (shaded) has the second-moment radius W and the divergence of
     M^2 times a Gaussian beam's; its fundamental mode, the embedded Gaussian
@@ -12669,7 +12669,7 @@ def multimode_fibre(ax, M2=2.0, title=None):
 
 def led_behind_collimator(ax, title=None):
     """Sketch of an LED die in the front focal plane of a collimator, and a
-    screen far behind it (notebook 169, source models in field tracing).
+    screen far behind it (notebook 461, source models in field tracing).
 
     Every emitter of the die becomes a plane wave tilted by its height over
     the focal length, cut by the lens aperture. The emitters are mutually
@@ -12723,7 +12723,7 @@ def led_behind_collimator(ax, title=None):
 
 def young_broadband(ax, title=None):
     """Sketch of Young's double slit in broadband light
-    (notebook 169, source models in field tracing). Every wavelength makes fringes with a
+    (notebook 461, source models in field tracing). Every wavelength makes fringes with a
     period lambda L/d; they agree at the centre of the screen and drift
     apart where the path difference d y/L approaches the coherence length
     lambda^2/Delta lambda, and the sum (black) loses its visibility.
@@ -12773,7 +12773,7 @@ def _transit_profile(t, s):
 
 
 def fox_li_unfolded(ax, transits=5, title=None):
-    """Sketch of the Fox-Li iteration (notebook 170, laser resonator modes).
+    """Sketch of the Fox-Li iteration (notebook 701, laser resonator modes).
 
     Top: two plane mirrors of half width a, a distance L apart. Bottom: the
     same resonator unfolded into a row of apertures; a uniform field enters,
@@ -12829,7 +12829,7 @@ def fox_li_unfolded(ax, transits=5, title=None):
 
 def aperture_selection(ax, ratio=1.4, title=None):
     """Sketch of mode selection with an aperture in a half-symmetric
-    resonator (notebook 170, laser resonator modes): a plane mirror with an
+    resonator (notebook 701, laser resonator modes): a plane mirror with an
     aperture of radius a = ratio*w in front of it, a concave mirror, the
     TEM00 mode (radius w on the plane mirror) and the wider TEM01 mode. The
     profiles on the left show how much of each mode the aperture cuts off
@@ -12907,7 +12907,7 @@ def _lens_guide_mode(f, d, wl):
 def thermal_lens_resonator(ax, f=30.0, title=None):
     """Sketch of a resonator with two plane mirrors and a pumped laser rod
     in the middle whose thermal lens (focal length f) makes it stable
-    (notebook 170, laser resonator modes). The shaded mode follows from
+    (notebook 701, laser resonator modes). The shaded mode follows from
     the ABCD round trip: a weak lens (long f) gives a large mode that the
     rod aperture and the mirrors clip; near the far edge of stability
     (f -> L/4) the mode is focused onto the mirrors and spreads out at the
@@ -12957,7 +12957,7 @@ def thermal_lens_resonator(ax, f=30.0, title=None):
 
 def unstable_resonator(ax, M=2.0, title=None):
     """Sketch of a positive-branch confocal unstable resonator
-    (notebook 170, laser resonator modes). A large concave mirror and a small convex
+    (notebook 701, laser resonator modes). A large concave mirror and a small convex
     mirror share their focal point F (behind the small mirror). A
     collimated ray that hits the small mirror seems to come from F, and the
     large mirror sends it back collimated, M = R1/abs(R2) times further from
@@ -13013,7 +13013,7 @@ def unstable_resonator(ax, M=2.0, title=None):
 
 
 def eyepiece_layout(ax, kind="telescope", title=None):
-    """Sketches of an eyepiece in a telescope (notebook 171, eyepieces).
+    """Sketches of an eyepiece in a telescope (notebook 432, eyepieces).
 
     Parameters
     ----------
@@ -13094,7 +13094,7 @@ def eyepiece_layout(ax, kind="telescope", title=None):
 
 def binocular_layout(ax, kind="porro", title=None):
     """Sketches of the two kinds of binoculars
-    (notebook 172, binoculars and erecting prisms).
+    (notebook 433, binoculars and erecting prisms).
 
     Parameters
     ----------
@@ -13160,7 +13160,7 @@ def binocular_layout(ax, kind="porro", title=None):
 
 def imaging_pupil(ax, title=None):
     """Sketch of scalar imaging through a 4f system with a pupil
-    (notebooks 15 (imaging and Zernikes) and 17 (PSF, MTF and Strehl)): a point in the
+    (notebooks 301 (imaging and Zernikes) and 302 (PSF, MTF and Strehl)): a point in the
     object plane, the first lens turns its spherical wave into a plane wave
     in the pupil (the common focal plane), the stop of radius f NA cuts the
     plane waves to ``|k_perp| <= k NA``, a wavefront error W tilts and bends the
@@ -13218,7 +13218,7 @@ def imaging_pupil(ax, title=None):
 
 def otf_overlap(ax, f=0.7, title=None):
     """Sketch of the optical transfer function as the overlap of two
-    shifted pupils (notebook 17, PSF, MTF and Strehl), with frequencies in
+    shifted pupils (notebook 302, PSF, MTF and Strehl), with frequencies in
     units of NA/lambda. Left: the pupil P(k) and its copy shifted by the
     spatial frequency f; the shaded overlap, normalized by the pupil area,
     is the OTF of an aberration free circular pupil (with aberrations the
@@ -13272,7 +13272,7 @@ def otf_overlap(ax, f=0.7, title=None):
 
 def fresnel_zones(ax, n_zones=4, title=None):
     """Sketch of the Fresnel zones of an opening
-    (notebook 01, free-space propagation): a plane wave falls on a slit or a square opening of half
+    (notebook 100, free-space propagation): a plane wave falls on a slit or a square opening of half
     width a, and an observation point P lies on the axis at the distance z.
     The edge of zone m is where the path to P is longer by m lambda/2 than
     the axial path, at the height rho_m = sqrt(m lambda z) (paraxially).
@@ -13331,7 +13331,7 @@ def fresnel_zones(ax, n_zones=4, title=None):
 
 def iso_caustic(ax, title=None):
     """Sketch of a beam caustic and an ISO 11146 measurement
-    (notebook 07, beam quality): the second moment diameter d(z) = d0 sqrt(1 + ((z -
+    (notebook 112, beam quality): the second moment diameter d(z) = d0 sqrt(1 + ((z -
     z0)/z_R)^2) around the waist, its asymptotes with the full divergence
     angle Theta, the Rayleigh length z_R, and the measurement planes of the
     standard: at least ten, about half of them within one Rayleigh length of
@@ -13381,7 +13381,7 @@ def iso_caustic(ax, title=None):
 
 def tir_beam_shifts(ax, kind="goos_haenchen", theta=50.0, n=1.5, title=None):
     """Sketch of a beam at total internal reflection
-    (notebook 13, stacks as transfer functions).
+    (notebook 202, stacks as transfer functions).
 
     kind="goos_haenchen": a beam in glass (index n) hits the interface to
     air beyond the critical angle. Each plane wave of the beam is reflected
@@ -13490,7 +13490,7 @@ def alternating_projections(ax, kind="fienup", title=None):
     """Diagram of the iterative Fourier transform algorithms as alternating
     projections between two planes.
 
-    kind="fienup": support based phase retrieval (notebook 28, phase retrieval). The
+    kind="fienup": support based phase retrieval (notebook 532, phase retrieval). The
     current object estimate g_k is Fourier transformed, its modulus is
     replaced by the measured ``|F|`` (the phase is kept), and the result is
     transformed back; in the object plane the support and positivity
@@ -13498,7 +13498,7 @@ def alternating_projections(ax, kind="fienup", title=None):
     input-output).
 
     kind="gs": Gerchberg-Saxton design of a phase-only element
-    (notebook 30, IFTA beam shaping). In the element plane the known
+    (notebook 534, IFTA beam shaping). In the element plane the known
     input amplitude A_in is imposed and the phase kept; in the far field the
     target amplitude sqrt(I_target) is imposed and the phase kept.
 
@@ -13544,7 +13544,7 @@ def alternating_projections(ax, kind="fienup", title=None):
 
 
 def doe_beam_shaper(ax, title=None):
-    """Sketch of beam shaping with a diffractive optical element (notebook 30,
+    """Sketch of beam shaping with a diffractive optical element (notebook 534,
     IFTA beam shaping): a collimated Gaussian laser beam passes a phase-only
     element with the phase phi(x, y) and a lens of focal length f; the
     focal plane holds the Fourier transform of the field behind the
@@ -13596,7 +13596,7 @@ def doe_beam_shaper(ax, title=None):
 
 
 def tie_planes(ax, title=None):
-    """Sketch of the transport-of-intensity equation (notebook 29, TIE): a
+    """Sketch of the transport-of-intensity equation (notebook 533, TIE): a
     plane wave of uniform intensity passes a transparent phase object (a
     bump that delays the light, like a weak lens). In focus, z = 0, the
     intensity is still uniform; behind it the bump focuses the light (bright
@@ -13640,7 +13640,7 @@ def tie_planes(ax, title=None):
 
 def source_pupil_orders(ax, pitch=1.4, title=None):
     """Sketch of Abbe imaging of dense lines in the pupil
-    (notebook 39, source optimization), in units of NA/lambda (pupil radius 1): a source point at
+    (notebook 830, source optimization), in units of NA/lambda (pupil radius 1): a source point at
     s sends the diffraction orders of lines of pitch p to s + m lambda/(p NA).
     Only orders inside the pupil reach the wafer, and at least two must pass
     to form an image. For a dense pitch (lambda/(p NA) > 1) an on-axis source
@@ -13701,7 +13701,7 @@ def _time_axes(ax, z0, y0, length, height, xlabel="t", ylabel=None, fontsize=8.5
 
 def shg_phase_matching(ax, title=None):
     """Sketch of phase matching in second harmonic generation
-    (notebook 145, second harmonic generation and phase matching). Left: the wave vectors.
+    (notebook 710, second harmonic generation and phase matching). Left: the wave vectors.
     Two photons of the fundamental carry 2 k(omega), the harmonic k(2 omega);
     dispersion makes n(2 omega) > n(omega), so the two differ by
     Delta k = k(2 omega) - 2 k(omega). Right: the harmonic field along the
@@ -13763,7 +13763,7 @@ def shg_phase_matching(ax, title=None):
 
 def parametric_processes(ax, title=None):
     """Sketch of parametric amplification
-    (notebook 146, parametric amplification and OPOs). Left: energy diagram, a pump photon omega_p
+    (notebook 711, parametric amplification and OPOs). Left: energy diagram, a pump photon omega_p
     splits at a virtual level into a signal omega_s and an idler omega_i,
     omega_p = omega_s + omega_i. Middle: momentum, the phase matching
     k_p = k_s + k_i (+ 2 pi/Lambda in a poled crystal). Right: a singly
@@ -13826,7 +13826,7 @@ def parametric_processes(ax, title=None):
 
 
 def kerr_self_focusing(ax, title=None):
-    """Sketch of self-focusing (notebook 147, Kerr effect and self-focusing).
+    """Sketch of self-focusing (notebook 712, Kerr effect and self-focusing).
     A Gaussian beam enters a Kerr medium, n = n0 + n2 I. The index is
     highest on the axis, where the intensity is, so the medium acts as a
     positive lens that the beam writes itself. Below the critical power
@@ -13886,7 +13886,7 @@ def _chirped_pulse(ax, z0, y0, t, env, inst, sx, sy, cmap="coolwarm_r"):
 
 def dispersion_broadening(ax, title=None):
     """Sketch of a pulse in a dispersive fibre
-    (notebook 118, pulse broadening). The input pulse is short and unchirped. Its frequencies
+    (notebook 723, pulse broadening). The input pulse is short and unchirped. Its frequencies
     travel at different group velocities: with the anomalous dispersion of
     silica at 1550 nm (beta2 < 0) blue runs ahead and red falls behind.
     After the length L the pulse is longer, lower and chirped,
@@ -13930,7 +13930,7 @@ def dispersion_broadening(ax, title=None):
 
 def spm_chirp(ax, title=None):
     """Sketch of self-phase modulation and the soliton
-    (notebook 121, SPM and solitons in fibres). Left: the Kerr effect gives the pulse a nonlinear
+    (notebook 726, SPM and solitons in fibres). Left: the Kerr effect gives the pulse a nonlinear
     phase that follows its power, phi_NL(t) = gamma P(t) z. Its slope is a
     frequency shift, delta omega = -d phi_NL/dt: the leading edge is shifted
     to the red, the trailing edge to the blue, and the spectrum broadens.
@@ -13977,7 +13977,7 @@ def spm_chirp(ax, title=None):
 
 
 def high_na_focus(ax, theta_max=55.0, title=None):
-    """Sketch of a high NA focus (notebook 02, vectorial diffraction). An
+    """Sketch of a high NA focus (notebook 104, vectorial diffraction). An
     aplanatic lens bends each ray of an x polarized collimated beam towards
     the focus. The field stays perpendicular to the ray (k . E = 0), so on
     the tilted rays it gets a component along z: E_z = -E_x tan(theta) for
@@ -14037,7 +14037,7 @@ def high_na_focus(ax, theta_max=55.0, title=None):
 
 
 def tilted_plane(ax, theta=35.0, title=None):
-    """Sketch of propagation onto a tilted plane (notebook 03, tilted planes).
+    """Sketch of propagation onto a tilted plane (notebook 102, tilted planes).
     The field is known on the plane z = 0; the observation plane passes
     through r0 = (0, 0, z0) and is rotated by R, here by theta about the y
     axis, with its own axes x_hat and normal n_hat. A plane wave with the
@@ -14093,7 +14093,7 @@ def tilted_plane(ax, theta=35.0, title=None):
 
 def wpm_slices(ax, title=None):
     """Sketch of the wave propagation method
-    (notebook 05, wave propagation method). The medium
+    (notebook 105, wave propagation method). The medium
     with the index n(x, z), here a lens shaped inclusion, is cut into thin
     slices dz. In each slice the field is decomposed into plane waves
     (an FFT), and each plane wave advances at each point x by the local
@@ -14135,7 +14135,7 @@ def wpm_slices(ax, title=None):
 
 
 def gaussian_beam(ax, title=None):
-    """Sketch of a Gaussian beam (notebook 06, Gaussian beams): the beam radius
+    """Sketch of a Gaussian beam (notebook 110, Gaussian beams): the beam radius
     w(z) = w0 sqrt(1 + (z/z_R)^2) with the waist w0 at z = 0 and the
     Rayleigh length z_R = pi w0^2/lambda, where the area has doubled; the
     wavefronts, flat at the waist, most curved at z = +-z_R, spherical in
@@ -14182,7 +14182,7 @@ def gaussian_beam(ax, title=None):
 
 
 def layer_stack(ax, title=None):
-    """Sketch of a thin film stack (notebook 12, layer stacks). Light from the
+    """Sketch of a thin film stack (notebook 201, layer stacks). Light from the
     ambient medium 0 meets layers j = 1, 2, 3 with the indices n_j and the
     thicknesses d_j on a substrate. Each interface splits the light; the
     partial waves reflected at all interfaces interfere, with the phase
@@ -14240,7 +14240,7 @@ def layer_stack(ax, title=None):
 
 
 def mask_models(ax, title=None):
-    """Sketch of the four mask models of notebook 37 (mask models compared),
+    """Sketch of the four mask models of notebook 811 (mask models compared),
     a line of absorber on a mask blank, each with the transmission it
     assumes below. Kirchhoff: an infinitely thin absorber with the nominal
     transmission and phase, cut off sharply at the edge. Film: the same
@@ -14312,7 +14312,7 @@ def fdtd_cell(ax, kind="periodic", title=None):
     """Sketch of an FDTD simulation cell.
 
     kind="periodic": one period of a grating or mask
-    (notebooks 62 (FDTD periodic structures) and 65 (FDTD mask for lithography)). Bloch-periodic
+    (notebooks 222 (FDTD periodic structures) and 812 (FDTD mask for lithography)). Bloch-periodic
     boundaries on the left and right replace the neighbouring periods (one drawn dashed): a field leaving
     on one side comes back on the other with the phase exp(i k_x L). Absorbing layers (PML) at
     the top and bottom swallow the outgoing light. A line source launches the plane wave, a
@@ -14320,7 +14320,7 @@ def fdtd_cell(ax, kind="periodic", title=None):
     orders, k_m = k_x + 2 pi m/L.
 
     kind="scatterer": an isolated object, here a sphere
-    (notebook 64, 3D FDTD and nanojet). The cell is closed by PML on all sides. The plane wave
+    (notebook 225, 3D FDTD and nanojet). The cell is closed by PML on all sides. The plane wave
     is injected on the surface of a total-field/scattered-field (TFSF) box: inside, the total
     field; outside, only the scattered field, which flux planes around the box collect.
 

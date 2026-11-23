@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #-*- coding:utf-8 -*-
 
-"""Tests of the Forbes Q aspheres (notebook 128, Forbes Q aspheres)."""
+"""Tests of the Forbes Q aspheres (notebook 420, Forbes Q aspheres)."""
 
 import numpy as np
 import pytest

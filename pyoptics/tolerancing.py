@@ -57,8 +57,8 @@ Monte Carlo runs can keep the performance vectors (`vectors=True`), e.g.
 for `pyoptics.litho.budget`, which turns them into CD, placement and best
 focus changes on the wafer.
 
-Notebooks 70 (Monte Carlo tolerancing) and
-150 (lens tolerances and wafer yield).
+Notebooks 413 (Monte Carlo tolerancing) and
+824 (lens tolerances and wafer yield).
 
 References
 ----------

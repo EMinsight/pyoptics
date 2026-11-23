@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #-*- coding:utf-8 -*-
 
-"""Tests of pyoptics.litho.stochastics, flare and focus_blur (notebook 152,
+"""Tests of pyoptics.litho.stochastics, flare and focus_blur (notebook 832,
 litho stochastics, flare and focus blur)."""
 
 import numpy as np

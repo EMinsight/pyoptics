@@ -400,7 +400,7 @@ def lens_jones_pupil(system, field=(0.0, 0.0), N=32, NA=None, coating=None, bire
     ----------
     system : pyoptics.raytrace.System
         Finite conjugate projection lens; mirrors reflect with their own
-        coatings (e.g. EUV multilayers, notebook 157, EUV projector and pupil).
+        coatings (e.g. EUV multilayers, notebook 841, EUV projector and pupil).
     field : pair, optional
         Image field point (units of the system).
     N : int, optional
@@ -504,7 +504,7 @@ def lens_telecentricity(system, field=(0.0, 0.0), N=48, fill=None, coating=None,
     ----------
     system : pyoptics.raytrace.System
         Finite conjugate projection lens; mirrors reflect with their own
-        coatings (e.g. EUV multilayers, notebook 157, EUV projector and pupil).
+        coatings (e.g. EUV multilayers, notebook 841, EUV projector and pupil).
     field : pair, optional
         Image field point (units of the system).
     N : int, optional
@@ -606,7 +606,7 @@ def lens_apodization(system, field=(0.0, 0.0), N=48, coating=None, birefringent=
     ----------
     system : pyoptics.raytrace.System
         Finite conjugate projection lens; mirrors reflect with their own
-        coatings (e.g. EUV multilayers, notebook 157, EUV projector and pupil).
+        coatings (e.g. EUV multilayers, notebook 841, EUV projector and pupil).
     field : pair, optional
         Image field point (units of the system).
     N : int, optional

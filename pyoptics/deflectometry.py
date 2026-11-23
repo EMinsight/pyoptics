@@ -7,7 +7,7 @@ from the distorted reflection of fringes on a screen.
 A camera looks at a mirror-like surface and sees, reflected in it, a
 screen that shows phase-shifted sinusoidal fringes along both of its
 axes. Phase shifting and temporal unwrapping (as in fringe projection,
-`structured_light`, notebook 133, triangulation and structured light)
+`structured_light`, notebook 933, triangulation and structured light)
 tell for every camera pixel which screen point it sees. The camera pixel
 fixes the direction of the line of sight, the screen point the direction
 of the reflected ray towards the screen; the law of reflection makes the

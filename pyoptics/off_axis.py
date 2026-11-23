@@ -4,7 +4,7 @@
 """Off-axis mirror systems: off-axis conic segments, field-biased and
 aperture-offset layouts, unobscured three-mirror anastigmats with freeform
 surfaces, ring fields and full-field displays
-(notebook 155, off-axis mirrors and nodal aberrations).
+(notebook 436, off-axis mirrors and nodal aberrations).
 
 An unobscured reflective system is usually built from a rotationally
 symmetric parent (a coaxial system whose first order layout and third order

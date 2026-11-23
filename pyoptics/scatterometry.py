@@ -15,7 +15,7 @@ solved by searching a precomputed library of signatures or by nonlinear
 regression (`ellipsometry.fit_psi_delta()`).
 
 This module provides the forward model only; the fits are done in
-notebook 136 (scatterometry) as a teaching example of an inverse problem.
+notebook 521 (scatterometry) as a teaching example of an inverse problem.
 It deliberately has no calibration or library management helpers.
 
 Profiles

@@ -76,7 +76,7 @@ loss, an active amplitude modulator, a fast saturable loss, group delay
 dispersion and self-phase modulation. The saturable loss may be given as a
 function of the instantaneous power, which is the hook for an effective
 Kerr lens (Kerr-lens mode locking); nonlinear.kerr_lens_loss() computes
-that function from a cavity, a Kerr medium and an aperture (notebook 147,
+that function from a cavity, a Kerr medium and an aperture (notebook 712,
 Kerr effect and self-focusing). active_ml_width() is the
 Kuizenga-Siegman pulse length of active mode locking.
 

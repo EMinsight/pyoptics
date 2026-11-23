@@ -993,7 +993,7 @@ class ZernikeSurface(Surface):
     frame, Z_j((x - x0)/r_norm, (y - y0)/r_norm), while the base sag stays
     centred on the vertex: a freeform departure over the off-axis footprint
     of a mirror that is a segment of a rotationally symmetric parent
-    (`off_axis`, notebook 155, off-axis mirrors and nodal aberrations). These are surface
+    (`off_axis`, notebook 436, off-axis mirrors and nodal aberrations). These are surface
     coordinates, not pupil coordinates: a departure c_j on a surface in
     or next to the stop of a system in air adds about -(n' - n) c_j Z_j to the OPD
     of `System.opd()`/`System.zernike()` (n, n': indices in front of and behind it;
@@ -1163,7 +1163,7 @@ class MapSurface(ZernikeSurface):
     frame (x, y) of the surface (after its decenter and tilt; the map is
     not shifted by `centre`). Use it for interferometric surface
     measurements and for figure, mid-spatial frequency and edge errors of
-    polishing (`pyoptics.polishing`, notebook 175,
+    polishing (`pyoptics.polishing`, notebook 414,
     polishing errors): the Zernikes hold the low orders, the map the rest.
 
     The rays are intersected by Newton steps on the full sag and refracted
@@ -5500,7 +5500,7 @@ def zeiss_zoom_axicon(zoom=0.0, axicon_gap=0.0, wavelength=KRF_REMA_WAVELENGTH_N
     return System(surfaces, 0, wavelength, object_distance=35.0, object_height=source_radius)
 
 
-# KrF lenses of notebook 43 (Delano diagrams), corrected with
+# KrF lenses of notebook 405 (Delano diagrams), corrected with
 # pyoptics.lens_optimization from the layout drawn in the y-ybar diagram
 # (pyoptics.delano, "delano") and from Caldwell's lens ("caldwell"), with 5
 # or 10 aspheres: surface, radius, thickness to the next surface, medium
@@ -5720,7 +5720,7 @@ def delano_krf_lens(wavelength=248.3e-6, start="delano", aspheres=10):
     """All fused silica KrF projection lens of 20 (or 21) elements, NA 0.7,
     4x, 1 m, with 10 (or 5) aspheres.
 
-    Designed in notebook 43 (Delano diagrams). Magnification -0.25, image
+    Designed in notebook 405 (Delano diagrams). Magnification -0.25, image
     side NA 0.7 (the real marginal ray on axis, not the paraxial one), image
     field radius 13.6 mm (a 26 x 8 mm slit), object to image 1000 mm, at
     least 30 mm in front of the reticle and 8 mm working distance, an air

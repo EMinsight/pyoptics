@@ -1,0 +1,694 @@
+{
+ "00_foundations_conventions": {
+  "new": "000_foundations_conventions",
+  "name": "foundations and conventions"
+ },
+ "103_geometrical_optics_intro": {
+  "new": "001_geometrical_optics_intro",
+  "name": "introduction to geometrical optics"
+ },
+ "01_propagation": {
+  "new": "100_propagation",
+  "name": "free-space propagation"
+ },
+ "04_chirp_z_transform": {
+  "new": "101_chirp_z_transform",
+  "name": "chirp-z transform"
+ },
+ "03_tilted_planes": {
+  "new": "102_tilted_planes",
+  "name": "tilted planes"
+ },
+ "46_analytic_phase_propagation": {
+  "new": "103_analytic_phase_propagation",
+  "name": "analytic phase propagation"
+ },
+ "02_vectorial_diffraction": {
+  "new": "104_vectorial_diffraction",
+  "name": "vectorial diffraction"
+ },
+ "05_WPM": {
+  "new": "105_wave_propagation_method",
+  "name": "wave propagation method"
+ },
+ "06_gaussian_beams": {
+  "new": "110_gaussian_beams",
+  "name": "Gaussian beams"
+ },
+ "08_abcd_matrices": {
+  "new": "111_abcd_matrices",
+  "name": "ABCD matrices"
+ },
+ "07_beam_quality": {
+  "new": "112_beam_quality",
+  "name": "beam quality"
+ },
+ "09_mode_analysis": {
+  "new": "113_mode_analysis",
+  "name": "mode analysis"
+ },
+ "163_ince_gaussian_beams": {
+  "new": "114_ince_gaussian_beams",
+  "name": "Ince-Gaussian beams"
+ },
+ "68_bessel_airy_self_healing": {
+  "new": "115_bessel_airy_self_healing",
+  "name": "Bessel and Airy beams"
+ },
+ "69_optical_vortices": {
+  "new": "116_optical_vortices",
+  "name": "optical vortices"
+ },
+ "81_ultrashort_pulses_lenses": {
+  "new": "117_ultrashort_pulses_lenses",
+  "name": "ultrashort pulses"
+ },
+ "74_coherence_stellar_interferometry": {
+  "new": "120_coherence_stellar_interferometry",
+  "name": "coherence and stellar interferometry"
+ },
+ "10_interfaces_thin_films": {
+  "new": "200_interfaces_thin_films",
+  "name": "interfaces and thin films"
+ },
+ "12_layer_stacks": {
+  "new": "201_layer_stacks",
+  "name": "layer stacks"
+ },
+ "13_stack_transfer_functions": {
+  "new": "202_stack_transfer_functions",
+  "name": "stacks as transfer functions"
+ },
+ "14_coated_laser_mirror": {
+  "new": "203_coated_laser_mirror",
+  "name": "coated laser mirror"
+ },
+ "11_polarization": {
+  "new": "210_jones_mueller_calculus",
+  "name": "Jones and Mueller calculus"
+ },
+ "138_crystal_optics": {
+  "new": "211_crystal_optics",
+  "name": "crystal optics"
+ },
+ "139_electro_optic_modulators": {
+  "new": "212_electro_optic_modulators",
+  "name": "electro-optic modulators"
+ },
+ "140_liquid_crystals": {
+  "new": "213_liquid_crystals",
+  "name": "liquid crystals"
+ },
+ "141_acousto_optics": {
+  "new": "214_acousto_optics",
+  "name": "acousto-optics"
+ },
+ "57_fdtd_basics": {
+  "new": "220_fdtd_basics",
+  "name": "FDTD basics"
+ },
+ "59_fdtd_metals_plasmons": {
+  "new": "221_fdtd_metals_plasmons",
+  "name": "FDTD metals and plasmons"
+ },
+ "62_fdtd_periodic_structures": {
+  "new": "222_fdtd_periodic_structures",
+  "name": "FDTD periodic structures"
+ },
+ "60_fdtd_photonic_circuits": {
+  "new": "223_fdtd_photonic_circuits",
+  "name": "FDTD photonic circuits"
+ },
+ "63_fdtd_devices": {
+  "new": "224_fdtd_devices",
+  "name": "FDTD devices"
+ },
+ "64_fdtd_3d_nanojet": {
+  "new": "225_fdtd_3d_nanojet",
+  "name": "3D FDTD and nanojet"
+ },
+ "66_fdfd_basics": {
+  "new": "230_fdfd_basics",
+  "name": "FDFD basics"
+ },
+ "67_fdfd_limacon_microcavity": {
+  "new": "231_fdfd_limacon_microcavity",
+  "name": "limaçon microcavity"
+ },
+ "104_phase_space_husimi_chaos": {
+  "new": "232_phase_space_husimi_chaos",
+  "name": "Husimi functions and ray chaos"
+ },
+ "80_carpet_cloak": {
+  "new": "233_carpet_cloak",
+  "name": "carpet cloak"
+ },
+ "52_abbe_image_formation": {
+  "new": "300_abbe_image_formation",
+  "name": "Abbe image formation"
+ },
+ "15_imaging_zernikes": {
+  "new": "301_imaging_zernikes",
+  "name": "imaging and Zernikes"
+ },
+ "17_psf_mtf_strehl": {
+  "new": "302_psf_mtf_strehl",
+  "name": "PSF, MTF and Strehl"
+ },
+ "45_zernike_aberration_gallery": {
+  "new": "303_zernike_aberration_gallery",
+  "name": "Zernike aberration gallery"
+ },
+ "16_bases": {
+  "new": "304_basis_functions",
+  "name": "basis functions"
+ },
+ "18_image_processing": {
+  "new": "305_image_processing",
+  "name": "image processing"
+ },
+ "160_image_restoration_deconvolution": {
+  "new": "306_image_restoration_deconvolution",
+  "name": "image restoration and PSF deconvolution"
+ },
+ "53_phase_contrast_dic": {
+  "new": "310_phase_contrast_dic",
+  "name": "phase contrast and DIC"
+ },
+ "54_confocal_microscopy": {
+  "new": "311_confocal_microscopy",
+  "name": "confocal microscopy"
+ },
+ "55_fourier_ptychography": {
+  "new": "312_fourier_ptychography",
+  "name": "Fourier ptychography"
+ },
+ "78_super_resolution_microscopy": {
+  "new": "313_super_resolution_microscopy",
+  "name": "super-resolution microscopy"
+ },
+ "75_optical_tweezers": {
+  "new": "314_optical_tweezers",
+  "name": "optical tweezers"
+ },
+ "19_ray_tracing": {
+  "new": "400_ray_tracing_opd",
+  "name": "ray tracing to OPD"
+ },
+ "44_seidel_caldwell_lens": {
+  "new": "401_seidel_caldwell_lens",
+  "name": "Seidel aberrations"
+ },
+ "102_sine_herschel_lagrange": {
+  "new": "402_sine_herschel_lagrange",
+  "name": "sine and Herschel conditions"
+ },
+ "50_magnification_distortion_telecentricity": {
+  "new": "403_magnification_distortion_telecentricity",
+  "name": "magnification, distortion and telecentricity"
+ },
+ "61_glass_catalogues": {
+  "new": "404_glass_catalogues",
+  "name": "glass catalogues"
+ },
+ "43_litho_delano_lens_design": {
+  "new": "405_litho_delano_lens_design",
+  "name": "Delano diagrams"
+ },
+ "20_polarization_raytrace": {
+  "new": "406_polarization_raytrace",
+  "name": "polarization ray tracing"
+ },
+ "77_grin_optics": {
+  "new": "407_grin_optics",
+  "name": "GRIN optics"
+ },
+ "58_lens_optimization": {
+  "new": "410_lens_optimization",
+  "name": "lens optimization"
+ },
+ "153_multiconfig_optimization": {
+  "new": "411_multiconfig_optimization",
+  "name": "multi-configuration optimization"
+ },
+ "154_global_optimization_saddle_points": {
+  "new": "412_global_optimization_saddle_points",
+  "name": "global optimization and saddle points"
+ },
+ "70_monte_carlo_tolerancing": {
+  "new": "413_monte_carlo_tolerancing",
+  "name": "Monte Carlo tolerancing"
+ },
+ "175_polishing_errors": {
+  "new": "414_polishing_errors",
+  "name": "polishing errors"
+ },
+ "162_cad_export_lens_systems": {
+  "new": "415_cad_export_lens_systems",
+  "name": "CAD export of lens systems"
+ },
+ "128_forbes_q_aspheres": {
+  "new": "420_forbes_q_aspheres",
+  "name": "Forbes Q aspheres"
+ },
+ "51_fresnel_lenses": {
+  "new": "421_fresnel_lenses",
+  "name": "Fresnel lenses"
+ },
+ "151_hybrid_diffractive_lenses": {
+  "new": "422_hybrid_diffractive_lenses",
+  "name": "hybrid diffractive lenses"
+ },
+ "159_phone_camera_lens_forbes_q": {
+  "new": "430_phone_camera_lens_forbes_q",
+  "name": "phone camera lens with Forbes Q polynomials"
+ },
+ "127_zoom_lenses": {
+  "new": "431_zoom_lenses",
+  "name": "zoom lenses"
+ },
+ "171_eyepieces": {
+  "new": "432_eyepieces",
+  "name": "eyepieces"
+ },
+ "172_binoculars_erecting_prisms": {
+  "new": "433_binoculars_erecting_prisms",
+  "name": "binoculars and erecting prisms"
+ },
+ "149_scan_lenses": {
+  "new": "434_scan_lenses",
+  "name": "scan lenses"
+ },
+ "129_progressive_lenses": {
+  "new": "435_progressive_lenses",
+  "name": "progressive spectacle lenses"
+ },
+ "155_off_axis_mirrors_nodal_aberrations": {
+  "new": "436_off_axis_mirrors_nodal_aberrations",
+  "name": "off-axis mirrors and nodal aberrations"
+ },
+ "166_non_sequential_ray_tracing": {
+  "new": "440_non_sequential_ray_tracing",
+  "name": "non-sequential ray tracing"
+ },
+ "167_stray_light_caldwell_lens": {
+  "new": "441_stray_light_caldwell_lens",
+  "name": "stray light in Caldwell's lens"
+ },
+ "47_rays_and_waves": {
+  "new": "450_rays_and_waves",
+  "name": "rays and waves"
+ },
+ "21_lens_focus_waves": {
+  "new": "451_lens_focus_waves",
+  "name": "lens focus from rays to waves"
+ },
+ "56_gaussian_beam_decomposition": {
+  "new": "452_gaussian_beam_decomposition",
+  "name": "Gaussian beam decomposition"
+ },
+ "48_laser_head_doe": {
+  "new": "453_laser_head_doe",
+  "name": "laser head DOE"
+ },
+ "49_eye_aberrometer": {
+  "new": "454_eye_aberrometer",
+  "name": "eye aberrometer"
+ },
+ "109_field_tracing": {
+  "new": "460_field_tracing",
+  "name": "field tracing"
+ },
+ "169_source_models_field_tracing": {
+  "new": "461_source_models_field_tracing",
+  "name": "source models in field tracing"
+ },
+ "168_local_plane_interface_approximation": {
+  "new": "462_local_plane_interface_approximation",
+  "name": "local plane interface approximation"
+ },
+ "112_field_tracing_applications": {
+  "new": "463_field_tracing_applications",
+  "name": "field tracing applications"
+ },
+ "23_interferometry": {
+  "new": "500_interferometry",
+  "name": "interferometry"
+ },
+ "22_phase_unwrapping": {
+  "new": "501_phase_unwrapping",
+  "name": "phase unwrapping"
+ },
+ "24_radius_interferometer": {
+  "new": "502_radius_interferometer",
+  "name": "radius interferometer"
+ },
+ "165_cgh_null_testing_aspheres": {
+  "new": "503_cgh_null_testing_aspheres",
+  "name": "CGH null testing of aspheres"
+ },
+ "134_coherence_scanning_interferometry": {
+  "new": "504_coherence_scanning_interferometry",
+  "name": "coherence scanning interferometry"
+ },
+ "82_optical_coherence_tomography": {
+  "new": "505_optical_coherence_tomography",
+  "name": "OCT"
+ },
+ "25_shack_hartmann_vs_phase_diversity": {
+  "new": "510_shack_hartmann_vs_phase_diversity",
+  "name": "Shack-Hartmann vs phase diversity"
+ },
+ "76_schlieren_knife_edge": {
+  "new": "511_schlieren_knife_edge",
+  "name": "Schlieren and knife-edge"
+ },
+ "137_deflectometry": {
+  "new": "512_deflectometry",
+  "name": "deflectometry"
+ },
+ "135_ellipsometry": {
+  "new": "520_ellipsometry",
+  "name": "ellipsometry"
+ },
+ "136_scatterometry": {
+  "new": "521_scatterometry",
+  "name": "scatterometry"
+ },
+ "26_holography": {
+  "new": "530_digital_holography",
+  "name": "digital holography"
+ },
+ "27_holographic_microscopy": {
+  "new": "531_holographic_microscopy",
+  "name": "holographic microscopy"
+ },
+ "28_phase_retrieval": {
+  "new": "532_phase_retrieval",
+  "name": "phase retrieval"
+ },
+ "29_TIE": {
+  "new": "533_tie",
+  "name": "TIE"
+ },
+ "30_IFTA": {
+  "new": "534_ifta_beam_shaping",
+  "name": "IFTA beam shaping"
+ },
+ "73_wavefront_shaping": {
+  "new": "535_wavefront_shaping",
+  "name": "wavefront shaping"
+ },
+ "79_lensless_coded_aperture_imaging": {
+  "new": "536_lensless_coded_aperture_imaging",
+  "name": "lensless imaging"
+ },
+ "105_radiometry_photometry": {
+  "new": "600_radiometry_photometry",
+  "name": "radiometry and photometry"
+ },
+ "106_radiometry_of_images": {
+  "new": "601_radiometry_of_images",
+  "name": "radiometry of images"
+ },
+ "83_etendue_brightness_theorem": {
+  "new": "602_etendue_brightness_theorem",
+  "name": "étendue"
+ },
+ "84_nonimaging_concentrators": {
+  "new": "603_nonimaging_concentrators",
+  "name": "nonimaging concentrators"
+ },
+ "85_koehler_critical_illumination": {
+  "new": "604_koehler_critical_illumination",
+  "name": "Köhler and critical illumination"
+ },
+ "86_homogenizers": {
+  "new": "605_homogenizers",
+  "name": "homogenizers"
+ },
+ "87_speckle_reduction": {
+  "new": "606_speckle_reduction",
+  "name": "speckle reduction"
+ },
+ "88_led_optics_monte_carlo": {
+  "new": "607_led_optics_monte_carlo",
+  "name": "LED optics"
+ },
+ "89_freeform_beam_shaping": {
+  "new": "608_freeform_beam_shaping",
+  "name": "freeform beam shaping"
+ },
+ "93_sensor": {
+  "new": "610_sensor",
+  "name": "the sensor"
+ },
+ "90_bokeh": {
+  "new": "611_bokeh",
+  "name": "bokeh"
+ },
+ "91_sunstars": {
+  "new": "612_sunstars",
+  "name": "sunstars"
+ },
+ "92_flare_ghosts": {
+  "new": "613_flare_ghosts",
+  "name": "flare and ghosts"
+ },
+ "94_tilt_shift_depth_of_field": {
+  "new": "614_tilt_shift_depth_of_field",
+  "name": "depth of field and tilt-shift"
+ },
+ "161_distortion_shading_correction": {
+  "new": "615_distortion_shading_correction",
+  "name": "distortion, lateral colour and lens shading correction"
+ },
+ "95_light_field_camera": {
+  "new": "616_light_field_camera",
+  "name": "light field camera"
+ },
+ "142_laser_fundamentals": {
+  "new": "700_laser_fundamentals",
+  "name": "laser fundamentals"
+ },
+ "170_laser_resonator_modes": {
+  "new": "701_laser_resonator_modes",
+  "name": "laser resonator modes"
+ },
+ "143_q_switching_mode_locking": {
+  "new": "702_q_switching_mode_locking",
+  "name": "Q-switching and mode-locking"
+ },
+ "144_laser_diodes": {
+  "new": "703_laser_diodes",
+  "name": "laser diodes"
+ },
+ "145_second_harmonic_generation": {
+  "new": "710_second_harmonic_generation",
+  "name": "second harmonic generation and phase matching"
+ },
+ "146_parametric_amplification_opo": {
+  "new": "711_parametric_amplification_opo",
+  "name": "parametric amplification and OPOs"
+ },
+ "147_kerr_effect_self_focusing": {
+  "new": "712_kerr_effect_self_focusing",
+  "name": "Kerr effect and self-focusing"
+ },
+ "115_fibre_rays_step_graded": {
+  "new": "720_fibre_rays_step_graded",
+  "name": "light in a fibre"
+ },
+ "116_fibre_modes": {
+  "new": "721_fibre_modes",
+  "name": "fibre modes"
+ },
+ "117_fibre_dispersion": {
+  "new": "722_fibre_dispersion",
+  "name": "dispersion in fibres"
+ },
+ "118_fibre_pulse_broadening": {
+  "new": "723_fibre_pulse_broadening",
+  "name": "pulse broadening"
+ },
+ "119_fibre_bragg_gratings": {
+  "new": "724_fibre_bragg_gratings",
+  "name": "fibre Bragg gratings"
+ },
+ "120_fibre_link": {
+  "new": "725_fibre_link",
+  "name": "fibre link"
+ },
+ "121_fibre_spm_solitons": {
+  "new": "726_fibre_spm_solitons",
+  "name": "SPM and solitons in fibres"
+ },
+ "148_detectors_photon_statistics": {
+  "new": "730_detectors_photon_statistics",
+  "name": "detectors and photon statistics"
+ },
+ "31_vectorial_imaging_lithography": {
+  "new": "800_vectorial_imaging_lithography",
+  "name": "vectorial imaging in lithography"
+ },
+ "32_lithography_toolbox": {
+  "new": "801_lithography_toolbox",
+  "name": "lithography toolbox"
+ },
+ "34_hopkins_socs": {
+  "new": "802_hopkins_socs",
+  "name": "Hopkins imaging and SOCS"
+ },
+ "107_litho_fourier_interpolation_cd": {
+  "new": "803_litho_fourier_interpolation_cd",
+  "name": "Fourier interpolation of aerial images"
+ },
+ "35_litho_resist_swing": {
+  "new": "804_litho_resist_swing",
+  "name": "resist and swing curves"
+ },
+ "108_litho_arbitrary_layouts": {
+  "new": "805_litho_arbitrary_layouts",
+  "name": "arbitrary mask layouts"
+ },
+ "36_litho_rigorous_mask": {
+  "new": "810_litho_rigorous_mask",
+  "name": "rigorous mask"
+ },
+ "37_litho_mask_models": {
+  "new": "811_litho_mask_models",
+  "name": "mask models compared"
+ },
+ "65_litho_fdtd_mask": {
+  "new": "812_litho_fdtd_mask",
+  "name": "FDTD mask for lithography"
+ },
+ "33_litho_lens_aberrations": {
+  "new": "820_litho_lens_aberrations",
+  "name": "lens aberrations across the slit"
+ },
+ "38_litho_jones_pupil": {
+  "new": "821_litho_jones_pupil",
+  "name": "Jones pupils"
+ },
+ "41_litho_telecentricity": {
+  "new": "822_litho_telecentricity",
+  "name": "telecentricity across the slit"
+ },
+ "42_litho_illuminator": {
+  "new": "823_litho_illuminator",
+  "name": "KrF illuminator"
+ },
+ "150_lens_tolerances_wafer_yield": {
+  "new": "824_lens_tolerances_wafer_yield",
+  "name": "lens tolerances and wafer yield"
+ },
+ "39_litho_source_optimization": {
+  "new": "830_litho_source_optimization",
+  "name": "source optimization"
+ },
+ "40_litho_opc": {
+  "new": "831_litho_opc",
+  "name": "OPC"
+ },
+ "152_litho_stochastics_flare_focus_blur": {
+  "new": "832_litho_stochastics_flare_focus_blur",
+  "name": "litho stochastics, flare and focus blur"
+ },
+ "156_euv_multilayers_reflective_masks": {
+  "new": "840_euv_multilayers_reflective_masks",
+  "name": "EUV multilayers and reflective masks"
+ },
+ "157_euv_projector_pupil": {
+  "new": "841_euv_projector_pupil",
+  "name": "EUV projector and pupil"
+ },
+ "158_euv_stochastics_flare": {
+  "new": "842_euv_stochastics_flare",
+  "name": "EUV stochastics and flare"
+ },
+ "97_telescope_zoo": {
+  "new": "900_telescope_zoo",
+  "name": "telescope zoo"
+ },
+ "98_segmented_mirrors": {
+  "new": "901_segmented_mirrors",
+  "name": "segmented mirrors"
+ },
+ "101_atmospheric_dispersion_corrector": {
+  "new": "902_atmospheric_dispersion_corrector",
+  "name": "atmospheric dispersion corrector"
+ },
+ "72_twinkling_stars_adaptive_optics": {
+  "new": "903_twinkling_stars_adaptive_optics",
+  "name": "twinkling stars and AO"
+ },
+ "96_coronagraphs": {
+  "new": "904_coronagraphs",
+  "name": "coronagraphs"
+ },
+ "99_einstein_rings": {
+  "new": "905_einstein_rings",
+  "name": "Einstein rings"
+ },
+ "71_rainbows_and_glories": {
+  "new": "906_rainbows_and_glories",
+  "name": "rainbows and glories"
+ },
+ "110_grating_prism_spectrometers": {
+  "new": "910_grating_prism_spectrometers",
+  "name": "grating and prism spectrometers"
+ },
+ "111_fourier_transform_spectroscopy": {
+  "new": "911_fourier_transform_spectroscopy",
+  "name": "Fourier transform spectroscopy"
+ },
+ "113_fabry_perot_filters": {
+  "new": "912_fabry_perot_filters",
+  "name": "Fabry–Perot and filters"
+ },
+ "114_spectral_lines_absorption": {
+  "new": "913_spectral_lines_absorption",
+  "name": "spectral lines and absorption"
+ },
+ "100_echelle_spectrograph": {
+  "new": "914_echelle_spectrograph",
+  "name": "echelle spectrograph"
+ },
+ "122_imaging_spectroscopy": {
+  "new": "915_imaging_spectroscopy",
+  "name": "imaging spectroscopy"
+ },
+ "123_ar_waveguide_combiners": {
+  "new": "920_ar_waveguide_combiners",
+  "name": "AR waveguide combiners"
+ },
+ "124_volume_holographic_gratings": {
+  "new": "921_volume_holographic_gratings",
+  "name": "volume holographic gratings"
+ },
+ "125_pancake_lenses": {
+  "new": "922_pancake_lenses",
+  "name": "pancake lenses"
+ },
+ "126_head_up_displays": {
+  "new": "923_head_up_displays",
+  "name": "head-up displays"
+ },
+ "130_time_of_flight_lidar": {
+  "new": "930_time_of_flight_lidar",
+  "name": "time-of-flight LiDAR"
+ },
+ "131_fmcw_lidar": {
+  "new": "931_fmcw_lidar",
+  "name": "FMCW LiDAR"
+ },
+ "132_beam_scanning": {
+  "new": "932_beam_scanning",
+  "name": "beam scanning"
+ },
+ "133_triangulation_structured_light": {
+  "new": "933_triangulation_structured_light",
+  "name": "triangulation and structured light"
+ }
+}

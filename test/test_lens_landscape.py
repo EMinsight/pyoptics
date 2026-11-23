@@ -2,7 +2,7 @@
 #-*- coding:utf-8 -*-
 
 """Test the tools for the merit function landscape (`lens_landscape`,
-notebook 154, global optimization and saddle points): on an analytic
+notebook 412, global optimization and saddle points): on an analytic
 landscape with two minima and a saddle point between them, and the
 saddle-point construction on a real lens.
 """

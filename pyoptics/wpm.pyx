@@ -51,7 +51,7 @@ perpendicular to z, for which these are the exact coefficients of each plane
 wave. A tilted surface is a staircase of such steps, which a beam along z
 meets at normal incidence: the loss is then about the normal-incidence loss,
 and the dependence on the tilt and the polarization is mostly lost (see
-notebook 05, wave propagation method, for checks against exact solutions).
+notebook 105, wave propagation method, for checks against exact solutions).
 The field
 then stands for the electric field: the power flux of a plane wave is
 proportional to Re(k_z)*abs(E)**2, so the intensity in a medium n is about

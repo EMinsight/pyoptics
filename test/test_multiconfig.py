@@ -3,7 +3,7 @@
 
 """Test the optimization of several configurations of one lens
 (`lens_optimization.MultiConfiguration`,
-notebook 153, multi-configuration optimization): overrides, shared and per
+notebook 411, multi-configuration optimization): overrides, shared and per
 configuration variables, operands, solves and constraints in some
 configurations, and that one configuration gives the same as the plain
 optimizer.

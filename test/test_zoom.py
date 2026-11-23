@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #-*- coding:utf-8 -*-
 
-"""Tests of the zoom lens tools (notebook 127, zoom lenses)."""
+"""Tests of the zoom lens tools (notebook 431, zoom lenses)."""
 
 import numpy as np
 import pytest

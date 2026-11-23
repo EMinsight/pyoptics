@@ -3,7 +3,7 @@
 
 """Image erecting prisms: Porro and Schmidt-Pechan prisms traced in 3D with
 polarization, their tunnel diagrams, the image orientation and the roof
-phase error (notebook 172, binoculars and erecting prisms).
+phase error (notebook 433, binoculars and erecting prisms).
 
 A `Prism` is a convex block of glass bounded by plane `Face` objects. Rays
 are traced non-sequentially through a list of prisms separated by air:
@@ -11,7 +11,7 @@ each ray enters a prism through the face it meets first, is reflected
 inside by total internal reflection (TIR) or by a mirror coating until it
 meets a face below the critical angle, and leaves through it. Every event
 multiplies the 3 x 3 polarization ray tracing matrix of the ray (Chipman's
-P, as in `raytrace.System.trace_polarization()` of notebook 20
+P, as in `raytrace.System.trace_polarization()` of notebook 406
 (polarization ray tracing)): Fresnel or thin film (`coatings.Coating`) transmission at the
 entrance and exit faces, TIR or the coated reflection inside. The phase of
 TIR depends on the polarization, ::

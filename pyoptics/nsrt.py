@@ -114,8 +114,8 @@ sections with matplotlib.
 
 The optional numba (``pip install pyoptics[fast]``) compiles the hit search
 on primitives and meshes; build123d (``pyoptics[cad]``) is needed only for
-CAD import and mounts. Notebook 166 (non-sequential ray tracing)
-introduces all of it, notebook 167 (stray light in Caldwell's lens)
+CAD import and mounts. Notebook 440 (non-sequential ray tracing)
+introduces all of it, notebook 441 (stray light in Caldwell's lens)
 analyses ghosts and mount scatter of a lithography lens.
 
 References

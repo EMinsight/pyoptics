@@ -4,8 +4,8 @@
 """Crystal optics: plane waves in anisotropic media, the 4 x 4 matrix
 method for stacks of anisotropic layers, double refraction at crystal
 surfaces, polarizing prisms, optical activity and Faraday rotation
-(notebook 138, crystal optics; used by notebooks
-113 (Fabry–Perot and filters), 139 (electro-optic modulators) and 140
+(notebook 211, crystal optics; used by notebooks
+912 (Fabry–Perot and filters), 212 (electro-optic modulators) and 213
 (liquid crystals)).
 
 Conventions as in the rest of pyoptics: fields vary as

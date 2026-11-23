@@ -8,17 +8,21 @@ numbers by heart. Every reference must carry the notebook's short name from
 ``notebooks/names.json``, in parentheses, after a comma or simply after the
 number::
 
-    notebook 47 (rays and waves) showed ...
-    ... as before (notebook 47, rays and waves).
-    notebooks 117 (dispersion in fibres) and 118 (pulse broadening)
-    notebook [52 (Abbe image formation)](52_abbe_image_formation.ipynb)
-    [47 rays and waves](47_rays_and_waves.ipynb)
+    notebook 450 (rays and waves) showed ...
+    ... as before (notebook 450, rays and waves).
+    notebooks 722 (dispersion in fibres) and 723 (pulse broadening)
+    notebook [300 (Abbe image formation)](300_abbe_image_formation.ipynb)
+    [450 rays and waves](450_rays_and_waves.ipynb)
 
 The name may also stand just before the reference, as in
-"the Zernike aberration gallery (notebook 45)". The check covers the
+"the Zernike aberration gallery (notebook 303)". The check covers the
 markdown cells and code comments of all notebooks, the Markdown files of
 the repository and the docs, and the comments and docstrings of the
 package and the tests.
+
+Notebook numbers have three digits (see ``notebooks/toc.json``); a two digit
+number after "notebook" is an old reference from before the renumbering
+and is reported too (``scripts/renumber_notebooks.py`` converts them).
 """
 
 import io
@@ -57,6 +61,8 @@ def _strip_links(text):
 def _named(num, before, after):
     """Whether the name of notebook `num` stands next to the reference."""
     name = NAMES[num].lower()
+    # a name may be broken across lines
+    before, after = re.sub(r"\s+", " ", before[-(len(name) + 40):]), re.sub(r"\s+", " ", after[:len(name) + 40])
     if name in before[-(len(name) + 12):].lower():
         return True
     return re.match(r"\s*(?:,\s*|\(\s*|,?\s*\*)?" + re.escape(name), after.lower()) is not None
@@ -71,7 +77,9 @@ def bare_references(text):
         refs = m.group("list")
         for item in ITEM_NUM.finditer(refs):
             num = item.group(0)
-            if num in NAMES and not _named(num, text[:m.start()], refs[item.end():] + text[m.end():]):
+            if len(num) == 2:
+                found.append(f"{m.group(0)!r} (old two digit number {num}, see scripts/renumber_notebooks.py)")
+            elif num in NAMES and not _named(num, text[:m.start()], refs[item.end():] + text[m.end():]):
                 found.append(f"{m.group(0)!r} (no name for {num})")
     return found
 
@@ -104,7 +112,7 @@ def _notebook_text(path):
 
 
 def _sources():
-    md = [ROOT/"README.md", ROOT/"WIP.md", ROOT/"CLAUDE.md", ROOT/"notebooks"/"README.md"]
+    md = [ROOT/"README.md", ROOT/"WIP.md", ROOT/"CHANGELOG.md", ROOT/"CLAUDE.md", ROOT/"notebooks"/"README.md"]
     md += sorted((ROOT/"docs").glob("*.md"))
     py = sorted((ROOT/"pyoptics").rglob("*.py")) + sorted((ROOT/"pyoptics").glob("*.pyx"))
     py += [p for p in sorted((ROOT/"test").glob("*.py")) if p.name != Path(__file__).name]
@@ -122,6 +130,7 @@ def _texts(path):
 
 def test_every_notebook_has_a_name():
     numbers = {p.name.split("_", 1)[0] for p in NOTEBOOKS}
+    assert all(re.fullmatch(r"\d{3}", n) for n in numbers), "notebook numbers have three digits"
     assert numbers <= set(NAMES), f"add to notebooks/names.json: {sorted(numbers - set(NAMES))}"
     assert set(NAMES) <= numbers, f"no such notebook: {sorted(set(NAMES) - numbers)}"
 
@@ -131,21 +140,22 @@ _N = "note" + "book"
 
 
 @pytest.mark.parametrize("text, n_bare", [
-    (f"as in {_N} 47.", 1),
-    (f"as in {_N} 47 (rays and waves).", 0),
-    (f"({_N} 47, rays and waves)", 0),
-    (f"{_N} 47 rays and waves", 0),
-    ("(nb47)", 1),
-    (f"{_N}s 117 (dispersion in fibres) and 118.", 1),
-    (f"{_N}s 117 (dispersion in fibres) and 118 (pulse broadening)", 0),
-    (f"{_N}s 52 (Abbe image formation) to 55.", 1),
-    (f"{_N} [52](52_abbe_image_formation.ipynb)", 2),
-    (f"{_N} [52 (Abbe image formation)](52_abbe_image_formation.ipynb)", 0),
-    (f"the Zernike aberration gallery ({_N} 45)", 0),
-    ("see [47](47_rays_and_waves.ipynb)", 1),
-    ("{doc}`47 <notebooks/47_rays_and_waves>`", 1),
-    (f"({_N} 05, section 12)", 1),
+    (f"as in {_N} 450.", 1),
+    (f"as in {_N} 450 (rays and waves).", 0),
+    (f"({_N} 450, rays and waves)", 0),
+    (f"{_N} 450 rays and waves", 0),
+    ("(nb450)", 1),
+    (f"{_N}s 722 (dispersion in fibres) and 723.", 1),
+    (f"{_N}s 722 (dispersion in fibres) and 723 (pulse broadening)", 0),
+    (f"{_N}s 310 (phase contrast and DIC) to 312.", 1),
+    (f"{_N} [300](300_abbe_image_formation.ipynb)", 2),
+    (f"{_N} [300 (Abbe image formation)](300_abbe_image_formation.ipynb)", 0),
+    (f"the Zernike aberration gallery ({_N} 303)", 0),
+    ("see [450](450_rays_and_waves.ipynb)", 1),
+    ("{doc}`450 <notebooks/450_rays_and_waves>`", 1),
+    (f"({_N} 105, section 12)", 1),
     (f"this {_N} uses 64 rays", 0),
+    (f"{_N} 08 (ABCD matrices)", 1),
 ])
 def test_detector(text, n_bare):
     assert len(bare_references(text)) == n_bare

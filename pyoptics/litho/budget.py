@@ -41,7 +41,7 @@ and the Zernikes are linear in the tolerances only to first order;
 `ToleranceAnalysis.monte_carlo()` traces each lens completely and checks
 the linear model (`ToleranceAnalysis.linear_model()`).
 
-Notebook 150 (lens tolerances and wafer yield).
+Notebook 824 (lens tolerances and wafer yield).
 
 References
 ----------

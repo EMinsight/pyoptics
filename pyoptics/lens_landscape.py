@@ -33,7 +33,7 @@ module looks at the landscape as a whole:
 
 Every local optimization counts the merit function evaluations it used
 (`LocalRun.evaluations`; a Jacobian costs one evaluation per variable plus
-one), so that global strategies can be compared at equal cost. Notebook 154
+one), so that global strategies can be compared at equal cost. Notebook 412
 (global optimization and saddle points).
 
 References

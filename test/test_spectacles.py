@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #-*- coding:utf-8 -*-
 
-"""Tests of the spectacle lens tools (notebook 129, progressive spectacle lenses)."""
+"""Tests of the spectacle lens tools (notebook 435, progressive spectacle lenses)."""
 
 import numpy as np
 import pytest

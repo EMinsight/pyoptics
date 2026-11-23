@@ -1,0 +1,463 @@
+{
+ "parts": [
+  {
+   "number": "0",
+   "title": "Start here",
+   "intro": "Where everything fits, and a first course in rays for readers new to optics.",
+   "chapters": [
+    {
+     "title": "Orientation",
+     "intro": "From Maxwell's equations down to rays with the modules for each level of approximation and checks of all sign conventions, and a first course in geometrical optics.",
+     "notebooks": [
+      "000_foundations_conventions",
+      "001_geometrical_optics_intro"
+     ]
+    }
+   ]
+  },
+  {
+   "number": "1",
+   "title": "Waves: propagation, beams and coherence",
+   "intro": "Fields between planes, from the angular spectrum to tilted planes and inhomogeneous media; Gaussian and structured beams; coherence.",
+   "chapters": [
+    {
+     "title": "Free-space propagation",
+     "intro": "Scalar and vectorial propagation of fields between planes, onto tilted planes and through inhomogeneous media.",
+     "notebooks": [
+      "100_propagation",
+      "101_chirp_z_transform",
+      "102_tilted_planes",
+      "103_analytic_phase_propagation",
+      "104_vectorial_diffraction",
+      "105_wave_propagation_method"
+     ]
+    },
+    {
+     "title": "Beams and modes",
+     "intro": "Gaussian and structured beams, ABCD matrices and resonators, beam quality, mode decompositions and ultrashort pulses.",
+     "notebooks": [
+      "110_gaussian_beams",
+      "111_abcd_matrices",
+      "112_beam_quality",
+      "113_mode_analysis",
+      "114_ince_gaussian_beams",
+      "115_bessel_airy_self_healing",
+      "116_optical_vortices",
+      "117_ultrashort_pulses_lenses"
+     ]
+    },
+    {
+     "title": "Coherence",
+     "intro": "Spatial and temporal coherence, and how they measure stars.",
+     "notebooks": [
+      "120_coherence_stellar_interferometry"
+     ]
+    }
+   ]
+  },
+  {
+   "number": "2",
+   "title": "Light in matter",
+   "intro": "Interfaces, thin films and polarization; anisotropic crystals and the modulators built from them; full-wave Maxwell solvers (FDTD and FDFD) for structures on the scale of the wavelength.",
+   "chapters": [
+    {
+     "title": "Interfaces and thin films",
+     "intro": "Fresnel coefficients, multilayer stacks and coatings.",
+     "notebooks": [
+      "200_interfaces_thin_films",
+      "201_layer_stacks",
+      "202_stack_transfer_functions",
+      "203_coated_laser_mirror"
+     ]
+    },
+    {
+     "title": "Polarization, crystals and modulators",
+     "intro": "Jones and Mueller calculus, anisotropic and gyrotropic media, and the devices that switch and steer light with them.",
+     "notebooks": [
+      "210_jones_mueller_calculus",
+      "211_crystal_optics",
+      "212_electro_optic_modulators",
+      "213_liquid_crystals",
+      "214_acousto_optics"
+     ]
+    },
+    {
+     "title": "FDTD",
+     "intro": "Full-wave solutions of Maxwell's equations on the Yee grid in the time domain (`fdtd`).",
+     "notebooks": [
+      "220_fdtd_basics",
+      "221_fdtd_metals_plasmons",
+      "222_fdtd_periodic_structures",
+      "223_fdtd_photonic_circuits",
+      "224_fdtd_devices",
+      "225_fdtd_3d_nanojet"
+     ]
+    },
+    {
+     "title": "FDFD and nanophotonics",
+     "intro": "Maxwell's equations one frequency at a time (`fdfd`): resonances, microcavities and a carpet cloak.",
+     "notebooks": [
+      "230_fdfd_basics",
+      "231_fdfd_limacon_microcavity",
+      "232_phase_space_husimi_chaos",
+      "233_carpet_cloak"
+     ]
+    }
+   ]
+  },
+  {
+   "number": "3",
+   "title": "Imaging and microscopy",
+   "intro": "How an image forms and how good it is: diffraction orders and the pupil, PSF, MTF and Strehl, Zernike aberrations, image processing; then the microscope and its contrast methods.",
+   "chapters": [
+    {
+     "title": "Image formation and quality",
+     "intro": "Abbe's diffraction orders and the pupil, PSF, MTF and Strehl ratio, Zernike and other bases, image processing and restoration.",
+     "notebooks": [
+      "300_abbe_image_formation",
+      "301_imaging_zernikes",
+      "302_psf_mtf_strehl",
+      "303_zernike_aberration_gallery",
+      "304_basis_functions",
+      "305_image_processing",
+      "306_image_restoration_deconvolution"
+     ]
+    },
+    {
+     "title": "Microscopy",
+     "intro": "Contrast methods, confocal and super-resolution microscopy, Fourier ptychography and optical traps.",
+     "notebooks": [
+      "310_phase_contrast_dic",
+      "311_confocal_microscopy",
+      "312_fourier_ptychography",
+      "313_super_resolution_microscopy",
+      "314_optical_tweezers"
+     ]
+    }
+   ]
+  },
+  {
+   "number": "4",
+   "title": "Ray tracing and lens design",
+   "intro": "Sequential ray tracing and aberration theory, optimization and tolerancing, aspheres and diffractive surfaces, complete lens systems, stray light, and the bridge between rays and waves.",
+   "chapters": [
+    {
+     "title": "Ray tracing basics",
+     "intro": "Sequential ray tracing to the wavefront, Seidel aberrations, the sine and Herschel conditions, telecentricity, glasses, Delano diagrams, polarization ray tracing and GRIN media.",
+     "notebooks": [
+      "400_ray_tracing_opd",
+      "401_seidel_caldwell_lens",
+      "402_sine_herschel_lagrange",
+      "403_magnification_distortion_telecentricity",
+      "404_glass_catalogues",
+      "405_litho_delano_lens_design",
+      "406_polarization_raytrace",
+      "407_grin_optics"
+     ]
+    },
+    {
+     "title": "Optimization and tolerancing",
+     "intro": "Damped least squares, several configurations, the landscape of local minima, Monte Carlo tolerancing, polishing errors and CAD export.",
+     "notebooks": [
+      "410_lens_optimization",
+      "411_multiconfig_optimization",
+      "412_global_optimization_saddle_points",
+      "413_monte_carlo_tolerancing",
+      "414_polishing_errors",
+      "415_cad_export_lens_systems"
+     ]
+    },
+    {
+     "title": "Aspheres and special surfaces",
+     "intro": "Forbes Q polynomials, Fresnel lenses and diffractive surfaces.",
+     "notebooks": [
+      "420_forbes_q_aspheres",
+      "421_fresnel_lenses",
+      "422_hybrid_diffractive_lenses"
+     ]
+    },
+    {
+     "title": "Lens systems",
+     "intro": "Complete designs: a phone camera lens, zoom lenses, eyepieces and binoculars, scan lenses, spectacle lenses and off-axis mirror systems.",
+     "notebooks": [
+      "430_phone_camera_lens_forbes_q",
+      "431_zoom_lenses",
+      "432_eyepieces",
+      "433_binoculars_erecting_prisms",
+      "434_scan_lenses",
+      "435_progressive_lenses",
+      "436_off_axis_mirrors_nodal_aberrations"
+     ]
+    },
+    {
+     "title": "Stray light",
+     "intro": "Non-sequential ray tracing, ghosts and scatter.",
+     "notebooks": [
+      "440_non_sequential_ray_tracing",
+      "441_stray_light_caldwell_lens"
+     ]
+    },
+    {
+     "title": "Rays and waves",
+     "intro": "Converting between ray ensembles and wave fields: ray field summation, foci of real lenses, Gaussian beamlets, DOEs and the eye.",
+     "notebooks": [
+      "450_rays_and_waves",
+      "451_lens_focus_waves",
+      "452_gaussian_beam_decomposition",
+      "453_laser_head_doe",
+      "454_eye_aberrometer"
+     ]
+    },
+    {
+     "title": "Field tracing",
+     "intro": "Rays through the lenses, waves where diffraction matters: chains of propagation operators chosen step by step.",
+     "notebooks": [
+      "460_field_tracing",
+      "461_source_models_field_tracing",
+      "462_local_plane_interface_approximation",
+      "463_field_tracing_applications"
+     ]
+    }
+   ]
+  },
+  {
+   "number": "5",
+   "title": "Metrology and computational imaging",
+   "intro": "Measuring phase, surfaces and films: interferometers, wavefront sensors, ellipsometry and scatterometry, holography, phase retrieval and imaging without lenses.",
+   "chapters": [
+    {
+     "title": "Interferometry",
+     "intro": "Phase from fringes, unwrapping, optical testing of spheres and aspheres, white light interferometry and OCT.",
+     "notebooks": [
+      "500_interferometry",
+      "501_phase_unwrapping",
+      "502_radius_interferometer",
+      "503_cgh_null_testing_aspheres",
+      "504_coherence_scanning_interferometry",
+      "505_optical_coherence_tomography"
+     ]
+    },
+    {
+     "title": "Wavefront and slope sensing",
+     "intro": "Shack-Hartmann, phase diversity, Schlieren and deflectometry.",
+     "notebooks": [
+      "510_shack_hartmann_vs_phase_diversity",
+      "511_schlieren_knife_edge",
+      "512_deflectometry"
+     ]
+    },
+    {
+     "title": "Polarimetric metrology",
+     "intro": "Ellipsometry and scatterometry of films and gratings.",
+     "notebooks": [
+      "520_ellipsometry",
+      "521_scatterometry"
+     ]
+    },
+    {
+     "title": "Holography, phase retrieval and computational imaging",
+     "intro": "Recovering phase from intensities, shaping intensities with phase, focusing through scattering media and imaging without lenses.",
+     "notebooks": [
+      "530_digital_holography",
+      "531_holographic_microscopy",
+      "532_phase_retrieval",
+      "533_tie",
+      "534_ifta_beam_shaping",
+      "535_wavefront_shaping",
+      "536_lensless_coded_aperture_imaging"
+     ]
+    }
+   ]
+  },
+  {
+   "number": "6",
+   "title": "Illumination, radiometry and cameras",
+   "intro": "Watts and lumens, étendue and the design of illumination optics; the optics of cameras and photography.",
+   "chapters": [
+    {
+     "title": "Radiometry and illumination",
+     "intro": "Radiometry and photometry, étendue, nonimaging concentrators, Köhler illumination, homogenizers, speckle, LEDs and freeform beam shaping.",
+     "notebooks": [
+      "600_radiometry_photometry",
+      "601_radiometry_of_images",
+      "602_etendue_brightness_theorem",
+      "603_nonimaging_concentrators",
+      "604_koehler_critical_illumination",
+      "605_homogenizers",
+      "606_speckle_reduction",
+      "607_led_optics_monte_carlo",
+      "608_freeform_beam_shaping"
+     ]
+    },
+    {
+     "title": "Cameras and photography",
+     "intro": "The sensor, bokeh, sunstars, flare, depth of field, image correction and the light field camera.",
+     "notebooks": [
+      "610_sensor",
+      "611_bokeh",
+      "612_sunstars",
+      "613_flare_ghosts",
+      "614_tilt_shift_depth_of_field",
+      "615_distortion_shading_correction",
+      "616_light_field_camera"
+     ]
+    }
+   ]
+  },
+  {
+   "number": "7",
+   "title": "Lasers, nonlinear optics, fibres and detectors",
+   "intro": "How lasers work, light that changes the medium it travels in, light guided in fibres, and the detectors at the end of the line.",
+   "chapters": [
+    {
+     "title": "Lasers",
+     "intro": "Gain, threshold and modes, Q-switching and mode-locking, laser diodes.",
+     "notebooks": [
+      "700_laser_fundamentals",
+      "701_laser_resonator_modes",
+      "702_q_switching_mode_locking",
+      "703_laser_diodes"
+     ]
+    },
+    {
+     "title": "Nonlinear optics",
+     "intro": "Second harmonic generation, parametric amplification and the Kerr effect.",
+     "notebooks": [
+      "710_second_harmonic_generation",
+      "711_parametric_amplification_opo",
+      "712_kerr_effect_self_focusing"
+     ]
+    },
+    {
+     "title": "Fibre optics",
+     "intro": "Light guided in glass fibres and the basics of sending bits through them.",
+     "notebooks": [
+      "720_fibre_rays_step_graded",
+      "721_fibre_modes",
+      "722_fibre_dispersion",
+      "723_fibre_pulse_broadening",
+      "724_fibre_bragg_gratings",
+      "725_fibre_link",
+      "726_fibre_spm_solitons"
+     ]
+    },
+    {
+     "title": "Detectors",
+     "intro": "Where the numbers of a detector come from and what photons do to them.",
+     "notebooks": [
+      "730_detectors_photon_statistics"
+     ]
+    }
+   ]
+  },
+  {
+   "number": "8",
+   "title": "Lithography",
+   "intro": "Projection lithography from the mask to the resist: imaging and resist models, rigorous masks, the projection lens and the illuminator, source and mask optimization, stochastics, and EUV.",
+   "chapters": [
+    {
+     "title": "Imaging and resist",
+     "intro": "Vectorial and Hopkins imaging, process windows, resist and arbitrary layouts.",
+     "notebooks": [
+      "800_vectorial_imaging_lithography",
+      "801_lithography_toolbox",
+      "802_hopkins_socs",
+      "803_litho_fourier_interpolation_cd",
+      "804_litho_resist_swing",
+      "805_litho_arbitrary_layouts"
+     ]
+    },
+    {
+     "title": "Masks",
+     "intro": "Rigorous mask diffraction with RCWA and FDTD, compared with thin mask models.",
+     "notebooks": [
+      "810_litho_rigorous_mask",
+      "811_litho_mask_models",
+      "812_litho_fdtd_mask"
+     ]
+    },
+    {
+     "title": "Projection lens and illuminator",
+     "intro": "The ray traced projection lens across the slit, Jones pupils, telecentricity, the illuminator and lens tolerances.",
+     "notebooks": [
+      "820_litho_lens_aberrations",
+      "821_litho_jones_pupil",
+      "822_litho_telecentricity",
+      "823_litho_illuminator",
+      "824_lens_tolerances_wafer_yield"
+     ]
+    },
+    {
+     "title": "Optimization and stochastics",
+     "intro": "Source optimization, OPC, and the noise of photons and acids.",
+     "notebooks": [
+      "830_litho_source_optimization",
+      "831_litho_opc",
+      "832_litho_stochastics_flare_focus_blur"
+     ]
+    },
+    {
+     "title": "EUV",
+     "intro": "Multilayer mirrors, reflective masks, anamorphic pupils and EUV stochastics.",
+     "notebooks": [
+      "840_euv_multilayers_reflective_masks",
+      "841_euv_projector_pupil",
+      "842_euv_stochastics_flare"
+     ]
+    }
+   ]
+  },
+  {
+   "number": "9",
+   "title": "Instruments",
+   "intro": "Telescopes and the atmosphere, spectrometers, AR/VR and head-up displays, and 3D sensing.",
+   "chapters": [
+    {
+     "title": "Telescopes, atmosphere and astronomy",
+     "intro": "Telescope designs, segmented mirrors, the atmosphere and adaptive optics, coronagraphs, gravitational lenses and rainbows.",
+     "notebooks": [
+      "900_telescope_zoo",
+      "901_segmented_mirrors",
+      "902_atmospheric_dispersion_corrector",
+      "903_twinkling_stars_adaptive_optics",
+      "904_coronagraphs",
+      "905_einstein_rings",
+      "906_rainbows_and_glories"
+     ]
+    },
+    {
+     "title": "Spectroscopy",
+     "intro": "Spectrometers and what they measure.",
+     "notebooks": [
+      "910_grating_prism_spectrometers",
+      "911_fourier_transform_spectroscopy",
+      "912_fabry_perot_filters",
+      "913_spectral_lines_absorption",
+      "914_echelle_spectrograph",
+      "915_imaging_spectroscopy"
+     ]
+    },
+    {
+     "title": "AR/VR and head-up displays",
+     "intro": "Waveguide combiners, volume gratings, pancake lenses and windshield HUDs.",
+     "notebooks": [
+      "920_ar_waveguide_combiners",
+      "921_volume_holographic_gratings",
+      "922_pancake_lenses",
+      "923_head_up_displays"
+     ]
+    },
+    {
+     "title": "3D sensing and LiDAR",
+     "intro": "Time-of-flight and FMCW LiDAR, beam scanners and structured light.",
+     "notebooks": [
+      "930_time_of_flight_lidar",
+      "931_fmcw_lidar",
+      "932_beam_scanning",
+      "933_triangulation_structured_light"
+     ]
+    }
+   ]
+  }
+ ]
+}

@@ -14,7 +14,7 @@ light less well at large chief ray angles, and the interference IR cut
 filter moves its edge to shorter wavelengths at oblique incidence, which
 makes the shading different for the colour channels (colour shading).
 This module derives all these maps from a `raytrace.System` and applies
-them to images, for notebook 161 (distortion, lateral colour and lens shading correction):
+them to images, for notebook 615 (distortion, lateral colour and lens shading correction):
 
 Geometry
 
