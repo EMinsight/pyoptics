@@ -84,6 +84,7 @@ Imaging and ray tracing
    pyoptics.schlieren
    pyoptics.raytrace
    pyoptics.cad
+   pyoptics.lens_files
    pyoptics.nsrt
    pyoptics.bsdf
    pyoptics.raywave
