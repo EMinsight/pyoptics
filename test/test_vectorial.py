@@ -317,6 +317,29 @@ def test_mansuripur_conserves_power_and_is_transverse():
     assert div < 1E-10*scale
 
 
+def test_mansuripur_output_window():
+    x, y, X, Y = _grid(30.0, 128)
+    K_x, K_y = freq_grid(x, y, wavenumbers=True, normal_order=True)
+    P = np.where((K_x**2 + K_y**2)/K**2 < 0.8**2, 1.0, 0.0)
+    field = _stack(inv_FT(P), inv_FT(0.3*P))
+    E, _, _ = vectorial_mansuripur(field, x, y, 0.7, WL)
+
+    # on a subset of the input grid the zoomed sum equals the FFT result
+    E_sub, x_o, y_o = vectorial_mansuripur(field, x, y, 0.7, WL, x_out=x[50:80], y_out=y[40:90])
+    assert E_sub.shape == (50, 30, 3)
+    assert np.allclose(x_o, x[50:80]) and np.allclose(y_o, y[40:90])
+    assert np.allclose(E_sub, E[40:90, 50:80], atol=1E-10*np.abs(E).max())
+
+    # a fine window: the trigonometric interpolation passes through the grid values
+    x_f = np.linspace(-1.0, 1.0, 81)
+    E_f, _, _ = vectorial_mansuripur(field, x, y, 0.7, WL, x_out=x_f, y_out=x_f)
+    c = len(x)//2
+    assert np.allclose(E_f[40, 40], E[c, c])
+
+    with pytest.raises(ValueError):
+        vectorial_mansuripur(field, x, y, 0.7, WL, x_out=x_f)
+
+
 def test_mansuripur_paraxial_limit_is_scalar_propagation():
     x, y, X, Y = _grid(200.0, 256)
     w_0 = 15.0
