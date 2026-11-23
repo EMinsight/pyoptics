@@ -272,6 +272,15 @@ Setup sketches for the other example notebooks:
   (notebooks 15 (imaging and Zernikes) and 17 (PSF, MTF and Strehl));
   otf_overlap(): the OTF as the
   overlap of two shifted pupils, and the MTF (notebook 17, PSF, MTF and Strehl).
+- alternating_projections(): ER/HIO phase retrieval and Gerchberg-Saxton
+  as projections between two planes
+  (notebooks 28 (phase retrieval) and 30 (IFTA beam shaping));
+  doe_beam_shaper(): a laser, a phase-only element and a lens with the
+  target in the focal plane (notebook 30, IFTA beam shaping);
+  tie_planes(): a phase object and the intensity in front of, in and
+  behind focus (notebook 29, TIE); source_pupil_orders(): diffraction
+  orders of dense lines in the pupil for two source points
+  (notebook 39, source optimization).
 - fresnel_interface(): the plane of incidence with the incident, reflected
   and transmitted rays, their angles and the s and p directions
   (notebook 10, interfaces and thin films).
@@ -394,7 +403,8 @@ __all__ = ["lens", "stop", "plane", "prism", "mirror", "detector", "point_source
            "coronagraph_layout", "telescope_layout", "segment_phasing_layout",
            "lensing_geometry", "echelle_layout", "sine_herschel_conditions", "adc_layout",
            "fresnel_interface", "kretschmann", "imaging_pupil", "otf_overlap",
-           "fresnel_zones", "iso_caustic", "tir_beam_shifts", "yee_grid", "lithography_scanner", "tcc_overlap",
+           "fresnel_zones", "iso_caustic", "tir_beam_shifts",
+           "alternating_projections", "doe_beam_shaper", "tie_planes", "source_pupil_orders", "yee_grid", "lithography_scanner", "tcc_overlap",
            "mask_3d", "field_tracing_chain", "propagation_operators", "ball_lens_handover",
            "mach_zehnder_defect", "babinet_split", "diode_collimator", "fibre_coupling",
            "fibre_types", "fibre_acceptance", "skew_ray_end_view", "slab_transverse_resonance",
@@ -13435,3 +13445,206 @@ def tir_beam_shifts(ax, kind="goos_haenchen", theta=50.0, n=1.5, title=None):
     tc = np.degrees(np.arcsin(1/n))
     label(ax, 1.6, 2.05, f"θ = {theta:g}° > θ$_c$ = {tc:.1f}°", fontsize=8.5, ha="center")
     _finish(ax, (-2.9, 2.9), (lo, 2.35), title)
+
+
+def _flow_box(ax, z, y, w, h, text, color="0.2", face="white", fontsize=9):
+    mp = _patches()
+    ax.add_patch(mp.FancyBboxPatch((z - w/2, y - h/2), w, h, boxstyle="round,pad=0.04,rounding_size=0.12",
+                                   facecolor=face, edgecolor=color, lw=1.2, zorder=3))
+    label(ax, z, y, text, fontsize=fontsize, color="0.1", zorder=4)
+
+
+def alternating_projections(ax, kind="fienup", title=None):
+    """Diagram of the iterative Fourier transform algorithms as alternating
+    projections between two planes.
+
+    kind="fienup": support based phase retrieval (notebook 28, phase retrieval). The
+    current object estimate g_k is Fourier transformed, its modulus is
+    replaced by the measured |F| (the phase is kept), and the result is
+    transformed back; in the object plane the support and positivity
+    constraints give the next estimate (error reduction or hybrid
+    input-output).
+
+    kind="gs": Gerchberg-Saxton design of a phase-only element
+    (notebook 30, IFTA beam shaping). In the element plane the known
+    input amplitude A_in is imposed and the phase kept; in the far field the
+    target amplitude sqrt(I_target) is imposed and the phase kept.
+
+    Parameters
+    ----------
+    ax : matplotlib Axes
+    kind : {"fienup", "gs"}, optional
+    title : str, optional
+    """
+
+    if kind == "gs":
+        left = "element plane\n(DOE)"
+        right = "far field\n(focal plane of a lens)"
+        lc = "impose the input amplitude:\nu ← A$_{in}$ exp(i arg u)\n(the element is phase only)"
+        rc = "impose the target:\nU ← √I$_{target}$ exp(i arg U)"
+        top = "U = F{u}"
+        bottom = "u = F$^{-1}${U}"
+        result = "result: the phase φ = arg u of the element"
+    else:
+        left = "object plane"
+        right = "detector\n(far field)"
+        lc = "object constraints:\nsupport (and positivity);\nER: g = 0 outside,\nHIO: g$_k$ − β g′ outside"
+        rc = "measured modulus:\nG ← |F| exp(i arg G)\n(keep the phase)"
+        top = "G = F{g$_k$}"
+        bottom = "g′ = F$^{-1}${G}"
+        result = "result: g with |F{g}| = |F| inside the constraints"
+    _flow_box(ax, -2.0, 0.0, 2.2, 1.0, left, color=IMAGING, face="#eaf2fa")
+    _flow_box(ax, 2.0, 0.0, 2.2, 1.0, right, color=LASER, face="#fbeeec")
+    # the two transforms as arcs with arrow heads
+    t = np.linspace(-0.85, 0.85, 40)
+    for sgn in (1, -1):
+        ax.plot(t, sgn*(0.35 + 0.45*(1 - (t/0.85)**2)), color="0.2", lw=1.3)
+        tip = 0.85*sgn
+        arrow(ax, tip - 0.12*sgn, sgn*0.39, tip, sgn*0.35, color="0.2", lw=1.3, mutation_scale=12)
+    label(ax, 0.0, 1.05, top, fontsize=9)
+    label(ax, 0.0, -1.05, bottom, fontsize=9)
+    for zc, col in ((-2.0, IMAGING), (2.0, LASER)):
+        ax.plot([zc, zc], [-0.54, -0.9], color=col, lw=1.0)
+    label(ax, -2.0, -1.0, lc, fontsize=8.5, va="top", color=IMAGING)
+    label(ax, 2.0, -1.0, rc, fontsize=8.5, va="top", color=LASER)
+    label(ax, 0.0, 1.55, result, fontsize=8.5, color="0.35")
+    _finish(ax, (-3.4, 3.4), (-2.45, 1.85), title)
+
+
+def doe_beam_shaper(ax, title=None):
+    """Sketch of beam shaping with a diffractive optical element (notebook 30,
+    IFTA beam shaping): a collimated Gaussian laser beam passes a phase-only
+    element with the phase phi(x, y) and a lens of focal length f; the
+    focal plane holds the Fourier transform of the field behind the
+    element, u(x') ~ F{A_in exp(i phi)} at k_x = 2 pi x'/(lambda f), here a
+    letter. The element only redistributes the light, so the efficiency
+    and the uniformity of the pattern are the design goals.
+
+    Parameters
+    ----------
+    ax : matplotlib Axes
+    title : str, optional
+    """
+
+    mp = _patches()
+    w = 0.7
+    laser(ax, 0.3, 0.0, length=1.2, height=0.5)
+    ax.fill_between([0.3, 2.0], [-w, -w], [w, w], color=LASER, alpha=0.2, lw=0)
+    for s in (1, -1):
+        ax.plot([0.3, 2.0], [s*w, s*w], color=LASER, lw=0.8)
+    # the DOE: a plate with a stepped surface
+    zz = np.linspace(-0.95, 0.95, 20)
+    rng = np.random.default_rng(3)
+    steps = 0.06*rng.integers(0, 4, len(zz) - 1)
+    for k in range(len(zz) - 1):
+        ax.add_patch(mp.Rectangle((2.0, zz[k]), 0.12 + steps[k], zz[k + 1] - zz[k], facecolor=GLASS,
+                                  edgecolor="none", zorder=3))
+    ax.plot([2.0, 2.0], [-0.95, 0.95], color=EDGE, lw=1.0, zorder=4)
+    label(ax, 2.1, -1.2, "DOE: phase φ(x, y)", fontsize=9, va="top")
+    lens(ax, 3.4, 1.0)
+    label(ax, 3.4, -1.2, "lens, f", fontsize=9, va="top")
+    # diffracted light towards the pattern
+    for yt in (-0.55, -0.2, 0.25, 0.6):
+        for s in (1, -1):
+            ax.plot([3.4, 5.4], [s*w*0.9, yt], color=LASER, lw=0.6, alpha=0.5)
+    ax.plot([5.4, 5.4], [-1.0, 1.0], color="0.4", lw=1.0, ls=":")
+    # the focal plane seen from the front: the target letter F
+    ax.add_patch(mp.Rectangle((5.75, -0.6), 1.2, 1.2, facecolor="white", edgecolor="0.4", lw=0.8,
+                              zorder=3))
+    for (z0, y0, dz, dy) in ((6.1, -0.4, 0.14, 0.8), (6.1, 0.26, 0.5, 0.14), (6.1, -0.04, 0.38, 0.13)):
+        ax.add_patch(mp.Rectangle((z0, y0), dz, dy, facecolor=LASER, edgecolor="none", zorder=4))
+    label(ax, 6.35, 0.75, "front view", fontsize=8, va="bottom", color="0.35")
+    ax.plot([5.42, 5.75], [0.6, 0.6], color="0.6", lw=0.6, ls=":")
+    ax.plot([5.42, 5.75], [-0.6, -0.6], color="0.6", lw=0.6, ls=":")
+    label(ax, 5.4, -1.2, "focal plane:\n|F{A$_{in}$ e$^{iφ}$}|² ≈ I$_{target}$", fontsize=9, va="top")
+    arrow(ax, 3.45, 1.3, 5.4, 1.3, color="0.3", lw=0.8, style="<|-|>", text="f",
+          text_pos=(4.4, 1.45), fontsize=9)
+    label(ax, 0.9, 1.0, "Gaussian beam, A$_{in}$", fontsize=9, color=LASER)
+    _finish(ax, (-1.1, 7.1), (-2.0, 1.7), title)
+
+
+def tie_planes(ax, title=None):
+    """Sketch of the transport-of-intensity equation (notebook 29, TIE): a
+    plane wave of uniform intensity passes a transparent phase object (a
+    bump that delays the light, like a weak lens). In focus, z = 0, the
+    intensity is still uniform; behind it the bump focuses the light (bright
+    centre), in front of it (the back propagated field) the intensity has a
+    dip. The difference of the two defocused images, (I+ - I-)/(2 dz), is the
+    axial derivative that the TIE turns into the phase.
+
+    Parameters
+    ----------
+    ax : matplotlib Axes
+    title : str, optional
+    """
+
+    mp = _patches()
+    yy = np.linspace(-1.0, 1.0, 100)
+    bump = 0.25*np.exp(-yy**2/0.12)
+    ax.add_patch(mp.Polygon(np.c_[np.r_[-0.05 - 0.0*yy, (0.05 + bump)[::-1]],
+                                  np.r_[yy, yy[::-1]]], closed=True, facecolor=GLASS,
+                            edgecolor=EDGE, lw=1.0, zorder=3))
+    label(ax, 0.05, 1.1, "phase object φ(x, y)", fontsize=9, va="bottom")
+    for yr in np.linspace(-0.9, 0.9, 13):
+        ax.plot([-3.2, 0.0], [yr, yr], color=ILLUMINATION, lw=0.8)
+        slope = -0.5*yr*np.exp(-yr**2/0.12)
+        ax.plot([0.15, 3.6], [yr, yr + slope*3.45], color=ILLUMINATION, lw=0.8)
+    label(ax, -2.6, 1.15, "uniform intensity I$_0$", fontsize=9, color="#8a6300")
+    dz = 1.6
+    prof = {-dz: 1 - 0.55*np.exp(-yy**2/0.05), 0.0: np.ones_like(yy), dz: 1 + 1.1*np.exp(-yy**2/0.03)}
+    names = {-dz: "z = −Δz\nI$_−$ (back propagated)", 0.0: "z = 0\nI (in focus)", dz: "z = +Δz\nI$_+$"}
+    for zc in (-dz, 0.0, dz):
+        zp = zc + 0.45 if zc == 0.0 else zc
+        ax.plot([zc, zc], [-1.0, 1.0], color="0.5", lw=0.8, ls="--" if zc < 0 else ":")
+        p = prof[zc]
+        ax.fill_betweenx(yy, zp, zp + 0.35*p, color=IMAGING, alpha=0.3, lw=0, zorder=4)
+        ax.plot(zp + 0.35*p, yy, color=IMAGING, lw=1.1, zorder=4)
+        label(ax, zp + 0.2, -1.2 if zc else -1.75, names[zc], fontsize=8.5, va="top")
+    label(ax, 2.6, 1.2, "intensity profiles", fontsize=8.5, color=IMAGING)
+    label(ax, 0.2, -2.35, r"k ∂I/∂z = −$\nabla_\perp$·(I $\nabla_\perp$φ),   ∂I/∂z ≈ (I$_+$ − I$_−$)/(2Δz)",
+          fontsize=9.5, va="top")
+    _finish(ax, (-3.3, 3.8), (-2.8, 1.5), title)
+
+
+def source_pupil_orders(ax, pitch=1.4, title=None):
+    """Sketch of Abbe imaging of dense lines in the pupil
+    (notebook 39, source optimization), in units of NA/lambda (pupil radius 1): a source point at
+    s sends the diffraction orders of lines of pitch p to s + m lambda/(p NA).
+    Only orders inside the pupil reach the wafer, and at least two must pass
+    to form an image. For a dense pitch (lambda/(p NA) > 1) an on-axis source
+    point passes only the zeroth order; a point at s_x = lambda/(2 p NA)
+    puts the zeroth and the -1st order symmetrically into the pupil
+    (two-beam imaging, no focus dependence). The image is an incoherent sum
+    over source points, linear in their weights, which is what source
+    optimization exploits.
+
+    Parameters
+    ----------
+    ax : matplotlib Axes
+    pitch : number, optional
+        lambda/(p NA) in units of the pupil radius, the order spacing.
+    title : str, optional
+    """
+
+    mp = _patches()
+    ax.add_patch(mp.Circle((0, 0), 1.0, facecolor=GLASS, edgecolor=EDGE, lw=1.4, zorder=1))
+    label(ax, 0.0, 1.12, "pupil, NA", fontsize=9, va="bottom", color=EDGE)
+    for s, col, name in ((0.0, "0.45", "source point s = 0"),
+                         (pitch/2, LASER, "source point s = λ/(2p NA)")):
+        for m in (-2, -1, 0, 1, 2):
+            f = s - m*pitch
+            if abs(f) > 2.6:
+                continue
+            inside = abs(f) < 1.0
+            y = 0.25 if s else -0.25
+            ax.plot([f], [y], "o", ms=8 if m == 0 else 6, color=col,
+                    mfc=col if inside else "white", mew=1.3, zorder=4)
+            label(ax, f, y + (0.2 if s else -0.2), f"{-m:+d}" if m else "0", fontsize=8,
+                  color=col)
+        label(ax, 2.75, 0.25 if s else -0.25, name, fontsize=8.5, ha="left", color=col)
+    arrow(ax, -pitch/2, -0.85, pitch/2, -0.85, color="0.2", lw=0.9, style="<|-|>")
+    label(ax, 0.0, -1.0, "λ/(p NA)", fontsize=8.5, va="top")
+    label(ax, 0.6, -1.55, "filled: order passes the pupil, open: blocked\n"
+          "s = 0 passes only the 0th order (no image); s = λ/(2p NA) passes 0 and −1\n"
+          "image I(x) = Σ$_s$ W$_s$ I$_s$(x): linear in the source weights", fontsize=8.5, va="top")
+    _finish(ax, (-2.8, 5.6), (-2.6, 1.5), title)
