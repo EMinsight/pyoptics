@@ -74,3 +74,28 @@ html_theme_options = {
     "source_branch": "master",
     "source_directory": "docs/",
 }
+
+
+# The notebooks were renumbered in reading order (scripts/renumber_notebooks.py).
+# Keep the old page addresses working: write a small redirect page for each.
+_RENUMBERING = ROOT/"scripts"/"notebook_renumbering.json"
+
+
+def _write_redirects(app, exception):
+    import json
+    if exception is not None or app.builder.format != "html":
+        return
+    out = Path(app.outdir)/"notebooks"
+    for old, entry in json.loads(_RENUMBERING.read_text(encoding="utf-8")).items():
+        page = out/f"{old}.html"
+        if not page.exists():
+            new = entry["new"]
+            page.write_text(f'<!DOCTYPE html><html><head><meta charset="utf-8"><title>Moved</title>'
+                            f'<link rel="canonical" href="{new}.html">'
+                            f'<meta http-equiv="refresh" content="0; url={new}.html"></head>'
+                            f'<body>This notebook moved to <a href="{new}.html">{new}</a>.</body></html>',
+                            encoding="utf-8")
+
+
+def setup(app):
+    app.connect("build-finished", _write_redirects)

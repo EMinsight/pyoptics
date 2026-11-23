@@ -11080,7 +11080,7 @@ def crystal_optics_layout(ax, kind="calcite", title=None):
 
 def modulator_layout(ax, kind="pockels", title=None):
     """Sketch of an electro-optic, liquid crystal or acousto-optic light
-    modulator (notebooks 212, electro-optic modulators, 140, liquid
+    modulator (notebooks 212, electro-optic modulators, 213, liquid
     crystals, and 214, acousto-optics).
 
     Parameters

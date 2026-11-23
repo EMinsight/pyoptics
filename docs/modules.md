@@ -1,7 +1,28 @@
 # Modules
 
 What each module does and how mature it is. Planned work is listed in
-[`WIP.md`](https://github.com/aeberspaecher/pyoptics/blob/master/WIP.md).
+[`WIP.md`](https://github.com/aeberspaecher/pyoptics/blob/master/WIP.md),
+finished work in
+[`CHANGELOG.md`](https://github.com/aeberspaecher/pyoptics/blob/master/CHANGELOG.md).
+
+## Maturity
+
+pyoptics is version 0.1. Every module below has tests, but they differ in
+how settled their API is and how widely they are used. Each module belongs
+to one of four tiers:
+
+| Tier | Meaning | Modules |
+|---|---|---|
+| Core | API unlikely to change; broad tests against analytic results; used by most notebooks | `propagators`, `fft`, `utils`, `masks`, `geometry`, `analytical`, `bases`, `beams`, `abcd`, `interfaces`, `thin_films`, `polarization.jones`, `polarization.mueller`, `imaging`, `raytrace` |
+| Tested | Numerics checked against analytic or published results; the API may still change | all modules not listed in another tier |
+| Showcase | Written for one or two notebooks; tested, but narrow and not designed as a general API | `rainbow`, `schlieren`, `billiard`, `cloak`, `tweezers`, `eyepieces`, `prisms`, `phone_lens`, `spectacles`, `polishing`, `sensor`, `lightfield`, `telescopes`, `segmented`, `lensing`, `echelle`, `adc`, `arvr`, `lidar`, `structured_light`, `sketch` |
+| Unfinished | Stubs or known gaps | the functions in `polarization._polarization` |
+
+The labels "new" and "mature" in the list below say how long a module has
+been around; the tier says what to build on.
+
+## All modules
+
 
 - `propagators`: mature and tested (Rayleigh-Sommerfeld, Fresnel, Fraunhofer,
   band-limited and padded propagation; vectorial propagation of [E_x, E_y]
@@ -1319,7 +1340,7 @@ What each module does and how mature it is. Planned work is listed in
 
 ## Tests
 
-The core is tested: a suite of more than 2000 pytest tests checks the numerics
+The core is tested: a suite of more than 3000 pytest tests checks the numerics
 against analytical results (Fresnel and Fraunhofer diffraction, Gaussian beam
 propagation, Mahajan's on-axis intensity, Airy pattern and OTF, Fresnel
 equations, thin film stacks, Goos-Hänchen shift, beam widths and M² of

@@ -39,7 +39,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 NB_DIR = ROOT/"notebooks"
 TEXT_SUFFIXES = {".md", ".py", ".pyx", ".ipynb", ".json", ".yml", ".yaml", ".toml", ".txt", ".cfg", ".rst"}
-SKIP = {"scripts/notebook_renumbering.json", "scripts/renumber_notebooks.py"}
+SKIP = {"scripts/notebook_renumbering.json", "scripts/renumber_notebooks.py",
+        "test/test_notebook_references.py"}  # the last holds old numbers on purpose
 
 NUM = r"\d{2,3}"
 ITEM = NUM + r"(?![\d.,]\d)(?:\s*\([^()]*\))?"
@@ -101,7 +102,7 @@ class Renumberer:
         EUV stochastics and flare") or in tables ("| **52** | Abbe ...")."""
         for num, name in sorted(self.names.items(), key=lambda kv: -len(kv[1])):
             pattern = (r"(?<![\w.\-])" + num + r"(?=(?:\*\*)?(?:\s*\(\s*|\s*,\s*|\s+|\s*\|\s*)"
-                       + re.escape(name) + r"(?![\w\-]))")
+                       + re.escape(name).replace(r"\ ", r"\s+") + r"(?![\w\-]))")
             text = re.sub(pattern, self.num_map[num], text, flags=re.IGNORECASE)
         return text
 

@@ -61,6 +61,8 @@ def _strip_links(text):
 def _named(num, before, after):
     """Whether the name of notebook `num` stands next to the reference."""
     name = NAMES[num].lower()
+    # a name may be broken across lines
+    before, after = re.sub(r"\s+", " ", before[-(len(name) + 40):]), re.sub(r"\s+", " ", after[:len(name) + 40])
     if name in before[-(len(name) + 12):].lower():
         return True
     return re.match(r"\s*(?:,\s*|\(\s*|,?\s*\*)?" + re.escape(name), after.lower()) is not None
@@ -110,7 +112,7 @@ def _notebook_text(path):
 
 
 def _sources():
-    md = [ROOT/"README.md", ROOT/"WIP.md", ROOT/"CLAUDE.md", ROOT/"notebooks"/"README.md"]
+    md = [ROOT/"README.md", ROOT/"WIP.md", ROOT/"CHANGELOG.md", ROOT/"CLAUDE.md", ROOT/"notebooks"/"README.md"]
     md += sorted((ROOT/"docs").glob("*.md"))
     py = sorted((ROOT/"pyoptics").rglob("*.py")) + sorted((ROOT/"pyoptics").glob("*.pyx"))
     py += [p for p in sorted((ROOT/"test").glob("*.py")) if p.name != Path(__file__).name]

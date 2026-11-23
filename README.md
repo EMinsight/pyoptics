@@ -6,15 +6,17 @@
 [![License: BSD-3-Clause](https://img.shields.io/badge/license-BSD--3--Clause-green)](LICENSE)
 
 <!-- docs:about-start -->
-**Wave optics, ray optics and lithography simulation in Python.**
+**Wave optics, ray optics and lens design, Maxwell solvers, metrology, lasers
+and lithography simulation in Python.**
 
 pyoptics is a toolbox for optical simulation built on NumPy and SciPy: scalar
 and vectorial wave propagation, Gaussian beams and modes, thin films and
-polarization, imaging and aberrations, sequential ray tracing, wavefront
-metrology and a full lithography imaging stack. Its blocks are small and
-independent, so a propagator, a Zernike basis or a ray traced lens can be
-reused in new contexts. The numerics are checked against analytic results
-throughout.
+polarization, imaging and aberrations, sequential and non-sequential ray
+tracing with lens optimization and tolerancing, FDTD and FDFD solvers,
+wavefront metrology, lasers, nonlinear and fibre optics, and a full
+lithography imaging stack. Its blocks are small and independent, so a
+propagator, a Zernike basis or a ray traced lens can be reused in new
+contexts. The numerics are checked against analytic results throughout.
 <!-- docs:about-end -->
 
 ![Fresnel diffraction behind a square aperture, a ray traced lithography lens, and the aerial image of contact holes](docs/images/readme_overview.png)
@@ -26,28 +28,28 @@ throughout.
 
 ## Features
 
-| Area | What you get | Modules |
+| Area | What you get | Main modules |
 |---|---|---|
-| **Wave propagation** | Rayleigh-Sommerfeld, Fresnel and Fraunhofer propagators, band-limited and padded propagation, free output windows (shifted angular spectrum, chirp-z), vectorial fields and high NA focusing, propagation onto tilted planes, analytic handling of curved wavefronts (semi-analytical and homeomorphic Fourier transforms after Wyrowski, few samples at any distance and on tilted planes), wave propagation method (WPM) for inhomogeneous media, field tracing chains with automatic choice of the propagation operator per step, ray tracing through lens systems inside the chain, interferometer arms and Babinet obstructions on their own grids, partially coherent, polychromatic and pulsed sources as ensembles of modes (Gaussian Schell model, multimode lasers, LEDs, femtosecond pulses) | `propagators`, `tilted`, `analytic_phase`, `fieldtrace`, `source_modes`, `fft`, `wpm` |
-| **Maxwell solvers** | Finite-difference time-domain (FDTD) solver in 1D, 2D and 3D with PML, TFSF plane waves, dispersive metals (Drude/Lorentz), optional numba kernels, DFT and flux monitors and animations, waveguide modes, mode sources and S-parameters for couplers and ring resonators, Bloch boundaries for gratings (diffraction orders) and photonic crystal band structures, photonic-crystal waveguides and cavities, grating couplers and metalenses, a 3D sphere against the vector Mie series and the photonic nanojet, a rigorous litho mask model for contact holes; finite-difference frequency-domain (FDFD) solver in 2D: driven solves and resonances (quasi-normal modes, Q) with PML and Bloch boundaries, mode tracing, far fields and directionality, a microdisk deformed into the limaçon of Pascal and its ray chaos, a quasi-conformal carpet cloak | `fdtd`, `fdfd`, `billiard`, `cloak` |
-| **Beams and modes** | Hermite- and Laguerre-Gaussian beams, ABCD matrices and resonators, Collins integral, M² and beam widths after ISO 11146, mode decomposition, LP fibre modes and coupling efficiency, optical vortices and orbital angular momentum, Bessel and Airy beams, ultrashort pulses through lenses, prisms and gratings | `beams`, `abcd`, `beam_quality`, `modes`, `vortices`, `ultrafast` |
-| **Fibre optics and communication** | Step and graded-index fibres in the ray picture, slab and fibre modes with the single-mode condition, mode field diameter and bend loss, material, waveguide and intermodal dispersion, pulse broadening and the bit-rate limit, fibre Bragg gratings from coupled modes, a fibre link with receiver noise, eye diagrams and the bit error rate; self-phase modulation, solitons, soliton fission and supercontinuum, the Raman self-frequency shift and SPM in a 10 Gb/s link with a general split-step (NLSE/GNLSE, RK4IP) solver | `fibres`, `fibrecomm`, `splitstep` |
-| **Thin films and polarization** | Fresnel coefficients, coherent multilayer stacks, Jones and Mueller calculus, Stokes parameters, dispersion and crystal materials | `interfaces`, `thin_films`, `polarization`, `materials` |
-| **Imaging and microscopy** | PSF, OTF/MTF and Strehl ratio with pupil masks and aberrations, Zernike, Legendre and Chebyshev bases, partially coherent vectorial imaging; microscopy: partially coherent bright field imaging (Abbe, Köhler), weak object transfer functions, Zernike phase contrast, Nomarski DIC, confocal PSFs and optical sectioning, Fourier ptychography with pupil recovery, super-resolution (SIM, STED, single molecule localization), optical coherence tomography, optical tweezers | `imaging`, `bases`, `vectorial_imaging`, `analytical`, `microscopy`, `superresolution`, `oct`, `tweezers` |
-| **Illumination and radiometry** | Radiometry and photometry, the radiometry of images, étendue and phase space, nonimaging concentrators (CPC, edge-ray principle), Köhler and critical illumination, homogenizers, LED optics with Monte Carlo illuminance, freeform beam shaping, speckle reduction, colours of spectra (CIE XYZ, sRGB) | `radiometry`, `illumination`, `freeform`, `speckle`, `colour` |
-| **Cameras and photography** | Bokeh, sunstars, flare and ghosts of real camera lenses, the sensor (pixels, Bayer mosaic, low pass filter, microlenses), depth of field and tilt-shift, the light field camera, lensless imaging with pinholes, coded apertures and diffuser cameras | `photography`, `sensor`, `lightfield`, `lensless` |
-| **Astronomy and atmosphere** | Turbulence, scintillation and adaptive optics, coherence and stellar interferometry, coronagraphs, a telescope zoo, segmented mirrors, gravitational lensing, the atmospheric dispersion corrector, rainbows and glories | `turbulence`, `coherence`, `coronagraph`, `telescopes`, `segmented`, `lensing`, `adc`, `rainbow` |
-| **Spectroscopy** | Grating and prism spectrometers (Czerny–Turner traced with grating surfaces), the echelle spectrograph, Fourier transform spectroscopy, Fabry–Perot interferometers and interference filters, spectral lines and absorption, imaging spectroscopy | `spectrometers`, `spectroscopy`, `echelle` |
-| **AR/VR and head-up displays** | Waveguide combiners in k-space (field of view against the index, colour), in-couplers and out-couplers with RCWA (binary and slanted gratings), exit pupil expansion and the eye box, the rainbow artefact, fold gratings; volume holographic gratings with Kogelnik's coupled waves against RCWA; pancake lenses with real retarders and their ghosts; windshield HUDs: reflectance, the double image and the wedge, a ray traced freeform HUD mirror with vergence, astigmatism and disparity over the eye box | `arvr` |
-| **3D sensing and LiDAR** | Time-of-flight LiDAR link budgets (Lambertian targets, fog, sunlight), linear APDs with thresholds and false alarms, SPAD histograms with pile-up and Coates' correction, class 1 eye safety at 905 and 1550 nm for pulse trains and scanned beams; FMCW LiDAR with range and Doppler, the shot noise limited coherent receiver, speckle fading, laser linewidth and chirp nonlinearity correction; beam scanners (galvos, polygons, resonant MEMS and Lissajous patterns, optical phased arrays, Risley prisms); laser triangulation and its speckle limit, fringe projection with temporal phase unwrapping, and the dot projector of depth cameras (IFTA fan-out gratings, block matching) | `lidar`, `structured_light` |
-| **Surface and thin-film metrology** | Coherence scanning interferometry (white light interferometry, WLI): correlograms, envelope detection and frequency domain analysis with phase gap and fringe order, the obliquity factor, metals and transparent films, film thickness from the spectral signature, batwings at steps; spectroscopic ellipsometry: Psi and Delta of layered samples in the Nebraska conventions, the pseudo-dielectric function, rotating analyzer and rotating compensator instruments, Cauchy, Tauc-Lorentz, Lorentz, Drude and Bruggeman models, model fits with MSE and correlations; scatterometry (OCD) with RCWA: trapezoidal line profiles, Psi-Delta and Mueller signatures in planar and conical mounts, library search and regression; phase measuring deflectometry: screen and camera geometry, fringe decoding, iterative slope integration, the height-slope ambiguity | `csi`, `ellipsometry`, `scatterometry`, `deflectometry` |
-| **Crystal optics and light modulators** | Plane waves in anisotropic crystals (the index ellipsoid, double refraction and walk-off), the 4×4 (Berreman) matrix method for stacks of anisotropic and gyrotropic layers at any angle, polarizing prisms (Glan–Taylor, Glan–Thompson, Wollaston, Rochon) traced through their interfaces, optical activity and Faraday isolators; Pockels and Kerr cells, the Mach–Zehnder modulator with chirp, extinction and travelling-wave bandwidth; nematic liquid crystals (Fréedericksz transition, director profiles from the Frank energy, retarders, TN cells with Gooch–Tarry and their viewing angle); acousto-optic modulators, deflectors and tunable filters (Raman–Nath and Bragg regimes, coupled orders, figure of merit, AOTF passband) | `crystals`, `electrooptics`, `liquid_crystals`, `acoustooptics` |
-| **Lasers** | Einstein coefficients, cross sections and gain media, saturation and amplifiers (Frantz–Nodvik), three- and four-level rate equations, threshold, slope efficiency and optimum output coupling (Rigrod), longitudinal and transverse modes, the Schawlow–Townes linewidth, relaxation oscillations; active and passive Q-switching, phase-locked modes and frequency combs, active and soliton mode-locking from the Haus master equation; laser diodes from their rate equations: L–I curve, modulation bandwidth, chirp (α_H), RIN and linewidth with Langevin noise; transverse modes of resonators with finite mirrors by Fox–Li field tracing (diffraction losses, Gouy phases, aperture mode selection, thermal lenses, unstable resonators) | `lasers`, `resonators` |
-| **Nonlinear optics** | χ⁽²⁾ and χ⁽³⁾; second harmonic generation from the coupled amplitude equations (with depletion), birefringent type I and II phase matching in BBO and KDP with d_eff and walk-off from the index ellipsoid, quasi-phase matching in MgO:PPLN (temperature dependent Sellmeier, real domain patterns, higher orders, duty cycle), acceptance bandwidths in angle, wavelength and temperature, Boyd–Kleinman focusing with walk-off, femtosecond SHG with group velocity mismatch; sum and difference frequency generation, parametric gain and bandwidth, OPO tuning, SRO and DRO thresholds and the pump depletion of a singly resonant OPO; the Kerr effect and Kerr lens, self-focusing and collapse against Marburger, small-scale self-focusing and the B-integral, SPM, and Kerr-lens mode-locking with the laser master equation | `nonlinear`, `splitstep` |
-| **Detectors and photon statistics** | Responsivity from the quantum efficiency, band gaps (Varshni, Hansen for HgCdTe) and cutoffs, absorption coefficients of Si, InGaAs and HgCdTe and the quantum efficiency of absorbing layers, photodiode bandwidth from capacitance and transit time, shot, thermal and APD excess noise, NEP, D*, background limited (BLIP) and R₀A limited detectivity, BER and receiver sensitivity, SPADs with dead time, Poisson, thermal and number state statistics, Mandel Q and g2, chaotic light, binomial losses, the beam splitter with number states (HBT, Hong–Ou–Mandel) | `detectors` |
-| **Ray tracing and lens design** | Sequential ray trace with conics and aspheres, tilts and decentres, tolerance sensitivities (decentre, axial shift, radius, index), paraxial data and Seidel sums, OPD maps and Zernike fits, spot diagrams, polarization ray trace through coatings and crystals, curved rays in gradient-index media, damped least squares optimization (variables incl. model glasses, solves, Lagrange multiplier constraints, several configurations such as zoom positions with shared variables; the landscape of local minima: random starts, saddle points and their construction, basin hopping), Monte Carlo tolerancing (sensitivity tables, yields, linear model, compensators and manipulators with limited strokes, tilt, wedge, irregularity and inhomogeneity tolerances, inverse sensitivity and tolerance allocation), glass catalogues of six vendors with partial dispersions, Delano diagrams; conversion between ray ensembles and wave fields (ray field summation with Gouy phases, Gaussian beam decomposition through real lens surfaces, phase gradient and Wigner rays); Fresnel lenses with real facets (draft, shadowing and riser losses), exact facet design and kinoforms; diffractive surfaces in the ray trace (local grating equation, power, Seidel sums and colour of hybrid lenses, kinoform efficiency); lens design classics: mechanically compensated zoom lenses (a patent zoom with cams and inner focusing), Forbes Q-bfs and Q-con aspheres, progressive spectacle lenses traced as worn, F-theta and telecentric scan lenses behind XY galvo scanners with a lookup table correction; off-axis mirror systems (off-axis conic segments, aperture offset and field bias, beam clearance, ring fields, an unobscured three-mirror anastigmat with freeform mirrors) and nodal aberration theory (misalignment: constant coma, binodal astigmatism, the coma-free pivot; freeform terms) | `raytrace`, `raywave`, `fresnel`, `coatings`, `lens_optimization`, `lens_landscape`, `off_axis`, `nodal`, `tolerancing`, `glasses`, `delano`, `grin`, `zoom`, `qaspheres`, `spectacles`, `scan_lenses` |
-| **Wavefront metrology** | Phase-shifting and Fourier fringe analysis, digital holography, Shack-Hartmann sensors, phase retrieval (Fienup, phase diversity), phase unwrapping, TIE, IFTA beam shaping, wavefront shaping through scattering media, Schlieren and the knife-edge test | `interferometry`, `holography`, `shack_hartmann`, `phase_retrieval`, `unwrap`, `TIE`, `ifta`, `wavefront_shaping`, `schlieren` |
-| **Lithography** | Sources, masks and projectors (Abbe and Hopkins/SOCS imaging), thin and rigorous masks (RCWA for lines, 3D FDTD for any layout), resist and wafer stacks, CD, NILS, Bossung curves and process windows, ray traced projection lenses and illuminators, lens tolerances to CD uniformity, best focus and overlay with scanner manipulators, Jones pupils, source optimization and OPC, stochastics (photon and acid shot noise, LER and LWR with their power spectra, local CDU and missing contacts), flare from lens roughness and pattern density, focus blur from laser bandwidth and stage vibration, EUV (Mo/Si multilayer mirrors, reflective masks with shadowing and mask 3D effects, anamorphic high-NA pupils with central obscuration, EUV stochastics and flare) | `litho` |
+| **Wave propagation** | Rayleigh-Sommerfeld, Fresnel and Fraunhofer propagators, free output windows, tilted planes, vectorial high NA focusing, analytic phase handling, WPM, field tracing chains, partially coherent sources | `propagators`, `tilted`, `analytic_phase`, `wpm`, `fieldtrace`, `source_modes` |
+| **Beams and modes** | Hermite-, Laguerre- and Ince-Gaussian beams, ABCD matrices and resonators, M² after ISO 11146, mode decomposition, vortices, Bessel and Airy beams, ultrashort pulses | `beams`, `abcd`, `beam_quality`, `modes`, `ince`, `vortices`, `ultrafast` |
+| **Thin films and polarization** | Fresnel coefficients, coherent and incoherent multilayers, Jones and Mueller calculus, materials and dispersion | `interfaces`, `thin_films`, `polarization`, `materials` |
+| **Crystals and modulators** | Anisotropic crystals and the 4×4 method, polarizing prisms, Pockels and Kerr cells, liquid crystals, acousto-optics | `crystals`, `electrooptics`, `liquid_crystals`, `acoustooptics` |
+| **Maxwell solvers** | FDTD in 1D, 2D and 3D with PML, dispersive metals, Bloch boundaries and mode sources; FDFD with resonances and far fields | `fdtd`, `fdfd`, `billiard`, `cloak` |
+| **Imaging and microscopy** | PSF, MTF, Strehl, Zernike and other bases, partially coherent and vectorial imaging, phase contrast, DIC, confocal, ptychography, super-resolution, OCT, tweezers | `imaging`, `bases`, `vectorial_imaging`, `microscopy`, `superresolution`, `oct`, `tweezers` |
+| **Ray tracing and lens design** | Sequential trace with conics, aspheres, freeforms, diffractive and GRIN surfaces, Seidel sums, OPD and Zernikes, polarization ray trace, damped least squares and global optimization, tolerancing, glass catalogues, zoom, scan and phone lenses, off-axis mirrors, CAD export | `raytrace`, `lens_optimization`, `tolerancing`, `glasses`, `qaspheres`, `zoom`, `off_axis`, `nodal`, `cad` |
+| **Stray light** | Non-sequential ray tracing with scattering models, ghosts and coatings | `nsrt`, `bsdf` |
+| **Rays and waves** | Ray field summation, Gaussian beamlets, Wigner rays, field tracing through lenses | `raywave`, `fieldtrace` |
+| **Wavefront metrology** | Phase shifting and Fourier fringe analysis, holography, Shack-Hartmann, phase retrieval, unwrapping, TIE, IFTA, CGH null tests, wavefront shaping, Schlieren | `interferometry`, `holography`, `shack_hartmann`, `phase_retrieval`, `unwrap`, `TIE`, `ifta`, `cgh` |
+| **Surface and film metrology** | White light interferometry, ellipsometry, scatterometry with RCWA, deflectometry | `csi`, `ellipsometry`, `scatterometry`, `deflectometry` |
+| **Illumination and radiometry** | Radiometry and photometry, étendue, nonimaging concentrators, Köhler illumination, homogenizers, LEDs, freeform beam shaping, speckle | `radiometry`, `illumination`, `freeform`, `speckle`, `colour` |
+| **Cameras and photography** | Bokeh, sunstars, flare, the sensor, depth of field, image restoration and correction, light field and lensless cameras | `photography`, `sensor`, `restoration`, `lens_correction`, `lightfield`, `lensless` |
+| **Lasers** | Rate equations, threshold and output coupling, Q-switching and mode-locking, laser diodes, Fox–Li resonator modes | `lasers`, `resonators` |
+| **Nonlinear and fibre optics** | SHG and phase matching, OPOs, Kerr effect; fibre modes, dispersion, Bragg gratings, links and the split-step NLSE | `nonlinear`, `fibres`, `fibrecomm`, `splitstep` |
+| **Detectors** | Responsivity, noise, NEP and D*, photon statistics | `detectors` |
+| **Astronomy and atmosphere** | Turbulence and adaptive optics, stellar interferometry, coronagraphs, telescopes, segmented mirrors, gravitational lensing, rainbows | `turbulence`, `coherence`, `coronagraph`, `telescopes`, `segmented`, `lensing`, `rainbow` |
+| **Spectroscopy** | Grating, prism and echelle spectrometers, Fourier transform spectroscopy, Fabry–Perot filters, spectral lines | `spectrometers`, `spectroscopy`, `echelle` |
+| **AR/VR, HUDs and 3D sensing** | Waveguide combiners, volume gratings, pancake lenses, windshield HUDs; LiDAR link budgets, FMCW, beam scanners, structured light | `arvr`, `lidar`, `structured_light` |
+| **Lithography** | Abbe and Hopkins imaging, thin and rigorous masks (RCWA, FDTD), resist, process windows, ray traced projection lenses and illuminators, Jones pupils, source optimization and OPC, stochastics, EUV | `litho` |
 
 The [module overview](https://aeberspaecher.github.io/pyoptics/modules.html)
 in the documentation describes every module in detail.
@@ -141,17 +143,34 @@ print(f"NILS {sim.nils():.2f}, dose to size {sim.dose_to_size(threshold=0.3):.2f
 
 ## Example notebooks
 
-The [`notebooks/`](notebooks/README.md) folder holds 129 executed Jupyter
-notebooks, one per topic, from free space propagation and Gaussian beams over
-thin films, imaging, ray tracing and interferometry, Maxwell solvers,
-microscopy, illumination, photography, astronomy, spectroscopy and fibre
-optics to a complete lithography workflow with lens design, source
-optimization and OPC. They are stored with
-their outputs, so the figures show directly on GitHub, and they are rendered
-in the [documentation](https://aeberspaecher.github.io/pyoptics/examples.html).
-Most of them compare the numerics with analytic results. The
-[learning paths](https://aeberspaecher.github.io/pyoptics/learning_paths.html)
-suggest reading orders for different backgrounds.
+The [`notebooks/`](notebooks/README.md) folder holds 173 executed Jupyter
+notebooks, one per topic. They are stored with their outputs, so the
+figures show directly on GitHub, and they are rendered in the
+[documentation](https://aeberspaecher.github.io/pyoptics/examples.html).
+Most of them compare the numerics with analytic results.
+
+The notebooks are numbered in reading order: the hundreds digit is the part,
+the tens digit the chapter.
+
+| Numbers | Part | Chapters |
+|---|---|---|
+| 000–099 | Start here | foundations and conventions, geometrical optics primer |
+| 100–199 | Waves | propagation, beams and modes, coherence |
+| 200–299 | Light in matter | thin films, polarization and crystals, FDTD, FDFD |
+| 300–399 | Imaging and microscopy | image formation and quality, microscopy |
+| 400–499 | Ray tracing and lens design | basics, optimization and tolerancing, aspheres, lens systems, stray light, rays and waves, field tracing |
+| 500–599 | Metrology and computational imaging | interferometry, wavefront sensing, ellipsometry and scatterometry, holography and phase retrieval |
+| 600–699 | Illumination, radiometry and cameras | radiometry and illumination, photography |
+| 700–799 | Lasers, nonlinear optics, fibres and detectors | lasers, nonlinear optics, fibre optics, detectors |
+| 800–899 | Lithography | imaging and resist, masks, lens and illuminator, OPC and stochastics, EUV |
+| 900–999 | Instruments | telescopes and astronomy, spectroscopy, AR/VR and HUDs, 3D sensing |
+
+**Where to start.** New to optics: notebook 001 (introduction to
+geometrical optics). Know optics, new to pyoptics: notebook 000
+(foundations and conventions) and the quickstart above. Looking for a topic:
+the table above or the
+[learning paths](https://aeberspaecher.github.io/pyoptics/learning_paths.html),
+which suggest routes for different backgrounds.
 
 To run them yourself, install the `notebooks` extra and start JupyterLab:
 
@@ -163,15 +182,23 @@ jupyter lab notebooks/
 ## Status
 
 <!-- docs:status-start -->
-pyoptics is version 0.1, a research and teaching toolbox rather than a
-polished library. It runs on Python 3.9 to 3.13. The API may still change
-between versions, and there is no release on PyPI yet.
+pyoptics 0.1 is a research and teaching toolbox, not a production library.
+It covers a lot of ground quickly: most modules are less than a year old,
+and their API may change between versions. What holds them together is
+testing: more than 3000 pytest tests check the numerics against analytic
+results and published data, in GitHub Actions on Python 3.9, 3.11 and 3.13
+for every push and pull request. The results have not been compared
+systematically with commercial codes; where a notebook does compare, it
+says so. There is no release on PyPI yet.
 
-The numerics are tested against analytical results by more than 2000 pytest tests,
-which run in GitHub Actions on Python 3.9, 3.11 and 3.13 for every push and
-pull request. The few unfinished parts are listed in the module overview,
-planned work in
-[`WIP.md`](https://github.com/aeberspaecher/pyoptics/blob/master/WIP.md).
+The [module overview](https://aeberspaecher.github.io/pyoptics/modules.html)
+gives each module a maturity tier: **core** (stable API, used everywhere),
+**tested** (checked against analytic or published results, API may change),
+**showcase** (written for one or two notebooks, narrow) or **unfinished**.
+Planned work is in
+[`WIP.md`](https://github.com/aeberspaecher/pyoptics/blob/master/WIP.md),
+finished work in
+[`CHANGELOG.md`](https://github.com/aeberspaecher/pyoptics/blob/master/CHANGELOG.md).
 <!-- docs:status-end -->
 
 ## Conventions
@@ -190,7 +217,7 @@ python -m pip install -e ".[test]"
 python -m pytest -n auto test
 ```
 
-The test suite (more than 2000 tests) takes a few minutes on four cores with
+The test suite (more than 3000 tests) takes a few minutes on four cores with
 `-n auto` (pytest-xdist). Each test process then uses a single thread, see
 `test/conftest.py`: by default the FFTs, the numba kernels and BLAS each use
 all cores, which is fastest for one process but slows parallel processes

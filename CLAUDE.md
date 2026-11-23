@@ -20,3 +20,18 @@ The short names live in `notebooks/names.json`; use them as written there
 that file. `test/test_notebook_references.py` fails on any bare
 "notebook NN", "nbNN", `[NN](NN_....ipynb)` or name-less `{doc}` link, and
 on a notebook without a name.
+
+## Numbering of the notebooks
+
+Notebook numbers have three digits and follow the reading order: the
+hundreds digit is the part, the tens digit the chapter, the last digit the
+place in the chapter (`notebooks/toc.json` lists them all). A new notebook
+takes the next free number at the end of its chapter, or opens a new
+chapter on the next free multiple of ten; existing notebooks are never
+renumbered. Add it to `notebooks/toc.json` and `notebooks/names.json`, then
+run `python scripts/make_notebook_index.py` to update `docs/examples.md` and
+`notebooks/README.md`; `test/test_notebook_toc.py` checks all of this.
+
+A branch started before the renumbering converts its own references after
+merging master with `python scripts/renumber_notebooks.py --no-move` (and
+moves its new notebooks by hand to their slot).
