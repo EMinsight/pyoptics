@@ -1265,8 +1265,11 @@ What each module does and how mature it is. Planned work is listed in
 - `wpm`: wave propagation method (Cython extension) for inhomogeneous, also
   absorbing media, 2D and y-invariant 1D fields, multi-step driver; direct
   O(N^2) sum (OpenMP) or the fast "levels" variant (one FFT pair per distinct
-  index), chosen automatically; tested against Rayleigh-Sommerfeld, plane
-  waves (tilted, evanescent, absorbed), slabs and a GRIN mode
+  index), chosen automatically; optional Fresnel transmission at index
+  steps (`fresnel="s"`, `"p"` or a Jones vector, one more FFT per index
+  pair); tested against Rayleigh-Sommerfeld, plane waves (tilted,
+  evanescent, absorbed), slabs, a GRIN mode and Fresnel's formulas
+  (including total internal reflection)
 - `processing`: image processors for single images and image stacks, tested:
   `Scaler` (peak, mean or total of field strength or intensity),
   `CameraNoiser` (Gaussian, Poisson shot noise, linear camera model after
