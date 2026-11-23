@@ -1197,7 +1197,7 @@ def aplanatic_rotation(sigma_x, sigma_y):
     return R
 
 
-def vectorial_mansuripur(field, x_prime, y_prime, z, wavelength, n=1.0):
+def vectorial_mansuripur(field, x_prime, y_prime, z, wavelength, n=1.0, x_out=None, y_out=None):
     """Mansuripur's vectorial diffraction: each plane wave of the angular
     spectrum of a (paraxially described) field is given the polarization of a
     ray bent by an aplanatic lens.
@@ -1236,13 +1236,19 @@ def vectorial_mansuripur(field, x_prime, y_prime, z, wavelength, n=1.0):
     wavelength : number
     n : number, optional
         Refractive index of the image space; sigma = k_perp/(k_0*n).
+    x_out, y_out : arrays, optional
+        Linear, equidistant output coordinates. The plane wave sum is then
+        evaluated there by chirp-z transforms (fft.zoom_inv_FT()) instead of
+        an inverse FFT: a finely sampled focal spot without zero padding.
+        The result is periodic with the period of the input window.
 
     Returns
     -------
     field_propagated : array
-        Field [E_x, E_y, E_z] of shape (Ny, Nx, 3).
+        Field [E_x, E_y, E_z] of shape (Ny, Nx, 3), or
+        (len(y_out), len(x_out), 3).
     x, y : arrays
-        Coordinates (the same as given).
+        Coordinates (the same as given, or x_out, y_out).
 
     References
     ----------
@@ -1266,11 +1272,24 @@ def vectorial_mansuripur(field, x_prime, y_prime, z, wavelength, n=1.0):
                            np.where(propagating, Sigma_y, 0.0))
     weight = np.where(propagating, np.exp(1j*k*z*Sigma_z)/np.sqrt(Sigma_z), 0.0)
 
+    if (x_out is None) != (y_out is None):
+        raise ValueError("Give both x_out and y_out or none of them")
+    if x_out is None:
+        inverse = inv_FT
+    else:
+        x_1d = x_prime[0, :] if np.ndim(x_prime) == 2 else np.asarray(x_prime)
+        y_1d = y_prime[:, 0] if np.ndim(y_prime) == 2 else np.asarray(y_prime)
+        kx, ky = frequencies(x_1d), frequencies(y_1d)
+        x_out, y_out = np.asarray(x_out, dtype=float), np.asarray(y_out, dtype=float)
+        inverse = lambda F: zoom_inv_FT(F, kx, ky, x_out, y_out)
+
     T_x, T_y = FT(E_x), FT(E_y)
-    field_propagated = np.stack([inv_FT(weight*(R[b, 0]*T_x + R[b, 1]*T_y))
+    field_propagated = np.stack([inverse(weight*(R[b, 0]*T_x + R[b, 1]*T_y))
                                  for b in range(3)], axis=-1)
 
-    return field_propagated, x_prime, y_prime
+    if x_out is None:
+        return field_propagated, x_prime, y_prime
+    return field_propagated, x_out, y_out
 
 
 def vectorial_fresnel(field, x_prime, y_prime, z, wavelength, n=1.0):
