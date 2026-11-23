@@ -281,6 +281,18 @@ Setup sketches for the other example notebooks:
   behind focus (notebook 29, TIE); source_pupil_orders(): diffraction
   orders of dense lines in the pupil for two source points
   (notebook 39, source optimization).
+- shg_phase_matching(): wave vectors and the harmonic along the crystal,
+  phase matched, mismatched and quasi-phase matched
+  (notebook 145, second harmonic generation and phase matching);
+  parametric_processes(): energy and momentum of photon splitting and a
+  singly resonant OPO
+  (notebook 146, parametric amplification and OPOs);
+  kerr_self_focusing(): a beam that writes its own lens
+  (notebook 147, Kerr effect and self-focusing).
+- dispersion_broadening(): a short pulse that leaves a fibre long and
+  chirped (notebook 118, pulse broadening); spm_chirp(): the SPM chirp,
+  the opposite chirp of anomalous dispersion and the soliton
+  (notebook 121, SPM and solitons in fibres).
 - fresnel_interface(): the plane of incidence with the incident, reflected
   and transmitted rays, their angles and the s and p directions
   (notebook 10, interfaces and thin films).
@@ -404,7 +416,9 @@ __all__ = ["lens", "stop", "plane", "prism", "mirror", "detector", "point_source
            "lensing_geometry", "echelle_layout", "sine_herschel_conditions", "adc_layout",
            "fresnel_interface", "kretschmann", "imaging_pupil", "otf_overlap",
            "fresnel_zones", "iso_caustic", "tir_beam_shifts",
-           "alternating_projections", "doe_beam_shaper", "tie_planes", "source_pupil_orders", "yee_grid", "lithography_scanner", "tcc_overlap",
+           "alternating_projections", "doe_beam_shaper", "tie_planes", "source_pupil_orders",
+           "shg_phase_matching", "parametric_processes", "kerr_self_focusing",
+           "dispersion_broadening", "spm_chirp", "yee_grid", "lithography_scanner", "tcc_overlap",
            "mask_3d", "field_tracing_chain", "propagation_operators", "ball_lens_handover",
            "mach_zehnder_defect", "babinet_split", "diode_collimator", "fibre_coupling",
            "fibre_types", "fibre_acceptance", "skew_ray_end_view", "slab_transverse_resonance",
@@ -13447,7 +13461,7 @@ def tir_beam_shifts(ax, kind="goos_haenchen", theta=50.0, n=1.5, title=None):
     _finish(ax, (-2.9, 2.9), (lo, 2.35), title)
 
 
-def _flow_box(ax, z, y, w, h, text, color="0.2", face="white", fontsize=9):
+def _loop_box(ax, z, y, w, h, text, color="0.2", face="white", fontsize=9):
     mp = _patches()
     ax.add_patch(mp.FancyBboxPatch((z - w/2, y - h/2), w, h, boxstyle="round,pad=0.04,rounding_size=0.12",
                                    facecolor=face, edgecolor=color, lw=1.2, zorder=3))
@@ -13493,8 +13507,8 @@ def alternating_projections(ax, kind="fienup", title=None):
         top = "G = F{g$_k$}"
         bottom = "g′ = F$^{-1}${G}"
         result = "result: g with |F{g}| = |F| inside the constraints"
-    _flow_box(ax, -2.0, 0.0, 2.2, 1.0, left, color=IMAGING, face="#eaf2fa")
-    _flow_box(ax, 2.0, 0.0, 2.2, 1.0, right, color=LASER, face="#fbeeec")
+    _loop_box(ax, -2.0, 0.0, 2.2, 1.0, left, color=IMAGING, face="#eaf2fa")
+    _loop_box(ax, 2.0, 0.0, 2.2, 1.0, right, color=LASER, face="#fbeeec")
     # the two transforms as arcs with arrow heads
     t = np.linspace(-0.85, 0.85, 40)
     for sgn in (1, -1):
@@ -13648,3 +13662,297 @@ def source_pupil_orders(ax, pitch=1.4, title=None):
           "s = 0 passes only the 0th order (no image); s = λ/(2p NA) passes 0 and −1\n"
           "image I(x) = Σ$_s$ W$_s$ I$_s$(x): linear in the source weights", fontsize=8.5, va="top")
     _finish(ax, (-2.8, 5.6), (-2.6, 1.5), title)
+
+
+GREEN = "#2ca02c"
+
+
+def _sketch_curve(ax, z0, y0, x, y, sx, sy, **kwargs):
+    """Plot y(x) with the origin at (z0, y0), scaled by sx and sy."""
+
+    ax.plot(z0 + sx*np.asarray(x), y0 + sy*np.asarray(y), **kwargs)
+
+
+def _time_axes(ax, z0, y0, length, height, xlabel="t", ylabel=None, fontsize=8.5):
+    arrow(ax, z0, y0, z0 + length, y0, color="0.35", lw=0.8)
+    label(ax, z0 + length, y0 - 0.12, xlabel, fontsize=fontsize, va="top", color="0.35")
+    if ylabel is not None:
+        arrow(ax, z0, y0, z0, y0 + height, color="0.35", lw=0.8)
+        label(ax, z0 - 0.08, y0 + height, ylabel, fontsize=fontsize, ha="right", color="0.35")
+
+
+def shg_phase_matching(ax, title=None):
+    """Sketch of phase matching in second harmonic generation
+    (notebook 145, second harmonic generation and phase matching). Left: the wave vectors.
+    Two photons of the fundamental carry 2 k(omega), the harmonic k(2 omega);
+    dispersion makes n(2 omega) > n(omega), so the two differ by
+    Delta k = k(2 omega) - 2 k(omega). Right: the harmonic field along the
+    crystal. Phase matched (Delta k = 0) it grows linearly (the power
+    quadratically); mismatched it grows only over the coherence length
+    L_c = pi/Delta k and then flows back; with the sign of chi(2) flipped
+    every L_c (quasi-phase matching, the poled domains drawn below the
+    curves) it keeps growing in a staircase, on average 2/pi as fast.
+
+    Parameters
+    ----------
+    ax : matplotlib Axes
+    title : str, optional
+    """
+
+    mp = _patches()
+    # wave vectors
+    k1 = 1.1
+    for j in range(2):
+        arrow(ax, -4.6 + j*k1, 0.6, -4.6 + (j + 1)*k1, 0.6, color=LASER, lw=1.8, mutation_scale=12)
+    label(ax, -4.6 + k1, 0.85, "2 k(ω)", fontsize=9, color=LASER)
+    arrow(ax, -4.6, -0.1, -4.6 + 2*k1 + 0.45, -0.1, color=GREEN, lw=1.8, mutation_scale=12)
+    label(ax, -4.6 + k1, -0.35, "k(2ω)", fontsize=9, color=GREEN)
+    ax.plot([-4.6 + 2*k1]*2, [0.6, -0.25], color="0.5", lw=0.7, ls=":")
+    ax.plot([-4.6 + 2*k1 + 0.45]*2, [0.6, -0.25], color="0.5", lw=0.7, ls=":")
+    arrow(ax, -4.6 + 2*k1, 0.25, -4.6 + 2*k1 + 0.45, 0.25, color="0.2", lw=0.8, style="<|-|>")
+    label(ax, -4.6 + 2*k1 + 0.6, 0.25, "Δk", fontsize=9, ha="left")
+    label(ax, -3.5, -0.85, "n(2ω) > n(ω):\nthe harmonic outruns\nthe polarization that makes it",
+          fontsize=8.5, va="top")
+    # harmonic field along the crystal
+    z0, y0, L, H = -0.6, -1.1, 5.4, 2.4
+    _time_axes(ax, z0, y0, L + 0.3, H, xlabel="z", ylabel="harmonic field")
+    Lc = 0.6
+    z = np.linspace(0, L, 600)
+    pm = z/L
+    mis = np.abs(np.sin(np.pi*z/(2*Lc)))*2*Lc/(np.pi*L)
+    # quasi-phase matched: field ~ |sum over domains of sign * exp(i dk z)|
+    dk = np.pi/Lc
+    sign = np.where(np.floor(z/Lc) % 2 == 0, 1.0, -1.0)
+    qpm = np.abs(np.cumsum(sign*np.exp(1j*dk*z))*(z[1] - z[0]))/L
+    ax.plot(z0 + z, y0 + H*0.95*pm, color=GREEN, lw=1.6)
+    ax.plot(z0 + z, y0 + H*0.95*qpm, color=IMAGING, lw=1.4)
+    ax.plot(z0 + z, y0 + H*0.95*mis, color=LASER, lw=1.2)
+    label(ax, z0 + L - 0.1, y0 + H*0.95 + 0.05, "phase matched, Δk = 0", fontsize=8.5, ha="right",
+          va="bottom", color=GREEN)
+    label(ax, z0 + L + 0.05, y0 + H*0.95*qpm[-1], "quasi-phase\nmatched", fontsize=8.5, ha="left",
+          color=IMAGING)
+    label(ax, z0 + L + 0.05, y0 + 0.25, "mismatched:\ngrows over L$_c$ = π/Δk only", fontsize=8.5,
+          ha="left", color=LASER)
+    # poled domains
+    for j in range(int(L/Lc)):
+        ax.add_patch(mp.Rectangle((z0 + j*Lc, y0 - 0.55), Lc, 0.28,
+                                  facecolor=GLASS if j % 2 == 0 else "#9fc3e0", edgecolor=EDGE, lw=0.5))
+        label(ax, z0 + (j + 0.5)*Lc, y0 - 0.41, "+" if j % 2 == 0 else "−", fontsize=8)
+    label(ax, z0 + L/2, y0 - 0.65, "poled crystal: sign of χ$^{(2)}$ flipped every L$_c$, period Λ = 2π/Δk",
+          fontsize=8.5, va="top")
+    _finish(ax, (-4.9, 7.2), (-2.2, 1.6), title)
+
+
+def parametric_processes(ax, title=None):
+    """Sketch of parametric amplification
+    (notebook 146, parametric amplification and OPOs). Left: energy diagram, a pump photon omega_p
+    splits at a virtual level into a signal omega_s and an idler omega_i,
+    omega_p = omega_s + omega_i. Middle: momentum, the phase matching
+    k_p = k_s + k_i (+ 2 pi/Lambda in a poled crystal). Right: a singly
+    resonant optical parametric oscillator: the pump passes a nonlinear
+    crystal between two mirrors that reflect only the signal; the idler
+    leaves after one pass.
+
+    Parameters
+    ----------
+    ax : matplotlib Axes
+    title : str, optional
+    """
+
+    mp = _patches()
+    # energy diagram
+    ax.plot([-5.6, -3.8], [-1.0, -1.0], color="0.2", lw=1.4)
+    ax.plot([-5.6, -3.8], [1.0, 1.0], color="0.45", lw=1.0, ls="--")
+    label(ax, -3.75, 1.0, "virtual\nlevel", fontsize=8, ha="left", color="0.45")
+    label(ax, -3.75, -1.0, "ground", fontsize=8, ha="left", color="0.3")
+    arrow(ax, -5.3, -1.0, -5.3, 1.0, color=GREEN, lw=2.2, mutation_scale=12)
+    label(ax, -5.4, 0.0, "ω$_p$", fontsize=10, ha="right", color=GREEN)
+    arrow(ax, -4.7, 1.0, -4.7, -0.15, color=LASER, lw=2.0, mutation_scale=12)
+    label(ax, -4.62, 0.45, "ω$_s$", fontsize=10, ha="left", color=LASER)
+    arrow(ax, -4.7, -0.15, -4.7, -1.0, color="#8c564b", lw=1.6, mutation_scale=12)
+    label(ax, -4.62, -0.6, "ω$_i$", fontsize=10, ha="left", color="#8c564b")
+    label(ax, -4.6, -1.4, "energy: ω$_p$ = ω$_s$ + ω$_i$", fontsize=9, va="top")
+    # momentum triangle
+    p0 = np.array([-2.6, -0.8])
+    ks, ki = np.array([1.3, 0.75]), np.array([0.9, -0.35])
+    arrow(ax, *p0, *(p0 + ks + ki), color=GREEN, lw=1.8, mutation_scale=12)
+    arrow(ax, *p0, *(p0 + ks), color=LASER, lw=1.6, mutation_scale=12)
+    arrow(ax, *(p0 + ks), *(p0 + ks + ki), color="#8c564b", lw=1.4, mutation_scale=12)
+    label(ax, *(p0 + ks/2 + [-0.15, 0.2]), "k$_s$", fontsize=10, color=LASER)
+    label(ax, *(p0 + ks + ki/2 + [0.25, 0.1]), "k$_i$", fontsize=10, color="#8c564b")
+    label(ax, *(p0 + (ks + ki)/2 + [0.1, -0.3]), "k$_p$", fontsize=10, color=GREEN)
+    label(ax, -1.5, -1.4, "momentum: k$_p$ = k$_s$ + k$_i$\n(+ 2π/Λ with poling)", fontsize=9, va="top")
+    # singly resonant OPO
+    zc = 2.8
+    for zm, txt in ((0.8, "M1: HR signal,\nHT pump"), (4.8, "M2: 98 % signal,\nHT idler")):
+        ax.add_patch(mp.Rectangle((zm - 0.06, -0.9), 0.12, 1.8, facecolor=GLASS, edgecolor=EDGE, lw=1.0))
+        label(ax, zm, -1.0, txt, fontsize=8, va="top")
+    ax.add_patch(mp.Rectangle((zc - 0.9, -0.35), 1.8, 0.7, facecolor="#f0e6f6", edgecolor="0.4", lw=1.0,
+                              zorder=3))
+    for j in range(6):
+        ax.plot([zc - 0.9 + j*0.3]*2, [-0.35, 0.35], color="0.6", lw=0.5, zorder=4)
+    label(ax, zc, 0.5, "PPLN crystal", fontsize=8.5, va="bottom")
+    arrow(ax, -0.2, 0.0, 0.75, 0.0, color=GREEN, lw=2.0, text="pump", text_pos=(0.1, 0.18),
+          fontsize=8.5)
+    ax.plot([0.86, 4.74], [0.0, 0.0], color=GREEN, lw=1.6, alpha=0.8)
+    for y in (0.65, 0.75):
+        ax.plot([0.86, 4.74], [y, y], color=LASER, lw=1.2)
+    label(ax, 1.6, 0.82, "signal resonates", fontsize=8.5, va="bottom", color=LASER)
+    arrow(ax, 4.86, 0.7, 5.9, 0.7, color=LASER, lw=1.2, text="signal", text_pos=(5.4, 0.85),
+          fontsize=8.5)
+    arrow(ax, 4.86, -0.15, 5.9, -0.15, color="#8c564b", lw=1.6, text="idler", text_pos=(5.4, 0.0),
+          fontsize=8.5)
+    arrow(ax, 4.86, -0.45, 5.9, -0.45, color=GREEN, lw=1.0, text="residual pump",
+          text_pos=(5.4, -0.6), fontsize=8)
+    _finish(ax, (-5.9, 6.3), (-1.8, 1.4), title)
+
+
+def kerr_self_focusing(ax, title=None):
+    """Sketch of self-focusing (notebook 147, Kerr effect and self-focusing).
+    A Gaussian beam enters a Kerr medium, n = n0 + n2 I. The index is
+    highest on the axis, where the intensity is, so the medium acts as a
+    positive lens that the beam writes itself. Below the critical power
+    P_cr = 3.77 lambda^2/(8 pi n0 n2) diffraction wins and the beam spreads;
+    above it the lens gets stronger as the beam contracts and the beam
+    collapses at a finite distance.
+
+    Parameters
+    ----------
+    ax : matplotlib Axes
+    title : str, optional
+    """
+
+    mp = _patches()
+    ax.add_patch(mp.Rectangle((0.0, -1.3), 5.2, 2.6, facecolor=GLASS, edgecolor=EDGE, lw=1.0, alpha=0.6))
+    label(ax, 2.6, 1.42, "Kerr medium: n = n$_0$ + n$_2$I", fontsize=9, va="bottom", color=EDGE)
+    # incoming Gaussian profile
+    yy = np.linspace(-1.1, 1.1, 120)
+    prof = np.exp(-2*yy**2/0.5**2)
+    ax.fill_betweenx(yy, -1.6, -1.6 + 0.6*prof, color=LASER, alpha=0.3, lw=0)
+    ax.plot(-1.6 + 0.6*prof, yy, color=LASER, lw=1.1)
+    label(ax, -1.3, -1.35, "intensity I(r)", fontsize=8.5, va="top", color=LASER)
+    # index profile inside the medium
+    ax.plot(0.25 + 0.5*prof, yy, color=EDGE, lw=1.1)
+    label(ax, 0.55, -1.15, "n(r)", fontsize=8.5, color=EDGE)
+    # rays below and above P_cr
+    z_c = 4.2
+    for y0 in np.linspace(-0.6, 0.6, 7):
+        ax.plot([-1.6, 0.0], [y0, y0], color=LASER, lw=0.8)
+        zz = np.linspace(0, z_c, 60)
+        ax.plot(zz, y0*(1 - (zz/z_c)**1.6), color=LASER, lw=0.8)
+    ax.plot([z_c], [0], "*", ms=11, color=LASER, zorder=5)
+    label(ax, z_c, -0.35, "collapse", fontsize=8.5, va="top", color=LASER)
+    label(ax, 2.0, 0.85, "P > P$_{cr}$: the beam writes\nitself a positive lens", fontsize=8.5,
+          color="0.2")
+    # comparison: linear diffraction (dashed envelope)
+    zz = np.linspace(0, 5.2, 60)
+    for s in (1, -1):
+        ax.plot(zz, s*0.6*np.sqrt(1 + (zz/4.0)**2), color="0.45", lw=0.9, ls="--")
+    label(ax, 5.3, 0.9, "P < P$_{cr}$:\ndiffraction wins", fontsize=8.5, ha="left", color="0.4")
+    label(ax, 2.6, -1.55, "P$_{cr}$ = 3.77 λ²/(8π n$_0$ n$_2$), independent of the beam size",
+          fontsize=9, va="top")
+    _finish(ax, (-1.9, 7.0), (-2.0, 1.8), title)
+
+
+def _chirped_pulse(ax, z0, y0, t, env, inst, sx, sy, cmap="coolwarm_r"):
+    """Draw a pulse envelope coloured by its instantaneous frequency
+    (red = low, blue = high)."""
+
+    import matplotlib.pyplot as plt
+    cm = plt.get_cmap(cmap)
+    for k in range(len(t) - 1):
+        c = cm(0.5 + 0.5*np.clip(inst[k], -1, 1))
+        ax.fill_between(z0 + sx*t[k:k + 2], y0, y0 + sy*env[k:k + 2], color=c, alpha=0.55, lw=0)
+    ax.plot(z0 + sx*t, y0 + sy*env, color="0.2", lw=1.0)
+
+
+def dispersion_broadening(ax, title=None):
+    """Sketch of a pulse in a dispersive fibre
+    (notebook 118, pulse broadening). The input pulse is short and unchirped. Its frequencies
+    travel at different group velocities: with the anomalous dispersion of
+    silica at 1550 nm (beta2 < 0) blue runs ahead and red falls behind.
+    After the length L the pulse is longer, lower and chirped,
+    T1 = T0 sqrt(1 + (L/L_D)^2) with L_D = T0^2/abs(beta2); once it leaks
+    into the neighbouring bit slots the ones and zeros can no longer be
+    told apart. Colour shows the instantaneous frequency.
+
+    Parameters
+    ----------
+    ax : matplotlib Axes
+    title : str, optional
+    """
+
+    mp = _patches()
+    t = np.linspace(-1.5, 1.5, 200)
+    _time_axes(ax, -4.6, -0.6, 3.2, 1.5, ylabel="power")
+    _chirped_pulse(ax, -3.0, -0.6, t, np.exp(-t**2/0.12), 0*t, 1.0, 1.3)
+    label(ax, -3.0, -0.95, "input: T$_0$, unchirped", fontsize=8.5, va="top")
+    # fibre
+    ax.add_patch(mp.FancyBboxPatch((-1.0, -0.18), 2.6, 0.36, boxstyle="round,pad=0.02,rounding_size=0.15",
+                                   facecolor="#f4f0e2", edgecolor="0.4", lw=1.0))
+    ax.plot([-1.0, 1.6], [0, 0], color="#e8b84a", lw=2.0)
+    label(ax, 0.3, 0.35, "fibre, length L, β$_2$ < 0", fontsize=8.5, va="bottom")
+    arrow(ax, -1.3, 0, -1.05, 0, color="0.3", lw=0.8)
+    arrow(ax, 1.65, 0, 1.9, 0, color="0.3", lw=0.8)
+    # output
+    _time_axes(ax, 2.0, -0.6, 3.6, 1.5, ylabel="power")
+    w = 0.12*3.0**2
+    _chirped_pulse(ax, 3.8, -0.6, t, 0.42*np.exp(-t**2/w), -t/1.2, 1.0, 1.3)
+    label(ax, 3.8, -0.95, "output: T$_1$ = T$_0$√(1 + (L/L$_D$)²)", fontsize=8.5, va="top")
+    label(ax, 2.6, 0.25, "blue\nahead", fontsize=8, color="#3b6fb6")
+    label(ax, 5.0, 0.25, "red\nbehind", fontsize=8, color="#b8473c")
+    # bit slots
+    for tb in (-1.2, 1.2):
+        ax.plot([3.8 + tb]*2, [-0.6, 0.85], color="0.55", lw=0.7, ls=":")
+    label(ax, 3.8, 0.95, "bit slot", fontsize=8, va="bottom", color="0.45")
+    label(ax, 0.3, -1.45, "L$_D$ = T$_0$²/|β$_2$|: 18 km for a 20 ps pulse in standard fibre at 1550 nm",
+          fontsize=9, va="top")
+    _finish(ax, (-4.9, 6.0), (-1.9, 1.3), title)
+
+
+def spm_chirp(ax, title=None):
+    """Sketch of self-phase modulation and the soliton
+    (notebook 121, SPM and solitons in fibres). Left: the Kerr effect gives the pulse a nonlinear
+    phase that follows its power, phi_NL(t) = gamma P(t) z. Its slope is a
+    frequency shift, delta omega = -d phi_NL/dt: the leading edge is shifted
+    to the red, the trailing edge to the blue, and the spectrum broadens.
+    Right: anomalous dispersion (beta2 < 0) chirps the pulse the opposite
+    way. When the two balance, N^2 = L_D/L_NL = 1, the pulse keeps its shape:
+    the fundamental soliton.
+
+    Parameters
+    ----------
+    ax : matplotlib Axes
+    title : str, optional
+    """
+
+    t = np.linspace(-1.5, 1.5, 200)
+    env = np.exp(-t**2/0.25)
+    d_om = 2*t/0.25*env
+    d_om = d_om/np.abs(d_om).max()
+    # SPM
+    _time_axes(ax, -5.2, 0.0, 3.4, 1.3, ylabel="P(t), φ$_{NL}$(t)")
+    _chirped_pulse(ax, -3.5, 0.0, t, env, d_om, 1.0, 1.1)
+    label(ax, -3.5, 1.35, "SPM: φ$_{NL}$ = γ P(t) z", fontsize=9, va="bottom")
+    _time_axes(ax, -5.2, -1.6, 3.4, 0.0)
+    ax.plot([-5.2, -1.8], [-1.6, -1.6], color="0.35", lw=0.8)
+    ax.plot(-3.5 + t, -1.6 + 0.6*d_om, color="0.2", lw=1.2)
+    label(ax, -5.25, -1.6, "δω", fontsize=9, ha="right")
+    label(ax, -4.3, -1.1, "red\nfront", fontsize=8, color="#b8473c")
+    label(ax, -2.7, -2.1, "blue\nback", fontsize=8, color="#3b6fb6")
+    label(ax, -3.5, -2.55, "δω = −∂φ$_{NL}$/∂t", fontsize=9, va="top")
+    # anomalous dispersion
+    _time_axes(ax, -0.8, 0.0, 3.4, 1.3)
+    _chirped_pulse(ax, 0.9, 0.0, t, env, -d_om, 1.0, 1.1)
+    label(ax, 0.9, 1.35, "dispersion, β$_2$ < 0", fontsize=9, va="bottom")
+    label(ax, 0.9, -0.45, "blue runs ahead,\nred falls behind", fontsize=8.5, va="top")
+    # balance
+    label(ax, -1.3, 0.55, "+", fontsize=16)
+    label(ax, 3.0, 0.55, "=", fontsize=16)
+    _time_axes(ax, 3.4, 0.0, 3.0, 1.3)
+    _chirped_pulse(ax, 4.9, 0.0, t, 1/np.cosh(t/0.35), 0*t, 1.0, 1.1)
+    label(ax, 4.9, 1.35, "soliton: shape kept", fontsize=9, va="bottom")
+    for zc in (-3.5, 0.9, 4.9):
+        ax.plot([zc, zc], [0.0, 1.2], color="0.55", lw=0.6, ls=":")
+    label(ax, 4.9, -0.45, "P$_0$ = |β$_2$|/(γ T$_0$²),\nN² = L$_D$/L$_{NL}$ = 1", fontsize=8.5, va="top")
+    _finish(ax, (-5.6, 6.6), (-2.9, 1.8), title)
