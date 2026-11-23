@@ -274,3 +274,116 @@ def test_toric_lens_continues_as_a_torus():
     V = np.trapezoid(np.mean(thick, axis=0)*2*np.pi*r, r)
     V -= 2*2*np.pi*(9.0 - 0.2/3)*0.2**2/2  # the two bevels
     assert lens.volume == pytest.approx(V, rel=2e-4)
+
+
+# --- off-axis mirrors with outlines ---------------------------------------------
+
+def _inside(solid, points, eps=1e-6):
+    return sum(solid.is_inside(build123d.Vector(*p), eps) for p in points)
+
+
+def test_off_axis_parabola_circle_on_the_normal():
+    from pyoptics import off_axis as oa
+
+    f, h, D, margin, t = 500.0, 150.0, 100.0, 4.0, 20.0
+    oap = oa.off_axis_parabola(f, h, D)
+    model = cad.system_model(oap, fields=[0.0], n_rays=5, ray_start=300.0, image_plane=False,
+                             mechanics=cad.Mechanics(outline="circle", margin=margin,
+                                                     mirror_thickness=t))
+    (m,) = model.lenses
+    assert m.label == "M1" and m.is_valid
+    # the side wall is a cylinder about the mirror normal at the centre of
+    # the footprint, of the footprint radius plus the margin:
+    (wall,) = [fc for fc in m.faces() if fc.geom_type.name == "CYLINDER"]
+    normal = np.array([0.0, h/(2*f), 1.0])
+    normal /= np.linalg.norm(normal)
+    axis = np.array(tuple(wall.axis_of_rotation.direction))
+    assert abs(axis @ normal) == pytest.approx(1.0, abs=1e-6)
+    # the smallest circle around the footprint, seen along that axis, plus
+    # the margin (the footprint is stretched in y by the tilt of the face
+    # and its curvature, to about 50.6 mm):
+    a0 = np.array(tuple(wall.axis_of_rotation.position))
+    o, R = oap.frames()[0][1]
+    fp = o + cad._footprint(oap, 1, [0.0]) @ R.T
+    d = fp - a0 - np.outer((fp - a0) @ axis, axis)
+    assert np.max(np.linalg.norm(d, axis=1)) \
+        == pytest.approx(wall.radius - margin, abs=1e-4)
+    assert D/2 < wall.radius - margin < 1.02*D/2
+    # at least mirror_thickness thick, the back flat and perpendicular to the normal:
+    (back,) = [fc for fc in m.faces() if fc.geom_type.name == "PLANE"]
+    assert abs(np.array(tuple(back.normal_at())) @ normal) == pytest.approx(1.0, abs=1e-9)
+    # a disk of thickness t behind the deepest point plus the concave cap
+    # (sag about r^2/2R = 1.5 mm at the rim for R about 1 m):
+    A = np.pi*wall.radius**2
+    assert A*t < m.volume < A*(t + 1.5)
+    # the traced hits lie on the mirror face, the rays stay out of the glass:
+    b = oap.trace_pupil(0.0, *np.random.default_rng(1).uniform(-0.7, 0.7, (2, 20)))
+    hits = b.points[2][np.all(np.isfinite(b.points[2]), axis=1)]
+    assert max(m.distance_to(build123d.Vector(*p)) for p in hits) < 1e-3
+    assert _inside(m, hits - 0.5*b.directions[1][:len(hits)]) == 0
+    assert _inside(m, hits + 0.5*b.directions[2][:len(hits)]) == 0
+
+
+def test_tma_hull_outlines_clear_the_beams(tmp_path):
+    from pyoptics import off_axis as oa
+
+    tma = oa.cook_tma(efl=600.0, f_number=4.0, field_angle=np.radians(4.0), aperture_offset=-2.0)
+    F = oa.rectangular_field((0.0, np.radians(3.0)), np.radians([1.5, 0.5]), (3, 3))
+    margin, t = 3.0, 20.0
+    model = cad.system_model(tma, fields=[tuple(f) for f in F[[1, 4, 7]]], n_rays=5,
+                             footprint_fields=[tuple(f) for f in F],
+                             mechanics=cad.Mechanics(outline="hull", margin=margin,
+                                                     mirror_thickness=t))
+    assert [m.label for m in model.lenses] == ["M1", "M2", "M3"]
+    assert all(m.is_valid and len(m.faces()) == 3 for m in model.lenses)
+    # no ray runs through a substrate:
+    for ray in model.rays:
+        for e in ray.edges():
+            p, q = np.array(tuple(e.start_point())), np.array(tuple(e.end_point()))
+            pts = p + np.linspace(0.02, 0.98, 5)[:, None]*(q - p)
+            assert all(_inside(m, pts) == 0 for m in model.lenses)
+    # every footprint (also of the fields not drawn) lies on the mirror face
+    # at least margin from the side wall:
+    fp = oa.footprints(tma, F)
+    frames = tma.frames()[0]
+    for m, i in zip(model.lenses, (0, 2, 3)):
+        o, R = frames[i]
+        hits = o + np.c_[fp[i].hull, [tma.surfaces[i].sag(np.array([x @ x]))[0]
+                                      for x in fp[i].hull]] @ R.T
+        assert max(m.distance_to(build123d.Vector(*p)) for p in hits) < 1e-3
+    path = tmp_path/"tma.step"
+    cad.export_step(model, path)
+    assert len(build123d.import_step(str(path)).solids()) == 3
+
+
+def test_polygon_outline_along_the_parent_axis():
+    from pyoptics import off_axis as oa
+
+    oap = oa.off_axis_parabola(500.0, 150.0, 100.0)
+    poly = np.array([[-60.0, 90.0], [60.0, 90.0], [60.0, 210.0], [-60.0, 210.0]])
+    model = cad.system_model(oap, fields=[0.0], rays=None, image_plane=False,
+                             mechanics=cad.Mechanics(outline=poly, axis="parent",
+                                                     mirror_thickness=10.0))
+    (m,) = model.lenses
+    box = m.bounding_box()
+    assert (box.min.X, box.max.X) == pytest.approx((-60.0, 60.0), abs=1e-6)
+    assert (box.min.Y, box.max.Y) == pytest.approx((90.0, 210.0), abs=1e-6)
+    # four plane side walls parallel to the axis, a flat back perpendicular to it:
+    planes = [fc for fc in m.faces() if fc.geom_type.name == "PLANE"]
+    assert len(planes) == 5
+    z = [abs(np.array(tuple(fc.normal_at()))[2]) for fc in planes]
+    assert sorted(np.round(z, 9)) == [0, 0, 0, 0, 1]
+
+
+def test_outline_errors():
+    from pyoptics import off_axis as oa
+
+    oap = oa.off_axis_parabola(500.0, 150.0, 100.0)
+    with pytest.raises(NotImplementedError):
+        cad.system_model(oap, fields=[0.0], rays=None,
+                         mechanics=cad.Mechanics(outline="circle", land="flat"))
+    with pytest.raises(NotImplementedError):
+        cad.system_model(doublet(), rays=None, mechanics=cad.Mechanics(outline="circle"))
+    with pytest.raises(ValueError):
+        cad.system_model(oap, fields=[0.0], rays=None,
+                         mechanics=cad.Mechanics(outline="ellipse"))

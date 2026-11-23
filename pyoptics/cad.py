@@ -64,6 +64,42 @@ Mirrors (also freeform ones) get a substrate of thickness
 ``Mechanics.mirror_thickness`` with a flat back. Ideal lenses, coordinate
 breaks and dummy surfaces have no geometry.
 
+Off-axis mirrors
+----------------
+The mirrors of an unobscured system are off-axis segments of a coaxial
+parent (an off-axis paraboloid, the three mirrors of a field-biased TMA,
+the mirrors of an EUV projection lens with a ring field): only a part of
+the parent surface away from its vertex carries light. With
+``Mechanics(outline=...)`` such a mirror becomes a substrate cut to the
+used area instead of a disk centred on the parent axis. The used area is
+the footprint of the beams (rays on rings in the pupil at every field of
+``footprint_fields``), and the outline around it is
+
+- ``"circle"``: a circle around the footprint, grown by ``margin``,
+- ``"rectangle"``: the bounding box of the footprint, grown by ``margin``,
+- ``"hull"``: the convex hull of the footprint, grown by ``margin`` (with
+  round corners), e.g. for the kidney shaped footprints of a ring field,
+- a (K, 2) array: a polygon in the local x-y plane of the surface (system
+  units), taken as it is.
+
+The substrate is a prism over the outline along its mechanical axis, by
+default the normal of the mirror at the centre of the footprint
+(``axis="normal"``, the side walls perpendicular to the mirror as on a
+real off-axis blank; ``"parent"``: parallel to the parent axis), front cut
+by the mirror surface and back by a plane perpendicular to the axis
+``mirror_thickness`` behind the deepest point of the mirror face, so that
+the substrate is at least that thick. The margin is the surface itself
+continued, the parent conic, asphere or freeform, which is what is
+polished or diamond turned together with the used area of an off-axis
+segment (a best fit sphere about the parent axis, as on the rim of a
+coaxial lens, has nothing to do with a segment far from the axis).
+Spherical and plane mirrors stay exact; other faces are cubic B-spline
+height fields over the outline, refined until they deviate less than
+``tolerance`` from the surface. An outline that reaches beyond where the
+surface is defined (e.g. beyond the freeform radius of a
+`qaspheres.QconQ2DSurface`) raises a ValueError. Flat lands and bevels are
+not available with outlines.
+
 Mounts
 ------
 `Mount` adds a barrel, retaining rings, spacers and a stop plate to a
@@ -109,6 +145,15 @@ class Mechanics:
         its flat back.
     min_edge_thickness : number, optional
         Smallest allowed axial edge thickness of a slab (after the bevels).
+    outline : {None, "circle", "rectangle", "hull"} or (K, 2) array, optional
+        Mirrors only: cut the substrate to an outline around the footprint
+        of the beams, grown by margin (see "Off-axis mirrors" in the module
+        docstring), or to a polygon in the local x-y plane of the surface.
+        None: a disk of semi_diameter centred on the axis of the surface.
+    axis : {"normal", "parent"}, optional
+        Mechanical axis of a substrate with an outline: the normal of the
+        mirror at the centre of the footprint, or the axis of the surface
+        (of the parent).
     """
 
     semi_diameter: Optional[float] = None
@@ -117,6 +162,8 @@ class Mechanics:
     bevel: object = 0.0
     mirror_thickness: float = 5.0
     min_edge_thickness: float = 0.1
+    outline: object = None
+    axis: str = "normal"
 
     def bevels(self):
         b = self.bevel
@@ -469,6 +516,7 @@ def _pick(parts, ref):
     """The solid of a split that contains (is closest to) the point ref."""
 
     parts = parts if isinstance(parts, (tuple, list)) else [parts]
+    parts = [q for p in parts for q in (p if isinstance(p, (tuple, list)) else [p])]
     solids = [so for part in parts if part is not None for so in part.solids()]
     return min(solids, key=lambda p: p.distance_to(ref))
 
@@ -572,7 +620,7 @@ def _bevel_rim(solid, axis, rm, z_mid, g, b1, b2, scale):
 
 def system_model(system, fields=None, n_rays=7, pupil="y", mechanics=None, rays="wire",
                  ray_radius=0.02, ray_start=None, image_plane=True, mount=None,
-                 tolerance=1e-4):
+                 tolerance=1e-4, footprint_fields=None):
     """Build the CAD model of a system.
 
     Parameters
@@ -602,6 +650,10 @@ def system_model(system, fields=None, n_rays=7, pupil="y", mechanics=None, rays=
         (coaxial systems of lenses only).
     tolerance : number, optional
         Largest deviation (mm) of B-spline profiles from the sag.
+    footprint_fields : sequence, optional
+        Fields (numbers or (x, y) pairs) whose beams make up the footprints
+        of mirrors with a `Mechanics.outline`, e.g. the corners and edges
+        of a rectangular or ring field (default: fields).
 
     Returns
     -------
@@ -641,6 +693,15 @@ def system_model(system, fields=None, n_rays=7, pupil="y", mechanics=None, rays=
     parts = []  # (solids, rim and clear semi-diameters) per element, for the mount
     for k, (first, last) in enumerate(system.elements()):
         mech = mechanics.get(k, default)
+        if mech.outline is not None:
+            if not (first == last and surfaces[first].mirror):
+                raise NotImplementedError("Outlines for mirrors only (element {}).".format(k))
+            fp = footprint_fields if footprint_fields is not None else _fields(system, fields)
+            solid = _outline_mirror(system, first, mech, fp, scale, tolerance, sigma[first])
+            solid.label, solid.color = "M{}".format(k + 1), bd.Color(0.75, 0.75, 0.8)
+            model.lenses.append(solid)
+            parts.append(None)
+            continue
         idx = range(first, last + 1)
         r_clear = max(clear(i) for i in idx)
         rm = mech.semi_diameter if mech.semi_diameter is not None else r_clear + mech.margin
@@ -740,6 +801,272 @@ def _mirror(system, i, r_clear, rm, mech, scale, tolerance, sigma_in):
     back_frame = (o + R @ [0.0, 0.0, t], R)
     return _cut_slab(s, frame, back, back_frame, sigma_in, r_clear, rm, rm, mech, (b1, 0.0),
                      scale, tolerance)
+
+
+# --- off-axis mirrors ---------------------------------------------------------
+
+def _sag2(s, x, y):
+    """Sag of s at the local points (x, y), freeform or not."""
+
+    x, y = np.broadcast_arrays(np.asarray(x, float), np.asarray(y, float))
+    z = s.sag_xy(x.ravel(), y.ravel()) if _is_freeform(s) else s.sag(x.ravel()**2 + y.ravel()**2)
+    return np.asarray(z, float).reshape(x.shape)
+
+
+def _normal(s, x, y):
+    """Unit normal of s at (x, y) (local frame), pointing towards +z."""
+
+    h = 1e-6*max(1.0, np.hypot(x, y))
+    gx = (_sag2(s, x + h, y) - _sag2(s, x - h, y))/(2*h)
+    gy = (_sag2(s, x, y + h) - _sag2(s, x, y - h))/(2*h)
+    n = np.array([-float(gx), -float(gy), 1.0])
+    return n/np.linalg.norm(n)
+
+
+def _lift(s, origin, R, ab, iterations=30):
+    """Points of the surface s (local frame of s) on the lines through
+    origin + R @ (a, b, 0) along the third column of R (Newton)."""
+
+    ab = np.atleast_2d(ab)
+    base = origin + ab[:, :1]*R[:, 0] + ab[:, 1:2]*R[:, 1]
+    n = R[:, 2]
+    t = np.zeros(len(ab))
+    for _ in range(iterations):
+        P = base + t[:, None]*n
+        f = P[:, 2] - _sag2(s, P[:, 0], P[:, 1])
+        h = 1e-7*max(1.0, float(np.max(np.abs(base))))
+        Q = P + h*n
+        df = (Q[:, 2] - _sag2(s, Q[:, 0], Q[:, 1]) - f)/h
+        step = f/df
+        t -= step
+        if np.all(np.abs(step) < 1e-12*max(1.0, float(np.max(np.abs(base))))):
+            break
+    if not np.all(np.isfinite(t)):
+        raise ValueError("Surface {} undefined over the outline.".format(s))
+    return base + t[:, None]*n
+
+
+def _footprint(system, i, fields, rings=(0.5, 1.0), spokes=48):
+    """Hits (N, 3) of the beams of all fields on surface i, local frame."""
+
+    a = np.linspace(0, 2*np.pi, spokes, endpoint=False)
+    px = np.r_[0.0, np.concatenate([r*np.cos(a) for r in rings])]
+    py = np.r_[0.0, np.concatenate([r*np.sin(a) for r in rings])]
+    o, R = system.frames()[0][i]
+    hits = []
+    for f in fields:
+        f = tuple(f) if np.ndim(f) else f
+        P = system.trace_pupil(f, px, py).points[i + 1]
+        hits.append((P - o) @ R)
+    hits = np.concatenate(hits)
+    hits = hits[np.all(np.isfinite(hits), axis=1)]
+    if len(hits) < 3:
+        raise ValueError("No footprint on surface {}: no rays of the fields reach it."
+                         .format(i))
+    return hits
+
+
+def _outline_2d(outline, ab, margin, n_arc=96):
+    """The outline in the mechanical plane: ("circle", centre, radius),
+    ("rectangle", lo, hi) or ("polygon", (K, 2) points, margin)."""
+
+    if isinstance(outline, str):
+        if outline == "circle":
+            # the smallest circle around the footprint
+            from scipy.optimize import minimize
+            from .off_axis import _hull
+
+            h = _hull(ab)
+            c = minimize(lambda c: np.max(np.hypot(*(h - c).T)), h.mean(axis=0),
+                         method="Nelder-Mead", options={"xatol": 1e-9, "fatol": 1e-12}).x
+            return "circle", c, float(np.max(np.hypot(*(h - c).T))) + margin
+        if outline == "rectangle":
+            return "rectangle", ab.min(axis=0) - margin, ab.max(axis=0) + margin
+        if outline == "hull":
+            from .off_axis import _hull
+            return "polygon", _hull(ab), margin
+        raise ValueError("outline must be 'circle', 'rectangle', 'hull' or an array, not {!r}."
+                         .format(outline))
+    return "polygon", ab, 0.0
+
+
+def _outline_points(kind, a, b, n=96):
+    """Points on the outline, counterclockwise (closely spaced on curves
+    and along the edges of rectangles)."""
+
+    if kind == "circle":
+        t = np.linspace(0, 2*np.pi, n, endpoint=False)
+        return a + b*np.stack([np.cos(t), np.sin(t)], axis=1)
+    if kind == "rectangle":
+        corners = np.array([a, [b[0], a[1]], b, [a[0], b[1]]])
+        pts = corners
+    else:
+        pts, margin = a, b
+        if margin:
+            from .off_axis import _hull
+
+            t = np.linspace(0, 2*np.pi, n, endpoint=False)
+            ring = margin*np.stack([np.cos(t), np.sin(t)], axis=1)
+            return _hull((pts[:, None, :] + ring[None]).reshape(-1, 2))
+    s = np.linspace(0, 1, n//4, endpoint=False)[:, None]
+    return np.concatenate([p + s*(q - p) for p, q in zip(pts, np.roll(pts, -1, axis=0))])
+
+
+def _outline_face(kind, a, b, scale):
+    """Planar face of the outline in the x-y plane (mm)."""
+
+    import build123d as bd
+
+    if kind == "circle":
+        edge = bd.Edge.make_circle(b*scale, bd.Plane(origin=(a[0]*scale, a[1]*scale, 0.0)))
+        return bd.Face(bd.Wire([edge]))
+    if kind == "rectangle":
+        c, w = (a + b)/2, b - a
+        return bd.Face.make_rect(w[0]*scale, w[1]*scale,
+                                 bd.Plane(origin=(c[0]*scale, c[1]*scale, 0.0)))
+    pts, margin = a, b
+    if not margin:
+        return bd.Face(bd.Wire.make_polygon([bd.Vector(x*scale, y*scale, 0.0) for x, y in pts],
+                                            close=True))
+    # a grown hull: one periodic B-spline through the boundary of the hull
+    # with disks of radius margin on its vertices, evenly resampled (one
+    # side face instead of a face per edge and corner arc)
+    from .off_axis import _hull
+
+    ring = _outline_points(kind, pts, margin)
+    closed = np.vstack([ring, ring[:1]])
+    s = np.r_[0.0, np.cumsum(np.hypot(*np.diff(closed, axis=0).T))]
+    t = np.linspace(0, s[-1], 97)[:-1]
+    xy = np.stack([np.interp(t, s, closed[:, 0]), np.interp(t, s, closed[:, 1])], axis=1)
+    edge = bd.Edge.make_spline([bd.Vector(x*scale, y*scale, 0.0) for x, y in xy], periodic=True)
+    return bd.Face(bd.Wire([edge]))
+
+
+def _patch_face(s, P0, Rm, rim, scale, tolerance, grids=(17, 33, 65, 129)):
+    """B-spline face of the surface s over the outline rim (K, 2) in the
+    mechanical frame (origin P0 and axes Rm in the local frame of s): a
+    cubic B-spline height field that interpolates the heights of s along
+    the mechanical axis on a grid over the bounding box of the outline,
+    grown by 5 %, refined until it deviates less than tolerance (mm) from
+    the surface halfway between the grid points inside the outline.
+    Outside the outline grown by 10 % the height is continued along the
+    radius from the centre of the outline with the slope there, so that a
+    polynomial sag that grows fast beyond its normalization radius (Q
+    polynomials, Zernikes) does not bend the face where the substrate does
+    not need it. Mechanical frame, mm."""
+
+    import build123d as bd
+    from OCP.BRepBuilderAPI import BRepBuilderAPI_MakeFace
+    from OCP.GeomAPI import GeomAPI_PointsToBSplineSurface
+    try:
+        from OCP.collections import Array2_double as Array2
+    except ImportError:  # older OCP
+        from OCP.TColStd import TColStd_Array2OfReal as Array2
+
+    lo, hi = rim.min(axis=0), rim.max(axis=0)
+    c, d = (lo + hi)/2, 0.05*(hi - lo).max()
+    db = rim - c
+    phi_b, rho_b = np.arctan2(db[:, 1], db[:, 0]), np.hypot(db[:, 0], db[:, 1])
+    k = np.argsort(phi_b)
+
+    def grid(a, b):
+        """Points (u from c) and the radius of the grown outline over |u|."""
+        A, B = (v.ravel() for v in np.meshgrid(a, b, indexing="ij"))
+        u = np.stack([A - c[0], B - c[1]], axis=1)
+        lim = 1.1*np.interp(np.arctan2(u[:, 1], u[:, 0]), phi_b[k], rho_b[k], period=2*np.pi)
+        return u, lim/np.maximum(np.hypot(u[:, 0], u[:, 1]), 1e-300)
+
+    def height(u, g):
+        return (_lift(s, P0, Rm, c + u*g[:, None]) - P0) @ Rm[:, 2]
+
+    for n in grids:
+        a = np.linspace(lo[0] - d, hi[0] + d, n)
+        b = np.linspace(lo[1] - d, hi[1] + d, n)
+        u, f = grid(a, b)
+        f = np.minimum(f, 1.0)
+        h = height(u, f)
+        out = f < 1.0
+        if np.any(out):
+            # continued along the radius with the slope at the limit (C1)
+            dh = (h[out] - height(u[out], 0.98*f[out]))/(0.02*f[out])
+            h[out] += dh*(1.0 - f[out])
+        h = h.reshape(n, n)*scale
+        Z = Array2(1, n, 1, n)
+        for i in range(n):
+            for j in range(n):
+                Z.SetValue(i + 1, j + 1, float(h[i, j]))
+        fit = GeomAPI_PointsToBSplineSurface()
+        fit.Interpolate(Z, a[0]*scale, (a[1] - a[0])*scale, b[0]*scale, (b[1] - b[0])*scale)
+        surface = fit.Surface()
+        # check halfway between the grid points, inside the outline:
+        um, fm = grid((a[:-1] + a[1:])/2, (b[:-1] + b[1:])/2)
+        um = um[fm >= 1.1]  # inside the outline itself
+        if len(um) == 0:
+            break
+        x, y = ((c + um)*scale).T
+        err = np.abs([surface.Value(xi, yi).Z() for xi, yi in zip(x, y)]
+                     - height(um, np.ones(len(um)))*scale)
+        if np.max(err) < tolerance:
+            break
+
+    return bd.Face(BRepBuilderAPI_MakeFace(surface, 1e-7).Face())
+
+
+def _outline_mirror(system, i, mech, fields, scale, tolerance, sigma_in):
+    """Substrate of mirror i cut to an outline around its footprint (or to
+    a given polygon): a prism along the mechanical axis between the mirror
+    face and a flat back (global, mm)."""
+
+    s = system.surfaces[i]
+    if mech.land == "flat":
+        raise NotImplementedError("Flat lands on mirrors with an outline.")
+    if any(mech.bevels()):
+        raise NotImplementedError("Bevels on mirrors with an outline.")
+    if mech.axis not in ("normal", "parent"):
+        raise ValueError("axis must be 'normal' or 'parent', not {!r}.".format(mech.axis))
+    o, R = system.frames()[0][i]
+    if isinstance(mech.outline, str):
+        xy = _footprint(system, i, fields)[:, :2]
+    else:
+        xy = np.asarray(mech.outline, float)
+    # mechanical frame: origin on the mirror at the centre of the used area
+    c = (xy.min(axis=0) + xy.max(axis=0))/2
+    P0 = np.array([c[0], c[1], float(_sag2(s, c[0], c[1]))])
+    n = _normal(s, *c) if mech.axis == "normal" else np.array([0.0, 0.0, 1.0])
+    v = np.array([0.0, 1.0, 0.0]) - n[1]*n
+    v /= np.linalg.norm(v)
+    Rm = np.stack([np.cross(v, n), v, n], axis=1)
+    # used area in the mechanical plane (along the mechanical axis onto it):
+    S = np.stack([xy[:, 0], xy[:, 1], _sag2(s, xy[:, 0], xy[:, 1])], axis=1)
+    ab = ((S - P0) @ Rm)[:, :2]
+    kind, a, b = _outline_2d(mech.outline, ab, mech.margin)
+    rim = _outline_points(kind, a, b)
+    # the mirror face over the outline, heights along the axis:
+    face_pts = np.concatenate([_lift(s, P0, Rm, rim), S])
+    h = (face_pts - P0) @ Rm[:, 2]
+    g = sigma_in  # the substrate lies in direction g of the axis
+    h_back = g*(np.max(g*h) + mech.mirror_thickness)
+    pad = 0.05*(np.ptp(rim, axis=0).max() + abs(h_back)) + 1e-3
+    h_front = g*(np.min(g*h) - pad)
+    # the surface face must cover the prism:
+    corners = np.concatenate([P0 + rim[:, :1]*Rm[:, 0] + rim[:, 1:]*Rm[:, 1] + z*Rm[:, 2]
+                              for z in (h_front, h_back)])
+
+    import build123d as bd
+
+    r_max = 1.05*float(np.max(np.hypot(corners[:, 0], corners[:, 1])))
+    mloc = _location(o + R @ P0, R @ Rm, scale)
+    if _sphere_or_plane(s) and np.isfinite(_rim_sag(s, r_max)):
+        # exact: a revolved arc or line
+        mirror_face = _location(o, R, scale)*_surface_face(s, r_max, scale, tolerance,
+                                                           land="flat")
+    else:
+        mirror_face = mloc*_patch_face(s, P0, Rm, rim, scale, tolerance)
+    base = bd.Pos(0, 0, h_front*scale)*_outline_face(kind, a, b, scale)
+    prism = mloc*bd.Solid.extrude(base, bd.Vector(0, 0, (h_back - h_front)*scale))
+    ref = bd.Vector(*((o + R @ (P0 + (h_back - 0.25*g*mech.mirror_thickness)*Rm[:, 2]))
+                      *scale))
+    return _one_solid(_pick(prism.split(mirror_face, keep=bd.Keep.BOTH), ref))
 
 
 def _mount(parts, mount, stop_plate, scale):
@@ -854,9 +1181,14 @@ def _beam_radius(bundles, i, z, before):
     return r
 
 
-def _trace(system, fields, n_rays, pupil, ray_start):
+def _fields(system, fields):
     if fields is None:
-        fields = [0.0, system.max_field] if system.max_field else [0.0]
+        return [0.0, system.max_field] if system.max_field else [0.0]
+    return fields
+
+
+def _trace(system, fields, n_rays, pupil, ray_start):
+    fields = _fields(system, fields)
     p = np.linspace(-1, 1, n_rays)
     if isinstance(pupil, str):
         if pupil == "y":
@@ -880,6 +1212,11 @@ def _trace(system, fields, n_rays, pupil, ray_start):
             z0 = -(ray_start if ray_start is not None else
                    0.2*max(abs(system.image_z), 1.0))
             P, d = pts[0], b.directions[0]
+            # in front of the first surface also where its sag (an off-axis
+            # segment) lies in front of the vertex:
+            first = pts[1][:, 2]
+            if np.any(np.isfinite(first)):
+                z0 = min(z0, float(np.nanmin(first)) + z0)
             with np.errstate(invalid="ignore", divide="ignore"):
                 pts[0] = P + ((z0 - P[:, 2])/d[:, 2])[:, None]*d
             b = b._replace(points=pts)
