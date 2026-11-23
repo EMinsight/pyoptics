@@ -54,8 +54,8 @@ and the dependence on the tilt and the polarization is mostly lost (see
 notebook 05, wave propagation method, for checks against exact solutions).
 The field
 then stands for the electric field: the power flux of a plane wave is
-proportional to Re(k_z) |E|^2, so the intensity in a medium n is about
-n |E|^2. The reflected light is dropped. With "levels", t depends only on
+proportional to Re(k_z)*abs(E)**2, so the intensity in a medium n is about
+n*abs(E)**2. The reflected light is dropped. With "levels", t depends only on
 the plane wave and the pair (n_1, n_2), which costs one more FFT per pair of
 indices; the direct sum multiplies each term by its t.
 

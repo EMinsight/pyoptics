@@ -39,7 +39,6 @@ Press (1999).
 # McLeod, Thin Film Optical Filters, Institute of Physics Publishing, 2001
 
 from copy import copy
-from itertools import product
 
 import numpy as np
 from numpy.lib.scimath import sqrt as complex_sqrt
@@ -188,7 +187,9 @@ def _r_t(sin_theta_0, complex_n, t, pol, wavelength, phi0=None):
     if phi0 is None:  # if no additional phases are given, assume zero additional phases
         phi0 = np.zeros(len(complex_n))
     else:
-        phi0 = np.array([0.] + list(phi0) + [0.])  # additional zeros for substrate and embedding medium
+        # additional zeros for substrate and embedding medium; the entries may
+        # be arrays that broadcast with sin_theta_0 (ensembles of phases):
+        phi0 = [0.] + list(phi0) + [0.]
 
     # multiply Zangwill's transfer matrices of all layers, element by element
     # for all angles. Layers with evanescent waves or absorption make the
@@ -293,14 +294,92 @@ def stack_transfer_functions(x, y, n, k, t, embedding_n, embedding_k, substrate_
     return r[grid_index].reshape(K_X.shape), t[grid_index].reshape(K_X.shape)
 
 
+def _power_factor(complex_n, cos_theta, pol):
+    """Re(1/Z_tilted): the z-component of the Poynting vector per |E_tan|**2."""
+
+    return np.real(1/_tilted_Z(_impedances(complex_n)*np.ones_like(cos_theta), cos_theta, pol))
+
+
+def _R_T_incoherent(sin_theta_0, complex_n, t, pol, wavelength, thick):
+    """Exact R and T of a stack whose layers with the indices in `thick`
+    (counted from 0 for the first layer) are incoherent.
+
+    The stack is cut at the thick layers into coherent sub-stacks. Each of
+    them is described by the power reflectances and transmittances for
+    incidence from either side, |r|**2 and |t|**2 of _r_t(), the thick layers
+    by their single pass power transmission tau = |exp(i*phi)|**2. Combining
+    them from the substrate side upwards, with the multiple reflections in a
+    thick layer summed as a geometric series in intensity, gives (Katsidis
+    and Papadopoulos)
+
+        R = R_ab + |t_ab t_ba|**2 tau**2 R_b/(1 - R_ba tau**2 R_b),
+        T = |t_ab|**2 tau T_b/(1 - R_ba tau**2 R_b),
+
+    with R_b, T_b the values of the part of the stack below the thick
+    layer. This is the limit of the phase average of R_T_A_coeffs() for
+    infinitely many phases. T is |t|**2; the caller applies the ratio of the
+    power factors of substrate and embedding medium.
+    """
+
+    sin_theta_0 = np.asarray(sin_theta_0)
+    k_0 = wavenumber(wavelength, 1.0)
+    media = [0] + [j + 1 for j in thick] + [len(complex_n) - 1]  # indices into complex_n
+
+    def sub_stack(a, b, reverse):
+        n_sub, t_sub = complex_n[a:b+1], list(t[a:b-1])
+        start = b if reverse else a
+        sin_start = complex_n[0]*sin_theta_0/complex_n[start]
+        if reverse:
+            n_sub, t_sub = n_sub[::-1], t_sub[::-1]
+        return _r_t(sin_start, n_sub, t_sub, pol, wavelength)
+
+    # start with the lowest coherent sub-stack (last thick layer/substrate):
+    r, t_amp = sub_stack(media[-2], media[-1], False)
+    R_b, T_b = np.abs(r)**2, np.abs(t_amp)**2
+    for a, b in zip(media[-3::-1], media[-2:0:-1]):  # sub-stacks a -> b above thick layer b
+        r_ab, t_ab = sub_stack(a, b, False)
+        r_ba, t_ba = sub_stack(a, b, True)
+        cos_b = complex_sqrt(1.0 - (complex_n[0]*sin_theta_0/complex_n[b])**2)
+        phi_b = k_0*complex_n[b]*cos_b*t[b-1]
+        tau = np.exp(-2*np.abs(np.imag(phi_b)))
+        denominator = 1 - np.abs(r_ba)**2*tau**2*R_b
+        R_b, T_b = (np.abs(r_ab)**2 + np.abs(t_ab*t_ba)**2*tau**2*R_b/denominator,
+                    np.abs(t_ab)**2*tau*T_b/denominator)
+
+    return R_b, T_b
+
+
+def _phase_weights(N_phases, sigmas):
+    """Weights of an N_phases**len(sigmas) grid of phase offsets 2*pi*j/N_phases
+    in the thick layers for the average over a Gaussian spectrum.
+
+    The offsets of all thick layers are driven by the same wavenumber offset,
+    delta_phi_i = sigma_i*xi with xi standard normal. Folded to [0, 2*pi), the
+    joint distribution has the Fourier coefficients exp(-(m.sigma)**2/2) for
+    the integer harmonics m; the trapezoidal rule on the grid is then exact
+    for intensities without harmonics beyond N_phases/2. sigmas = inf for
+    all layers gives uniform weights (incoherent average).
+    """
+
+    m = np.meshgrid(*[np.fft.fftfreq(N_phases, 1.0/N_phases)]*len(sigmas), indexing="ij")
+    m_sigma = sum(m_i*s_i for m_i, s_i in zip(m, sigmas) if np.isfinite(s_i))
+    coefficients = np.exp(-m_sigma**2/2)
+    for m_i, s_i in zip(m, sigmas):
+        if not np.isfinite(s_i):
+            coefficients = coefficients*(m_i == 0)
+
+    return np.real(np.fft.ifftn(coefficients))
+
+
 def R_T_A_coeffs(angle, n, k, t, embedding_n, embedding_k, substrate_n,
-                 substrate_k, pol, wavelength, incoherent=None, N_phases=None):
+                 substrate_k, pol, wavelength, incoherent=None, N_phases=None,
+                 bandwidth=None):
     """Same as r_t_coeffs, but for intensity reflectance and transmittance.
     Also return 'absorbtance' such that R + T + A = 1.
 
     Parameters
     ----------
-    angle : double
+    angle : double or array
         Incident angle in embedding medium.
     n , k : arrays
         Real and imaginary parts of the refractive indices of the thin film stack.
@@ -315,53 +394,102 @@ def R_T_A_coeffs(angle, n, k, t, embedding_n, embedding_k, substrate_n,
     wavelength : number
         Wavelength of incident light.
     incoherent : array, boolean, optional
-        Element i is True if the i-th layer is "incoherent" (i.e. such that
-        phase information is lost). Defaults to None which is interpreted as full
-        coherence in all layers.
+        Element i is True if the i-th layer is thick (e.g. a glass plate or
+        lens between two coatings): its multiple reflections add up in
+        intensity (bandwidth=None) or partially coherently (finite
+        bandwidth). Defaults to None which is interpreted as full coherence
+        in all layers. A coated plate in air is the stack
+        [coating 1, plate, coating 2] with the substrate air and the plate
+        flagged; the substrate itself cannot be flagged.
     N_phases : int, optional
-        Use N_phases phase offsets for incoherent layers in averaging. Only
-        used if at least one incoherent layer is present.
+        Without bandwidth: None (default) gives the exact incoherent sum;
+        a number averages over N_phases phase offsets per thick layer
+        instead (the older method; its error falls off like
+        (R_1 R_2 tau**2)**(N_phases/2) with the reflectances R_1, R_2 on both
+        sides of a thick layer and its single pass transmission tau). With
+        bandwidth: the number of phase offsets per thick layer (default 64).
+    bandwidth : number, optional
+        Full width at half maximum of a Gaussian spectrum centred on
+        `wavelength`, same unit. Only the thick layers see it: the phase
+        k_0*n*d*cos(theta) of each spreads by the relative bandwidth, the
+        coherent layers are evaluated at the centre wavelength. The fringes
+        of a thick layer fade once the bandwidth exceeds the fringe spacing
+        wavelength**2/(2*n*d*cos(theta)); None means the incoherent limit.
+        The spread uses the phase index n; for dispersive layers replace the
+        thickness by n_g/n times it when estimating, or pass a bandwidth
+        scaled by n_g/n (n_g the group index).
+
+    Returns
+    -------
+    R, T, A : numbers or arrays
+        With the shape of angle.
 
     Notes
     -----
     A = 0 can only be expected for losless media under the condition that the
     embeddig medium is equal to the substrate.
+
+    The exact incoherent sum follows C. C. Katsidis and D. I. Papadopoulos,
+    "Analysis of the optical response of multilayers with coherent and
+    incoherent layers", Appl. Opt. 41, 3978-3987 (2002); the phase averaging
+    for partial coherence is in the spirit of M. C. Troparevsky et al.,
+    "Transfer-matrix formalism for the calculation of optical response in
+    multilayer systems: from coherent to incoherent interference",
+    Opt. Express 18, 24715-24721 (2010).
     """
 
-    if (incoherent is not None) and N_phases is None:
-        raise ValueError("N_phases must be a number")
-
-    # generate ensemble of phases to add in each layer. if a layer is coherent,
-    # zero phase is added beyond the phase acquired by propagation through the
-    # layer. if the layer is incoherent, linearly distributed values in [0, 2pi)
-    # are added for each realization of the ensemble.
+    if len(t) != len(n) or len(k) != len(n):
+        raise ValueError("n, k and t must have the same length")
+    thick = []
     if incoherent is not None:
-        add_phases = [ np.linspace(0, 2*np.pi, N_phases, endpoint=False) if is_incoherent else [0.0]
-                       for is_incoherent in incoherent
-                     ]
-    else:
-        add_phases = [[0.0] for _ in n]
+        if len(incoherent) != len(n):
+            raise ValueError("incoherent needs one entry per layer ({}), got {}"
+                             .format(len(n), len(incoherent)))
+        thick = [j for j, flag in enumerate(incoherent) if flag]
+    if bandwidth is not None and not thick:
+        raise ValueError("bandwidth needs at least one layer flagged in incoherent")
+    if bandwidth is not None and bandwidth < 0:
+        raise ValueError("bandwidth must not be negative")
 
-    # incoherence means that intensities (not amplitudes) add up, so average
-    # |r|**2 and |t|**2 over all realizations of the phase ensemble:
-    abs_r_sq, abs_t_sq = [], []
-    for phi0 in product(*add_phases):
-        curr_r, curr_t = r_t_coeffs(angle, n, k, t, embedding_n, embedding_k, substrate_n,
-                                    substrate_k, pol, wavelength, phi0)
-        abs_r_sq.append(np.abs(curr_r)**2)
-        abs_t_sq.append(np.abs(curr_t)**2)
+    n_ext, k_ext = _n_k_arrays(n, k, embedding_n, embedding_k, substrate_n, substrate_k)
+    complex_n = n_ext + 1j*k_ext
+    t = np.asarray(t, dtype=float)
+    angle = np.asarray(angle, dtype=float)
+    sin_theta_0 = np.sin(angle)
+
+    if not thick:  # fully coherent
+        r, t_amp = _r_t(sin_theta_0, complex_n, t, pol, wavelength)
+        R, T = np.abs(r)**2, np.abs(t_amp)**2
+    elif bandwidth is None and N_phases is None:  # exact incoherent sum
+        R, T = _R_T_incoherent(sin_theta_0, complex_n, t, pol, wavelength, thick)
+    else:  # weighted average over phase offsets in the thick layers
+        N = 64 if N_phases is None else int(N_phases)
+        if bandwidth is None:
+            sigma_rel = np.inf
+        else:  # standard deviation of the relative wavenumber spread
+            sigma_rel = bandwidth/(2*np.sqrt(2*np.log(2)))/wavelength
+        R, T = [], []
+        for s in np.atleast_1d(sin_theta_0).ravel():
+            cos = complex_sqrt(1.0 - (complex_n[0]*s/complex_n)**2)
+            phases = wavenumber(wavelength, 1.0)*np.real(complex_n*cos)[1:-1]*t
+            sigmas = [phases[j]*sigma_rel if np.isfinite(sigma_rel) else np.inf for j in thick]
+            weights = _phase_weights(N, sigmas).ravel()
+            offsets = np.meshgrid(*[2*np.pi*np.arange(N)/N]*len(thick), indexing="ij")
+            phi0 = [0.0]*len(n)
+            for j, offset in zip(thick, offsets):
+                phi0[j] = offset.ravel()
+            r, t_amp = _r_t(np.full(N**len(thick), s), complex_n, t, pol, wavelength, phi0)
+            R.append(np.sum(weights*np.abs(r)**2))
+            T.append(np.sum(weights*np.abs(t_amp)**2))
+        R = np.reshape(R, angle.shape)
+        T = np.reshape(T, angle.shape)
 
     # r and t are ratios of the tangential field components. the z-component
     # of the Poynting vector is proportional to |E_tan|**2*Re(1/Z_tilted),
     # which holds for both s and p polarization:
-    n_extended, k_extended = _n_k_arrays(n, k, embedding_n, embedding_k, substrate_n, substrate_k)
-    complex_n = n_extended + 1j*k_extended
-    Z = _impedances(complex_n)  # complex impedance for all media
-    cos_theta = _cos_theta(angle, complex_n)
-    Z = _tilted_Z(Z, cos_theta, pol)
-
-    R = np.mean(abs_r_sq)
-    T = np.mean(abs_t_sq)*np.real(1/Z[-1])/np.real(1/Z[0])
+    cos_0 = complex_sqrt(1.0 - sin_theta_0**2 + 0j)
+    cos_s = complex_sqrt(1.0 - (complex_n[0]*sin_theta_0/complex_n[-1])**2)
+    T = T*_power_factor(complex_n[-1], cos_s, pol)/_power_factor(complex_n[0], cos_0, pol)
     A = 1.0 - R - T
 
-    return R, T, A
+    return R[()], T[()], A[()]

@@ -92,6 +92,106 @@ def test_incoherent_slab():
     assert np.isclose(A_slab, 0.0)
 
 
+
+def _coated_plate(angle, pol, wl=0.55, **kw):
+    """5 mm absorbing glass with a MgF2 quarter wave layer on both sides, in air."""
+
+    n_g, k_g, d = 1.5168, 2E-7, 5000.0
+    t_c = wl/(4*1.38)
+    return R_T_A_coeffs(angle, [1.38, n_g, 1.38], [0.0, k_g, 0.0], [t_c, d, t_c], 1.0, 0.0, 1.0, 0.0,
+                        pol, wl, incoherent=[False, True, False], **kw)
+
+
+@pytest.mark.parametrize("pol", ["s", "p"])
+def test_incoherent_coated_plate_closed_form(pol):
+    """AR coated, absorbing thick plate (a lens measured in transmission):
+    the exact incoherent sum against T = T_1 tau T_2/(1 - R_1' R_2 tau**2)
+    from the single coated interfaces, and against the phase average.
+    """
+
+    wl, n_g, k_g, d, n_c = 0.55, 1.5168, 2E-7, 5000.0, 1.38
+    t_c = wl/(4*n_c)
+    angles = np.deg2rad([0.0, 30.0, 60.0, 80.0])
+    R, T, A = _coated_plate(angles, pol)
+
+    for angle, R_j, T_j in zip(angles, R, T):
+        R_1, T_1, _ = R_T_A_coeffs(angle, [n_c], [0.0], [t_c], 1.0, 0.0, n_g, k_g, pol, wl)
+        theta_g = np.arcsin(np.sin(angle)/n_g)
+        R_2, T_2, _ = R_T_A_coeffs(theta_g, [n_c], [0.0], [t_c], n_g, 0.0, 1.0, 0.0, pol, wl)
+        tau = np.exp(-4*np.pi/wl*k_g*d/np.cos(theta_g))
+        assert np.isclose(T_j, T_1*T_2*tau/(1 - R_2**2*tau**2), rtol=1E-5)
+        assert np.isclose(R_j, R_1 + T_1*T_2*R_2*tau**2/(1 - R_2**2*tau**2), rtol=1E-5)
+
+    R_avg, T_avg, _ = _coated_plate(angles, pol, N_phases=64)  # phase average
+    assert np.allclose(R_avg, R) and np.allclose(T_avg, T)
+    assert np.all(A > 0)
+
+
+def test_incoherent_high_reflectance_plate():
+    """Between two thin silver layers the phase average needs many phases;
+    the exact sum is its limit.
+    """
+
+    n, k, t = [0.05, 1.5, 0.05], [3.5, 0.0, 3.5], [0.04, 5000.0, 0.04]
+    args = (0.0, n, k, t, 1.0, 0.0, 1.0, 0.0, "s", 0.55)
+    R, T, A = R_T_A_coeffs(*args, incoherent=[False, True, False])
+    R_64, T_64, _ = R_T_A_coeffs(*args, incoherent=[False, True, False], N_phases=64)
+    R_1k, T_1k, _ = R_T_A_coeffs(*args, incoherent=[False, True, False], N_phases=1024)
+
+    assert np.isclose(T, T_1k, rtol=1E-8) and np.isclose(R, R_1k, rtol=1E-8)
+    assert abs(T_64/T - 1) > 0.03  # too few phases
+
+
+def _gaussian_spectrum_average(func, wl, bandwidth, N=20001):
+    sigma = bandwidth/(2*np.sqrt(2*np.log(2)))
+    wls = np.linspace(wl - 6*sigma, wl + 6*sigma, N)
+    w = np.exp(-(wls - wl)**2/(2*sigma**2))
+    return np.sum(w*np.array([func(l) for l in wls]))/np.sum(w)
+
+
+def test_bandwidth_limits_and_spectral_average():
+    """Partial coherence of a 1 mm plate (fringe spacing about 0.1 nm):
+    coherent for a vanishing bandwidth, incoherent for a wide one, and in
+    between the average over the Gaussian spectrum.
+    """
+
+    wl, n, d = 0.55, 1.5168, 1000.0
+    plate = lambda l, **kw: R_T_A_coeffs(0.0, [n], [0.0], [d], 1.0, 0.0, 1.0, 0.0, "s", l, **kw)
+
+    assert np.allclose(plate(wl, incoherent=[True], bandwidth=1E-9), plate(wl))
+    assert np.allclose(plate(wl, incoherent=[True], bandwidth=1E-2), plate(wl, incoherent=[True]))
+    for bandwidth in (2E-5, 5E-5, 1E-4):
+        for l0 in (wl, wl + 2.5E-5):
+            T = plate(l0, incoherent=[True], bandwidth=bandwidth)[1]
+            T_ref = _gaussian_spectrum_average(lambda l: plate(l)[1], l0, bandwidth)
+            assert np.isclose(T, T_ref, atol=1E-5)
+
+
+def test_bandwidth_correlated_plates():
+    """Two equal plates with an air gap: paths of equal length through either
+    plate keep interfering for any bandwidth, so the partially coherent
+    result stays off the incoherent sum. The phase offsets of the layers are
+    correlated, as for the spectral average.
+    """
+
+    wl, n, d = 0.55, 1.5168, 1000.0
+    stack = lambda l, **kw: R_T_A_coeffs(0.0, [n, 1.0, n], [0.0]*3, [d, 3000.0, d], 1.0, 0.0, 1.0, 0.0,
+                                         "s", l, **kw)
+    T_inc = stack(wl, incoherent=[True]*3)[1]
+    T_bw = stack(wl, incoherent=[True]*3, bandwidth=1E-3, N_phases=32)[1]
+    T_ref = _gaussian_spectrum_average(lambda l: stack(l)[1], wl, 1E-3, N=100001)
+
+    assert np.isclose(T_bw, T_ref, atol=1E-5)
+    assert T_bw - T_inc > 3E-3
+
+
+def test_incoherent_input_checks():
+    args = (0.0, [1.5], [0.0], [1000.0], 1.0, 0.0, 1.0, 0.0, "s", 0.55)
+    with pytest.raises(ValueError):
+        R_T_A_coeffs(*args, incoherent=[True, False])
+    with pytest.raises(ValueError):
+        R_T_A_coeffs(*args, bandwidth=1E-3)
+
 # transfer functions for the angular spectrum:
 
 from pyoptics.fft import FT, inv_FT
