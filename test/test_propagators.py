@@ -379,6 +379,31 @@ def test_planes_match_single_propagations(band_limit):
         assert np.allclose(E, E_ref, rtol=0, atol=1e-13)
 
 
+@pytest.mark.parametrize("band_limit", [False, True])
+def test_planes_on_an_output_window(band_limit):
+    from pyoptics.propagators import rayleigh_sommerfeld_I_TF_planes
+
+    N, wl = 64, 0.5e-3
+    x = wl*(np.arange(N) - N//2)
+    y = x + 3*wl                     # not centered: the plane wave amplitudes refer to the origin
+    X, Y = np.meshgrid(x, y)
+    field = np.exp(-(X**2 + (Y - 3*wl)**2)/(8*wl)**2)*np.exp(0.3j*X/wl)
+    zs = np.array([-0.4, 0.0, 0.02, 0.5])
+    full = rayleigh_sommerfeld_I_TF_planes(field, x, y, zs, wl, band_limit=band_limit)[0]
+    # on a part of the input grid both paths agree
+    win, x_o, y_o = rayleigh_sommerfeld_I_TF_planes(field, x, y, zs, wl, band_limit=band_limit,
+                                                    x_out=x[10:40], y_out=y[20:50])
+    assert win.shape == (len(zs), 30, 30)
+    assert np.allclose(win, full[:, 20:50, 10:40], rtol=0, atol=1e-12)
+    # an x-z section through one row: a single y
+    xz = rayleigh_sommerfeld_I_TF_planes(field, x, y, zs, wl, band_limit=band_limit,
+                                         x_out=x, y_out=y[32])[0]
+    assert xz.shape == (len(zs), 1, N)
+    assert np.allclose(xz[:, 0], full[:, 32], rtol=0, atol=1e-12)
+    with pytest.raises(ValueError):
+        rayleigh_sommerfeld_I_TF_planes(field, x, y, zs, wl, x_out=x)
+
+
 def test_planes_in_an_absorbing_medium():
     from pyoptics.propagators import rayleigh_sommerfeld_I_TF_planes
 
