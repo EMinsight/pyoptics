@@ -50,7 +50,8 @@ differentiated analytically; paraxial operands (`seidel()`,
 `paraxial_target()`, `clearances()`...) by `Linearization.derivative()`;
 other operands, parameters that change something the
 differential trace does not cover (wavelength, field, surfaces other than
-`raytrace.Surface`, Q-bfs, Q-con and Zernike surfaces and coordinate breaks)
+`raytrace.Surface`, Q-bfs, Q-con, Q2D, Zernike, map, toroidal and biconic
+surfaces (also `QconQ2DSurface`) and coordinate breaks)
 and constraints get central differences of `Linearization.jacobian()`.
 Rays are traced without vignetting (clip=False), as by the operands.
 
@@ -78,13 +79,14 @@ Operands and constraints of `lens_optimization` with ``jac="analytic"``:
   everything else, e.g. own functions and other constraints.
 
 Variables (`lens_optimization`): `Curvature`, `Conic`, `Aspheric`,
-`QCoefficient`, `ZernikeTerm`, `Thickness`, `AirSpace`, `ObjectDistance`
+`QCoefficient`, `ZernikeTerm`, `CurvatureX` and `ConicX` (toroidal and
+biconic surfaces), `Thickness`, `AirSpace`, `ObjectDistance`
 (finite objects), `Tilt`, `Decenter`, `ImageTilt` and the model glasses
 (`GlassIndex`, `GlassAbbe`, through the derivatives of the indices) are
 analytic, with the paraxial solves applied. Parameters that change
 the wavelength, the field or the object space index, and surfaces other
-than `raytrace.Surface`, Q-bfs, Q-con, Zernike surfaces and coordinate
-breaks (ideal lenses, gratings, diffractive surfaces, axicons, tabulated
+than `raytrace.Surface`, Q-bfs, Q-con, Zernike, map, toroidal and biconic
+surfaces and coordinate breaks (ideal lenses, gratings, diffractive surfaces, axicons, tabulated
 surfaces), get central differences column by column
 (`Linearization.unsupported` lists them). Rays are traced without
 vignetting (clip=False).
@@ -184,16 +186,17 @@ dopl : (V, N) array
 # attributes of a surface that are not its shape:
 _FRAME = {"thickness", "decenter", "tilt"}
 _INDEX = {"n_after", "material", "index_offset"}
-_IGNORED = {"label", "coating", "semi_diameter"}
+_IGNORED = {"label", "coating", "semi_diameter", "energy_map"}
 _NOT_SHAPE = _FRAME | _INDEX | _IGNORED | {"mirror"}
 # system attributes that the derivatives cover:
 _SYSTEM_OK = {"object_distance", "image_decenter", "image_tilt", "background"}
 
 
 def _shape_types():
-    from .qaspheres import QbfsSurface, QconSurface
+    from .qaspheres import QbfsSurface, QconSurface, Q2DSurface, QconQ2DSurface
 
-    return (rt.Surface, QbfsSurface, QconSurface, rt.ZernikeSurface)
+    return (rt.Surface, QbfsSurface, QconSurface, rt.ZernikeSurface, rt.MapSurface,
+            Q2DSurface, QconQ2DSurface, rt.ToroidalSurface, rt.BiconicSurface)
 
 
 def _differs(a, b):
@@ -215,7 +218,9 @@ def _public(obj):
 def _sag_gradient(s, x, y):
     """Sag z and gradient (z_x, z_y) of a surface at local points."""
 
-    if isinstance(s, rt.ZernikeSurface):
+    if isinstance(s, rt._AnamorphicSurface):
+        return s._sag_derivatives(x, y, 1)
+    if hasattr(s, "sag_xy"):  # Zernike and Q2D freeforms
         zx, zy = s._gradient(x, y)
         return s.sag_xy(x, y), zx, zy
     r2 = x**2 + y**2
@@ -227,23 +232,26 @@ def _sag_gradient(s, x, y):
 def _hessian(s, x, y, scale):
     """Second derivatives (z_xx, z_xy, z_yy) of the sag: rotationally
     symmetric part from a central difference of the slope over r in r**2,
-    the Zernike departure from central differences of its analytic
-    gradient."""
+    the Q2D parts analytic, the Zernike and MapSurface departures from
+    their analytic Hessians; toroidal and biconic surfaces analytically."""
 
+    if isinstance(s, rt._AnamorphicSurface):
+        return s.hessian_xy(x, y)
+    if hasattr(s, "sag_hessian"):
+        # Q2DSurface: analytic
+        return s.sag_hessian(x, y)
     r2 = x**2 + y**2
     h2 = 1e-5*scale**2
     sr = s._slope_over_r(r2)
     ds = (s._slope_over_r(r2 + h2) - s._slope_over_r(r2 - h2))/(2*h2)
     zxx, zxy, zyy = sr + 2*x**2*ds, 2*x*y*ds, sr + 2*y**2*ds
-    if isinstance(s, rt.ZernikeSurface) and s.zernike:
-        h = 1e-5*s.norm_radius
-        gxp, gyp = s.departure_gradient(x + h, y)
-        gxm, gym = s.departure_gradient(x - h, y)
-        zxx = zxx + (gxp - gxm)/(2*h)
-        zxy = zxy + (gyp - gym)/(2*h)
-        gxp, gyp = s.departure_gradient(x, y + h)
-        gxm, gym = s.departure_gradient(x, y - h)
-        zyy = zyy + (gyp - gym)/(2*h)
+    if isinstance(s, rt.ZernikeSurface) and s._has_departure():
+        hxx, hxy, hyy = s.departure_hessian(x, y)
+        zxx, zxy, zyy = zxx + hxx, zxy + hxy, zyy + hyy
+    elif hasattr(s, "departure_hessian") and (getattr(s, "cos", ()) or getattr(s, "sin", ())):
+        # Q-con + Q2D: analytic Hessian of the departure
+        Dxx, Dxy, Dyy = s.departure_hessian(x, y)
+        zxx, zxy, zyy = zxx + Dxx, zxy + Dxy, zyy + Dyy
 
     return zxx, zxy, zyy
 
@@ -304,9 +312,13 @@ class Linearization:
         parameters without analytic derivatives (complete traces carry the
         noise of the ray aiming and the rounding of long optical paths, so
         larger steps; default 100 steps).
+    analyse : bool, optional
+        Find what each parameter changes (default). False for a container
+        of systems (a `lens_optimization.MultiConfiguration`), whose
+        systems are linearized with `mapped()`.
     """
 
-    def __init__(self, system_at, x, steps, system=None, fd_steps=None):
+    def __init__(self, system_at, x, steps, system=None, fd_steps=None, analyse=True):
         self.x = np.asarray(x, float)
         self.h = np.broadcast_to(np.asarray(steps, float), self.x.shape).copy()
         self.h_fd = (100*self.h if fd_steps is None
@@ -316,7 +328,8 @@ class Linearization:
         self.plus, self.minus = self._perturbed(self.h)
         self._fd = None
         self._cache = {}
-        self._analyse()
+        if analyse:
+            self._analyse()
 
     def _perturbed(self, steps):
         plus, minus = [], []

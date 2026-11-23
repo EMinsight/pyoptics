@@ -95,7 +95,30 @@ What each module does and how mature it is. Planned work is listed in
   parts are added at the detector; operator "fresnel_ft" (single-FT
   Fresnel) for small, strongly diffracting fields; `Field.overlap(mode)`
   and the detector quantity "coupling" give the power coupling efficiency
-  into a mode (e.g. of a single-mode fibre)
+  into a mode (e.g. of a single-mode fibre); `LocalPlaneInterface` and
+  `ThinElement(method="lpia")`: curved and structured interfaces in the
+  local plane interface approximation (local law of refraction, Fresnel
+  matrix at the local angle of incidence, vectorial polarization, ray field
+  summation), with a report of steps, total internal reflection, narrow
+  facets and caustics (notebook 168, local plane interface approximation)
+- `source_modes`: new, tested: partially coherent, polychromatic and pulsed
+  sources for `fieldtrace`. A source is an `Ensemble` of modes (unit power
+  fields with power weights) that `trace()` runs through a chain (or a
+  callable chain(wavelength) for dispersive systems); `EnsembleResult`
+  adds irradiance, power, fibre coupling and the mutual intensity / degree
+  of coherence at any detector, `field_at()` evaluates a field at any
+  point without aliasing its analytic phase. Sources: the Gaussian Schell
+  model by its coherent modes (`gaussian_schell()`, `gsm_parameters()`,
+  `gsm_m2()`, `gsm_width()`), thermal or explicit multimode lasers
+  (`multimode_laser()`, `hermite_gauss()`), point emitters with exact
+  spherical phase and incoherent extended sources (`point_source()`,
+  `extended_source()`, `lambertian_disk()`), spectra (`polychromatic()`,
+  `gaussian_spectrum()`) and pulses as coherent spectral fields
+  (`gaussian_pulse()`, `Pulse`; `PulseResult` gives the group delay and
+  the space-time envelope). Checked against the GSM spreading and
+  coherence, M², the van Cittert–Zernike theorem, the group delay and GDD
+  broadening in glass and Bor's focal pulse broadening (notebook 169,
+  source models in field tracing)
 - `polygons`: new, tested: polygons as (N, 2) vertex arrays: signed area,
   centroid and second moments, the exact Fourier transform of any polygon
   (Lee and Mittra's edge sum, with a Taylor series near k = 0 and vertices
@@ -287,7 +310,12 @@ What each module does and how mature it is. Planned work is listed in
   the ABCD law (also in media), mode matching efficiency; resonator
   stability, eigenmodes and round trip Gouy phase; `collins()` propagates any
   field through an ABCD system (Collins integral, separate x and y matrices
-  for astigmatic systems)
+  for astigmatic systems); general astigmatism with 4x4 matrices: rotated
+  elements and cylindrical lenses, symplectic check, the complex beam
+  matrix Q of Arnaud and Kogelnik with its ABCD law, intensity and phase
+  ellipses of twisted Gaussian beams, and `collins_4x4()` for any field
+  through a 4x4 system (checked against the Q law and element by element
+  propagation; notebook 08, ABCD matrices, sections 11 and 12)
 - `unwrap`: 2D phase unwrapping, tested: least squares unwrapping with a
   DCT Poisson solver (Ghiglia-Romero), weighted least squares with
   modulation or amplitude weights and masks (conjugate gradients
@@ -414,6 +442,69 @@ What each module does and how mature it is. Planned work is listed in
   intensity of the illumination (0.678 NA_obs/NA_ill for large ratios) and
   C² = C∞² + (1 + C∞²)/M for M diffuser positions; checked against wave
   optics simulations (notebook 87, speckle reduction)
+- `cad`: new, tested: export of `raytrace.System` lens systems to STEP with
+  build123d; lenses and mirror substrates as solids (spheres and planes
+  exact, aspheres as B-spline sections, Fresnel facets and risers, toric
+  and cylinder lenses, freeforms and displaced slabs cut from a cylinder by
+  B-spline faces, freeform mirrors), cemented groups as touching solids, a
+  mechanical diameter beyond the clear aperture with the surfaces continued
+  as they are polished (spheres and toroids as themselves, aspheres as their
+  best fit sphere) or flat lands, 45 degree bevels on rim edges in air,
+  edge thickness checks, a barrel with retaining rings, spacers and a stop
+  plate cut to the lenses, ray fans as wires or tubes, names and colours,
+  a section plot, a 3D plot and glTF export; checked against analytic volumes, the traced rays
+  and overlaps of the parts (notebook 162, CAD export of lens systems); spacer
+  bores follow the traced beam envelope (also off axis), and spacers
+  between overlapping lenses are cylinders
+- `nsrt`: new, tested: non-sequential ray tracing; oriented faces with a
+  medium on each side (conics and `raytrace` sag surfaces, rectangles,
+  cylinders, cones, spheres, boxes) and triangle meshes with a bounding
+  volume hierarchy built by the surface area heuristic and searched
+  nearest box first, up to the nearest hit on the analytic faces (STL, STEP and build123d solids tessellated, properties
+  assigned per solid or per face by label, prefix pattern or function),
+  `FaceProperty` with Fresnel, fixed or angle dependent R and T, thin-film
+  coatings and BRDF/BTDF scatter, bulk absorption, a deterministic
+  splitting trace with Russian roulette and a Monte Carlo trace, importance
+  sampling of scatter towards targets (one-sample MIS), detectors with the
+  event history of every ray (reflection, scatter, face paths),
+  irradiance maps, power balance and `Scene.add_system()` that turns a
+  sequential `raytrace.System` with its `cad` mechanics into faces (lands,
+  ground bevels and rims, barrel, spacers); numba kernels with a numpy
+  fallback; checked against the sequential trace, Fresnel slabs, TIR,
+  the integrating sphere, view factors and ghosts from
+  `photography.ghost_system` (notebooks 166 (non-sequential ray tracing)
+  and 167 (stray light in Caldwell's lens))
+- `bsdf`: new, tested: scatter distributions in direction cosine space;
+  Lambertian, Gaussian and ABg (Harvey) BSDFs and their mixtures, total
+  integrated scatter against the incidence angle, sampling and pdfs;
+  checked against numerical integration
+  (notebook 166, non-sequential ray tracing)
+- `polishing`: new, tested: surface errors of grinding and polishing as
+  maps for the ray tracer: the ripple of a Gaussian tool on raster and
+  spiral paths (Poisson sum, checked against the direct sum of the tracks),
+  turned-down edges, Gaussian random surfaces with an isotropic PSD (power
+  laws), the radial PSD and band limited RMS of a map, Zernike removal, the
+  specular fraction (1 - TIS) of rough surfaces in reflection and
+  transmission and pixelated dig and scratch maps (notebook 175,
+  polishing errors); the maps go into `raytrace.MapSurface` (gridded sag departure on
+  any base surface, spline normals, covered by the differential ray trace)
+  and ``energy_map`` (gridded transmittance or reflectance of any surface,
+  pupil apodization of the PSF and part of the polarization ray trace)
+- `eyepieces`: new, tested: Huygens, Ramsden, Kellner, Plössl and Erfle
+  eyepieces as `raytrace` systems traced backwards from the eye pupil
+  (scalable to any focal length); eye relief from the pupil imaging,
+  apparent field, distortion and lateral colour in angle, field curves in
+  diopters, angular blur, pupil aberration (kidney beans) and afocal
+  telescopes with an objective in front; checked against Newton's equation
+  for the pupil (notebook 171, eyepieces)
+- `prisms`: new, tested: a non-sequential polarization ray trace through
+  convex glass prisms with refracting, TIR, mirror coated and roof faces
+  (3×3 polarization ray tracing matrices, coatings from `coatings`); Porro
+  prisms, the Porro system and the Schmidt–Pechan prism, image orientation
+  from the reflections, 2D sections, tunnel diagrams and glass paths, Jones
+  pupils, the roof phase error, the polarized PSF and a multilayer phase
+  coating; checked against the TIR phase formula and the reflection
+  matrices (notebook 172, binoculars and erecting prisms)
 - `freeform`: new, tested: beam shaping by ray mapping; the radial ray map
   from equal enclosed power, Fermi–Dirac flat tops, the two-lens Gaussian
   to flat-top shaper (Kreuzer, Hoffnagle–Jefferson) from equal optical path
@@ -489,6 +580,34 @@ What each module does and how mature it is. Planned work is listed in
   (`trace_pixel()`); checked against sinc and diffraction MTFs, the
   folding of frequencies, the carrier positions, the tensor walk-off and
   the paraxial pupil image (notebook 93, the sensor)
+- `restoration`: new, tested: image restoration with measured or computed
+  PSFs; model R, G, B sensitivities (`cfa_sensitivity()`), pixel
+  integrated PSFs of a traced lens at sensor points with the lateral
+  colour as a shift (`psf_samples()`, `field_for_image_point()`) and
+  their channel sums (`channel_psfs()`); space variant blur as a sum of
+  convolutions of weighted images, with interpolated or low rank
+  (eigen-PSF) kernels, forward and adjoint, and an unknown margin
+  (`SpaceVariantBlur`); Wiener filtering, blending of per node
+  restorations, Richardson–Lucy with background and mask, TV
+  deconvolution with the cross-channel prior by a Condat–Vu primal-dual
+  solver, an unrolled half-quadratic splitting with a Haar denoiser, dead
+  leaves and Siemens star scenes; checked against direct convolution,
+  adjoint identities, noiseless inversion and an ideal lens
+  (notebook 160, image restoration and PSF deconvolution)
+- `lens_correction`: new, tested: distortion, lateral colour and lens
+  shading of a traced camera lens and their correction; chief ray image
+  heights against f tan θ per wavelength and per colour channel
+  (`radial_mapping()`, `channel_heights()`), the Brown–Conrady radial
+  model and its fit (`fit_brown_radial()`), inverse warp maps and spline
+  resampling (`warp_coordinates()`, `remap()`); chief ray angles, the
+  pixel acceptance with microlens shift, the angle shift of an IR cut
+  interference filter over the cone of light and the channel shading
+  that results (`chief_ray_angles()`, `pixel_efficiency()`,
+  `ir_cut_transmission()`, `channel_shading()`), radial maps and ISP gain
+  tables with bilinear interpolation (`gain_table()`,
+  `apply_gain_table()`); checked against an ideal lens (rectilinear,
+  cos⁴), a known radial distortion and the filter edge formula
+  (notebook 161, distortion, lateral colour and lens shading correction)
 - `lightfield`: new, tested: the light field (plenoptic) camera; a thin
   main lens, a microlens array in its image plane and a sensor matched to
   the grid of microlens images (`plenoptic_camera()`, `pixel_pitch()`), raw
@@ -534,7 +653,11 @@ What each module does and how mature it is. Planned work is listed in
   sensitivities of its elements (`with_axial_shift()`), a water immersion
   ArF lens and a KrF REMA objective and zoom-axicon from patents; cones
   (`Axicon`), surfaces with a Fringe Zernike departure (`ZernikeSurface`:
-  figure errors, mount deformations, freeforms), x-z sections in `draw()`; polarization ray
+  figure errors, mount deformations, freeforms), toroidal and biconic
+  surfaces (`ToroidalSurface`, `BiconicSurface`: toric spectacle lenses,
+  cylinder lenses, anamorphic optics; exact intersections and analytic
+  derivatives for the optimizer, notebook 129, progressive spectacle lenses), x-z
+  sections in `draw()`; polarization ray
   trace with energy (`System.trace_polarization()`, Chipman's 3x3 matrices):
   Fresnel refraction and reflection through thin film coatings on any
   surface (`coatings.Coating`, `coatings.Layer`) with layer thickness
@@ -550,7 +673,10 @@ What each module does and how mature it is. Planned work is listed in
   of the Sweatt model, checked with `System.sweatt_model()`, zone radii and
   local period, kinoform depth and scalar efficiency with
   `System.diffraction_efficiency()`, multi-order lenses; notebook 151,
-  hybrid diffractive lenses)
+  hybrid diffractive lenses); diffractive surfaces with a linear carrier and
+  a Zernike phase (`ZernikePhaseSurface`: computer-generated holograms
+  with a tilt carrier, any order, transmissive or reflective; notebook
+  165, CGH null testing of aspheres)
 - `delano`: Delano's y-ybar diagram, tested: the diagram of any centred
   `raytrace.System` (powers, spacings, magnification, NA, pupils and
   cardinal points agree with the paraxial trace and `abcd`), thin lens
@@ -587,8 +713,9 @@ What each module does and how mature it is. Planned work is listed in
   parameters of one configuration, `in_configs()` for operands, solves and
   constraints in some configurations, weights per configuration,
   `configure()` for overrides and `from_zoom()`/`to_zoom()` for
-  `zoom.ZoomLens`; `LensOptimizer(configurations=...)` with shared
-  variables (notebook 153, multi-configuration optimization)
+  `zoom.ZoomLens`; analytic Jacobians with `jac="analytic"`, each
+  configuration linearized on its own; `LensOptimizer(configurations=...)`
+  with shared variables (notebook 153, multi-configuration optimization)
 - `lens_landscape`: the merit function landscape beyond one local
   minimum, tested on an analytic double well and on real lenses: random
   starts that trace, damped least squares from each and clustering into
@@ -656,7 +783,23 @@ What each module does and how mature it is. Planned work is listed in
   measure and `QCoefficient`, a variable for
   `lens_optimization.DampedLeastSquares`; checked against Forbes' closed
   forms, numerical slopes and even aspheres
-  (notebook 128, Forbes Q aspheres)
+  (notebook 128, Forbes Q aspheres); `Q2DSurface` and `Q2DCoefficient`
+  extend Q-bfs to freeforms with azimuthal terms u^m Q_n^m(u^2) cos/sin(m
+  phi) whose gradients are orthonormal in the Q-bfs weight (Forbes 2012),
+  checked for orthonormality, against Q-bfs for m = 0 and against
+  numerical gradients
+  (notebook 159, phone camera lens with Forbes Q polynomials)
+- `phone_lens`: new, tested: smartphone camera lenses; model glasses of
+  the optical plastics (cyclo-olefin polymers and polycarbonate or
+  polyester flints), operands and constraint functions for the sensor
+  (chief ray angle, distortion against f tan theta, lateral colour,
+  element and air thicknesses sampled from the axis to the rim of the
+  real beam), real ray clear apertures, a refit of Q-bfs surfaces as even
+  aspheres, `close_focus()` (the whole lens moved to focus on a near
+  object) and the five element f/1.8 design of
+  notebook 159 (phone camera lens with Forbes Q polynomials), for infinity
+  and 100 mm (`DESIGN`) and the earlier one for infinity only
+  (`DESIGN_INFINITY`)
 - `zoom`: new, tested: mechanically compensated zoom lenses; thin lens
   conjugates, the two-group zoom (spacing and back focus for a focal
   length), the four-group zoom with variator and compensator (afocal or
@@ -689,7 +832,17 @@ What each module does and how mature it is. Planned work is listed in
   `galvo_xy()`; an F-theta lens and a telecentric scan lens designed with
   `lens_optimization` (notebook 149, scan lenses)
 - `beam_quality`: beam widths, azimuth and M² after ISO 11146 (second
-  moments, iterated integration window, caustic fit), tested
+  moments, iterated integration window, caustic fit), tested; all ten
+  second moments of a field (ISO 11146-2, general astigmatic beams), the
+  effective and intrinsic M², the intrinsic astigmatism and the twist
+  (orbital angular momentum), checked against HG and LG modes and the 4x4
+  ABCD law (notebook 07, beam quality, section 4)
+- `ince`: new, tested: Ince-Gaussian beams (Bandres and Gutiérrez-Vega
+  2004); Ince polynomials as a finite Fourier eigenproblem, elliptic
+  coordinates, even, odd and helical IG modes normalized to unit power, their
+  exact HG and LG coefficients by Gauss-Hermite quadrature; checked against
+  the Ince equation, orthonormality, the LG and HG limits, Fresnel
+  propagation and the ABCD law (notebook 163, Ince-Gaussian beams)
 - `modes`: mode analysis and fibres, tested: decomposition of any field into
   Hermite-Gaussian or Laguerre-Gaussian modes (given or fitted waist,
   curvature and centre; power fractions, reconstruction error, propagation
@@ -957,6 +1110,21 @@ What each module does and how mature it is. Planned work is listed in
   (`profile_scan()`); checked against the obliquity factor, the phase on
   reflection of metals, thick films at the optical thickness and flat
   profiles (notebook 134, coherence scanning interferometry)
+- `cgh`: new, tested: computer-generated holograms for null tests of
+  aspheres. Null phase from the normals of the test surface and the
+  traced incoming wave, exact without optimization (`null_phase()`),
+  alignment zones (`focus_phase()` for a cat's eye or fiducials,
+  `retro_phase()` for a Littrow ring), binary patterns; all order
+  combinations of the double pass traced against the interferometer's stop
+  (`order_paths()`, `InterferometerStop` as a surface for ray and field
+  tracing); binary grating orders in the thin element model and with RCWA
+  (`binary_orders()`, `binary_orders_rcwa()`), writer distortion
+  (`distortion_phase()`); reconstruction of the surface form deviation with
+  traced alignment sensitivities (`remove_alignment()`), the mapping onto
+  the surface (`surface_map()`) and Zernike fits of scattered data
+  (`zernike_fit()`); checked against the grating equation, exact nulls of
+  traced double passes, focusing and retroreflection, Parseval and a known
+  form error (notebook 165, CGH null testing of aspheres)
 - `ellipsometry`: new, tested: Psi and Delta of layered samples with
   `thin_films`, in the Nebraska conventions (`rho()`, `psi_delta()`,
   `rho_from_coefficients()`), the pseudo-dielectric function, Brewster
@@ -1046,6 +1214,20 @@ What each module does and how mature it is. Planned work is listed in
   `fibrecomm` and multimode spectra; checked against ODE solutions,
   Wagner–Birnbaum, the master equation and Langevin noise (notebooks
   142 (laser fundamentals) to 144 (laser diodes))
+- `resonators`: new, tested: transverse modes of resonators with finite
+  mirrors by field tracing. The round trip is a `fieldtrace.Chain`
+  (`round_trip()`: two mirrors as thin lenses, apertures with
+  sub-sample edges, intracavity elements such as a thermal lens;
+  `GridPropagate`: band-limited angular spectrum on the fixed grid of the
+  reference plane); `fox_li()` iterates it, `eigenmodes()` diagonalizes it
+  (dense for strips, Arnoldi with a second run for degenerate pairs in 2D)
+  and returns `ResonatorMode`s with loss and Gouy phase
+  (`frequency_offsets()`). References: confocal strip eigenvalues
+  (prolate spheroidal, by quadrature), Gaussian modes and Gouy phases of
+  stable resonators, magnification, geometric loss and equivalent Fresnel
+  number of unstable ones; checked against an independent Fresnel kernel
+  quadrature, the prolate eigenvalues and `abcd`
+  (notebook 170, laser resonator modes)
 - `nonlinear`: new, tested: second- and third-order nonlinear optics.
   Sellmeier equations and d coefficients of BBO, KDP and (MgO:)LN
   (`CRYSTALS`), n₂ of common materials (`N2`); phase mismatch for any

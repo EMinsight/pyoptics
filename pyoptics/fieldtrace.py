@@ -92,10 +92,24 @@ Free-space operators and their automatic selection
 Components
 ----------
 `ThinLens` (analytic: changes alpha only), `ThinElement` (thin element
-approximation for a height profile between two media), `PhaseScreen`,
+approximation for a height profile between two media, or with
+method="lpia" the local plane interface approximation), `PhaseScreen`,
 `Aperture`, `Interface` (plane interface into another medium), `Jones`
 (constant or spatially varying Jones matrix), `Function` (any callable on a
 Field) and `Detector` (records the field and derived quantities).
+
+Curved and structured interfaces
+--------------------------------
+`LocalPlaneInterface(h, n_after)` takes the field through an interface
+z = h(x, y) in the local plane interface approximation (LPIA): every sample
+is a local plane wave, refracted and transmitted (Fresnel matrix, vectorial)
+at the tangent plane of the surface where it meets it, and the field is
+collected again by ray field summation in an output plane near the
+surface. Unlike the thin element approximation it includes the refraction
+inside the profile, the angle dependence of the phase and of the Fresnel
+transmission, and the polarization; it holds for facets and radii of
+curvature of a few wavelengths and more. Comparisons with RCWA and exact
+solutions: notebook 168 (local plane interface approximation).
 
 Lens systems
 ------------
@@ -154,7 +168,7 @@ from .utils import wavenumber
 
 __all__ = ["Field", "gaussian", "from_array", "Chain", "ChainResult", "Step", "Propagate",
            "ThinLens", "ThinElement", "PhaseScreen", "Aperture", "Interface", "Jones", "Function",
-           "Trace", "FieldSum", "Parallel", "Obstruction", "Combine",
+           "Trace", "LocalPlaneInterface", "FieldSum", "Parallel", "Obstruction", "Combine",
            "Detector", "DetectorRecord", "PropagationFailure", "estimate_propagation", "METHODS", "Z0"]
 
 
@@ -382,7 +396,7 @@ class Field(object):
         base = qs[0]
         As = [base.amplitude]
         for q in qs[1:]:
-            As.append(_rebase(q, base))
+            As.append(_rebase(q, base, template.one_d))
         A = np.stack(As, axis=2)
         out = template._with(A, x=base.x, y=(None if template.one_d else base.y),
                              alpha=base.alpha, beta=base.beta, gamma=base.gamma)
@@ -602,13 +616,22 @@ def _interp1(A, x, x_new):
     return out
 
 
-def _rebase(q, base):
+def _rebase(q, base, one_d=False):
     """Amplitude of the QuadraticPhaseField q on the grid and analytic phase of
-    base."""
+    base. For one-dimensional fields (identical rows) only x is resampled."""
+    same_x = len(q.x) == len(base.x) and np.allclose(q.x, base.x)
+    if one_d:
+        if not same_x:
+            A = _interp1(q.amplitude[1], q.x, base.x)
+            q = QuadraticPhaseField(np.repeat(A[None, :], len(base.y), axis=0), base.x, base.y,
+                                    q.wavelength, q.alpha, q.beta, q.gamma, q.n)
+        elif not (len(q.y) == len(base.y) and np.allclose(q.y, base.y)):
+            q = QuadraticPhaseField(q.amplitude, base.x, base.y, q.wavelength, q.alpha, q.beta,
+                                    q.gamma, q.n)
+        return q.amplitude*np.exp(1j*(q.phase() - base.phase()))
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", RuntimeWarning)
-        if not (len(q.x) == len(base.x) and np.allclose(q.x, base.x)
-                and len(q.y) == len(base.y) and np.allclose(q.y, base.y)):
+        if not (same_x and len(q.y) == len(base.y) and np.allclose(q.y, base.y)):
             q = q.resample(base.x, base.y)
     return q.amplitude*np.exp(1j*(q.phase() - base.phase()))
 
@@ -1316,12 +1339,27 @@ class PhaseScreen(Step):
 
 
 class ThinElement(Step):
-    """Thin element approximation (TEA) of a height profile h(x, y).
+    """Height profile h(x, y) of an element: thin element approximation
+    (TEA) or local plane interface approximation (LPIA).
 
     The element of index n_element replaces the medium n_medium over the
-    height h; the field gets exp(i*k_0*(n_element - n_medium)*h) (absorption
-    for complex indices) and optionally the Fresnel transmission of both
-    faces at normal incidence, 4*n*n_0/(n + n_0)**2.
+    height h. method="tea" (default): the field gets
+    exp(i*k_0*(n_element - n_medium)*h) (absorption for complex indices)
+    and optionally the Fresnel transmission of both faces at normal
+    incidence, 4*n*n_0/(n + n_0)**2, all in one plane.
+
+    method="lpia": the element is a plate with one flat face and one face
+    with the profile (face="back": the flat face towards the light, the
+    profile behind it; face="front": the other way round), of thickness
+    h - min(h). Both faces are crossed with LocalPlaneInterface's local
+    plane interface approximation: refraction at the local slope, the
+    Fresnel coefficients at the local angle of incidence (fresnel=True;
+    otherwise lossless) and the vectorial polarization. The field behind
+    the plate is propagated back (geometrically, in n_medium) to the plane
+    of the element, so the step replaces the TEA in a chain without changing
+    the distances; for a profile of small slopes both agree. The constant
+    phase is chosen as in the TEA. The LPIA holds for facets and radii of
+    curvature of many wavelengths; see LocalPlaneInterface.
 
     Parameters
     ----------
@@ -1332,22 +1370,81 @@ class ThinElement(Step):
         Default: the field's medium.
     fresnel : bool, optional
         Include the Fresnel losses.
+    method : str, optional
+        "tea" (default) or "lpia".
+    face : str, optional
+        LPIA: "back" (default) or "front", the face that carries the profile.
+    gradient : callable, optional
+        LPIA: the gradient of the profile (see LocalPlaneInterface).
+    oversample, max_N : int, optional
+        LPIA: rays per sample and the largest output grid (see
+        LocalPlaneInterface).
     """
 
-    def __init__(self, height, n_element, n_medium=None, fresnel=False, label="thin element"):
+    def __init__(self, height, n_element, n_medium=None, fresnel=False, label="thin element",
+                 method="tea", face="back", gradient=None, oversample=1, max_N=4096):
+        if method not in ("tea", "lpia"):
+            raise ValueError("method must be 'tea' or 'lpia'")
+        if face not in ("back", "front"):
+            raise ValueError("face must be 'back' or 'front'")
         self.height = height
         self.n_element = n_element
         self.n_medium = n_medium
         self.fresnel = fresnel
         self.label = label
+        self.method = method
+        self.face = face
+        self.gradient = gradient
+        self.oversample = int(oversample)
+        self.max_N = int(max_N)
+        self.last_info = None
 
     def apply(self, field, ctx):
         n0 = field.n if self.n_medium is None else self.n_medium
         h = _evaluate(self.height, field)
+        if self.method == "lpia":
+            return self._lpia(field, n0, h)
         t = np.exp(1j*wavenumber(field.wavelength)*(self.n_element - n0)*h)
         if self.fresnel:
             t = t*4*self.n_element*n0/(self.n_element + n0)**2
         return field._with(field._A*t[:, :, None]), {"method": "TEA"}
+
+    def _lpia(self, field, n0, h):
+        prof = _Profile(self.height, field, self.gradient)
+        I = field.irradiance()
+        I = I if not field.one_d else np.broadcast_to(I, h.shape)
+        lit = I > 1E-8*I.max()
+        h_min, h_max = float(h[lit].min()), float(h[lit].max())
+        thick = h_max - h_min
+        if self.face == "back":
+            surfaces = [(0.0, None), (-h_min, prof)]
+        else:
+            # z = h_max - h(x, y): the reflected profile
+            surfaces = [(h_max, _Mirrored(prof)), (thick, None)]
+        n_el = self.n_element
+        extra = np.real(n_el - n0)*h_min
+        out, notes, info = _lpia_step(field, surfaces, [n0, n_el, n0], 0.0, self.fresnel,
+                                      self.oversample, None, None, None, self.max_N,
+                                      extra_opl=extra)
+        self.last_info = info
+        out.z = field.z
+        if np.imag(n_el) != 0:
+            notes.append("absorption of the element along the rays")
+        return out, {"method": "LPIA ({} face)".format(self.face), "notes": notes}
+
+
+class _Mirrored(object):
+    """Profile -h of a _Profile."""
+
+    def __init__(self, prof):
+        self.prof = prof
+
+    def __call__(self, x, y):
+        return -self.prof(x, y)
+
+    def gradient(self, x, y):
+        gx, gy = self.prof.gradient(x, y)
+        return -gx, -gy
 
 
 class Aperture(Step):
@@ -1433,6 +1530,606 @@ class Function(Step):
         return self.func(field), {"method": "user"}
 
 
+class _LocalWaves(object):
+    """Rays of the local plane waves of a field (see _local_plane_waves())."""
+
+
+def _local_plane_waves(field, n_rays=None, cap=256, notes=None):
+    """One ray per selected sample of the lit region of a field.
+
+    Every sample is a local plane wave: its direction is the local wave
+    vector of the dominant component, grad(psi) + Im(A* grad A)/|A|**2 (no
+    phase unwrapping), its optical path the complete, unwrapped phase over
+    k_0, and its field vector (E_x, E_y, E_z) the amplitudes relative to that
+    phase, with E_z from k.E = 0. The lit region gets one extra ray on each
+    side.
+
+    Returns an object with X, Y (positions), D (unit directions), S (optical
+    paths), E (field vectors), I (irradiance) on the structured ray grid
+    of shape `shape` ((1, N) for a one-dimensional field) and `launch` (the
+    positions, shape + (2,)).
+    """
+    if notes is None:
+        notes = []
+    C = field._components()
+    I = np.sum(np.abs(C)**2, axis=2)
+    lit = I > 1E-8*I.max()
+    rows, cols = np.flatnonzero(np.any(lit, axis=1)), np.flatnonzero(np.any(lit, axis=0))
+    c0, c1 = max(cols[0] - 1, 0), min(cols[-1] + 1, I.shape[1] - 1)
+    if field.one_d:
+        r0 = r1 = 1
+    else:
+        # one ray beyond the lit region on each side
+        r0, r1 = max(rows[0] - 1, 0), min(rows[-1] + 1, I.shape[0] - 1)
+    nr = n_rays or max(r1 - r0, c1 - c0) + 1
+    if cap is not None and not n_rays:
+        nr = min(cap, nr)
+    iy = np.array([1]) if field.one_d else np.unique(np.round(np.linspace(r0, r1, nr)).astype(int))
+    ix = np.unique(np.round(np.linspace(c0, c1, nr)).astype(int))
+    # local wave vector of the dominant component: gradient of the
+    # analytic phase plus Im(A* grad A)/|A|**2 (no phase unwrapping); in
+    # the dark the analytic phase alone
+    dom = int(np.argmax(np.sum(np.abs(C)**2, axis=(0, 1))))
+    Ad = field._A[:, :, dom if field.is_vector else 0]
+    X, Y = np.meshgrid(field.x, field._y)
+    dAx = np.gradient(Ad, field.x, axis=1)
+    dAy = np.zeros_like(Ad) if field.one_d else np.gradient(Ad, field._y, axis=0)
+    Ad2 = np.abs(Ad)**2
+    wet = Ad2 > 1E-8*Ad2.max()
+    with np.errstate(invalid="ignore", divide="ignore"):
+        gx = np.where(wet, np.imag(np.conj(Ad)*dAx)/Ad2, 0.0)
+        gy = np.where(wet, np.imag(np.conj(Ad)*dAy)/Ad2, 0.0)
+    gx = gx + 2*field.alpha[0]*X + field.beta[0]
+    gy = gy + 2*field.alpha[1]*Y + field.beta[1]
+    if field.one_d:
+        Y = np.zeros_like(Y)
+    # complete (unwrapped) phase: the optical path of the rays
+    q = field._qpf(dom) if field.is_vector else field._qpf(0)
+    Phi = np.where(lit, _unwrapped_phase(q), field._phase())
+    sel = np.ix_(iy, ix)
+    Xs, Ys, kx, ky = X[sel], Y[sel], gx[sel], gy[sel]
+    Is = I[sel]
+    k = np.real(field.k)
+    kz2 = k**2 - kx**2 - ky**2
+    bad = kz2 <= 0
+    if np.any(bad):
+        share = np.sum(Is[bad])/np.sum(Is)
+        if share > 1E-3:
+            raise PropagationFailure("evanescent local wave vectors in the input "
+                                     "({:.1e} of the power)".format(share))
+        notes.append("{:.1e} of the power in evanescent local waves: dropped".format(share))
+        kx, ky = np.where(bad, 0.0, kx), np.where(bad, 0.0, ky)
+        kz2 = k**2 - kx**2 - ky**2
+    kz = np.sqrt(np.maximum(kz2, 1E-12*k**2))
+    # input field vectors relative to exp(i*Phi), E_z from k.E = 0
+    rel_ = np.exp(1j*(field._phase()[sel] - Phi[sel]))
+    Ex, Ey = C[:, :, 0][sel]*rel_, C[:, :, 1][sel]*rel_
+    Ez = -(kx*Ex + ky*Ey)/kz
+    L = _LocalWaves()
+    L.X, L.Y, L.I = Xs, Ys, Is
+    L.D = np.stack([kx, ky, kz], axis=-1)/k
+    L.S = Phi[sel]/wavenumber(field.wavelength)
+    L.E = np.stack([Ex, Ey, Ez], axis=-1)
+    L.shape = Xs.shape
+    L.launch = np.stack([Xs, Ys], axis=-1)
+    return L
+
+
+def _rays_to_field_1d(x, points, directions, opl, wavelength, launch, amplitude, n=1.0,
+                      gouy=True):
+    """Ray field summation for rays in the x-z plane (fields independent of y).
+
+    The one-dimensional analogue of raywave.rays_to_field(): every pair of
+    neighbouring rays is a tube; its field at the samples between the rays
+    is sqrt(|dq/dp|) (q: launch, p: target positions) times the linearly
+    interpolated amplitude, its phase the mean of the linear interpolation
+    and of the tangent lines of the eikonal, -pi/2 where the tube is
+    folded (a crossed line caustic), and the tubes of all sheets covering a
+    sample are added. Samples are owned by the half-open interval [lo, hi).
+
+    Returns u of shape (len(x), C).
+    """
+    P = np.asarray(points, dtype=float)
+    d = np.asarray(directions, dtype=float)
+    S = np.asarray(opl, dtype=float)
+    Q = np.asarray(launch, dtype=float)
+    a = np.asarray(amplitude, dtype=complex)
+    k0 = 2*np.pi/wavelength
+    out = np.zeros((len(x), a.shape[1]), dtype=complex)
+    fin = np.isfinite(P) & np.isfinite(S) & np.all(np.isfinite(d), axis=1) & \
+        np.all(np.isfinite(a), axis=1)
+    i = np.flatnonzero(fin[:-1] & fin[1:])
+    p0, p1 = P[i], P[i + 1]
+    dq = Q[i + 1] - Q[i]
+    dp = p1 - p0
+    keep = (dp != 0) & (dq != 0)
+    i, p0, p1, dq, dp = i[keep], p0[keep], p1[keep], dq[keep], dp[keep]
+    amp = np.sqrt(np.abs(dq/dp)).astype(complex)
+    if gouy:
+        amp = amp*np.where(dp/dq < 0, np.exp(-0.5j*np.pi), 1.0)
+    dx = x[1] - x[0]
+    lo, hi = np.minimum(p0, p1), np.maximum(p0, p1)
+    j0 = np.clip(np.ceil((lo - x[0])/dx - 1E-9), 0, len(x)).astype(int)
+    j1 = np.clip(np.ceil((hi - x[0])/dx - 1E-9) - 1, -1, len(x) - 1).astype(int)
+    cnt = np.maximum(j1 - j0 + 1, 0)
+    t_ = np.repeat(np.arange(len(i)), cnt)
+    j = j0[t_] + np.arange(cnt.sum()) - np.repeat(np.cumsum(cnt) - cnt, cnt)
+    px = x[j]
+    ii = i[t_]
+    w = (px - p0[t_])/dp[t_]
+    S0 = S[ii] + n*d[ii, 0]*(px - P[ii])
+    S1 = S[ii + 1] + n*d[ii + 1, 0]*(px - P[ii + 1])
+    val = amp[t_]*np.exp(1j*k0*((1 - w)*S0 + w*S1))
+    val = val[:, None]*((1 - w)[:, None]*a[ii] + w[:, None]*a[ii + 1])
+    for c in range(a.shape[1]):
+        out[:, c] = np.bincount(j, val[:, c].real, len(x)) + 1j*np.bincount(j, val[:, c].imag, len(x))
+    return out
+
+
+def _assemble_rays(field, L, Pxy, D_out, S, amp, valid, n_out, x_out, y_out, max_N, notes,
+                   window=None):
+    """Field in an output plane from rays (ray field summation).
+
+    Pxy, D_out, S, amp (two transverse components) and valid are flat arrays
+    over the ray grid L.shape. The quadratic part of the phase is fitted
+    and kept analytic. Default grid: the footprint of the bright rays
+    (united with window = (x0, x1, y0, y1) if given), with the input's
+    number of samples (scaled to the window) or more where the residual
+    phase needs them, at most max_N per axis.
+    """
+    from .raywave import rays_to_field
+
+    k0 = wavenumber(field.wavelength)
+    shape = L.shape
+    amp = amp.copy()
+    amp[~valid] = np.nan
+    S = S.copy()
+    S[~valid] = np.nan
+    Pxy = Pxy.copy()
+    Pxy[~valid] = np.nan
+    if field.one_d:
+        Pxy[:, 1] = 0.0
+    # analytic quadratic part of the output phase k0*S
+    ok = valid & np.all(np.isfinite(amp), axis=1)
+    w = np.sum(np.abs(amp[ok])**2, axis=1) + 1E-300
+    a2, b2, c2, d2, e2 = _fit_separable_quadratic(k0*S[ok], Pxy[ok, 0], Pxy[ok, 1], w)
+    S_rest = S - (a2*Pxy[:, 0]**2 + b2*Pxy[:, 1]**2 + c2*Pxy[:, 0] + d2*Pxy[:, 1] + e2)/k0
+    D_rest = D_out.copy()
+    D_rest[:, 0] -= (2*a2*Pxy[:, 0] + c2)/(k0*n_out)
+    D_rest[:, 1] -= (2*b2*Pxy[:, 1] + d2)/(k0*n_out)
+    # output grid
+    if x_out is not None:
+        xo = _linear(x_out, "x_out")
+        yo = None if field.one_d else _linear(y_out, "y_out")
+    else:
+        # footprint of the rays that carry power
+        wr = np.sum(np.abs(amp)**2, axis=1)
+        bright = ok & (np.nan_to_num(wr) > 1E-4*np.nanmax(wr))
+        pts = Pxy[bright]
+        x0, x1 = pts[:, 0].min(), pts[:, 0].max()
+        y0, y1 = pts[:, 1].min(), pts[:, 1].max()
+        mx, my = 0.1*(x1 - x0) + 1E-12, 0.1*(y1 - y0) + 1E-12
+        x0, x1, y0, y1 = x0 - mx, x1 + mx, y0 - my, y1 + my
+        Nx0, Ny0 = len(field.x), len(field._y)
+        if window is not None:
+            x0, x1 = min(x0, window[0]), max(x1, window[1])
+            y0, y1 = min(y0, window[2]), max(y1, window[3])
+            Nx0 = int(np.ceil((x1 - x0)/_spacing(field.x))) + 1
+            if not field.one_d:
+                Ny0 = int(np.ceil((y1 - y0)/_spacing(field._y))) + 1
+        # samples: the input's number, or more if the residual phase
+        # (beyond the analytic quadratic) needs them (two samples per
+        # period of its largest local frequency)
+        kr = k0*n_out*np.abs(D_rest[bright, :2])
+        kxm, kym = kr.max(axis=0) if len(kr) else (0.0, 0.0)
+        Nx = max(Nx0, int(np.ceil((x1 - x0)*kxm/np.pi*1.25)) + 1)
+        Ny = max(Ny0, int(np.ceil((y1 - y0)*kym/np.pi*1.25)) + 1)
+        if max(Nx, Ny) > max_N:
+            notes.append("output grid limited to {} samples (residual phase needs {}x{})"
+                         .format(max_N, Nx, Ny))
+            Nx, Ny = min(Nx, max_N), min(Ny, max_N)
+        xo = _window(x0, x1, Nx)
+        yo = None if field.one_d else _window(y0, y1, Ny)
+    if field.one_d:
+        u = _rays_to_field_1d(xo, Pxy[:, 0], D_rest, S_rest, field.wavelength,
+                              L.X.reshape(-1), amp, n=n_out)
+        return Field(u, xo, None, field.wavelength, n_out, alpha=(a2, 0.0), beta=(c2, 0.0),
+                     gamma=e2, z=field.z)
+    u = rays_to_field(xo, yo, Pxy.reshape(shape + (2,)), D_rest.reshape(shape + (3,)),
+                      S_rest.reshape(shape), field.wavelength, launch=L.launch, irradiance=1.0,
+                      n=n_out, amplitude=amp.reshape(shape + (2,)))
+    return Field(u, xo, yo, field.wavelength, n_out, alpha=(a2, b2), beta=(c2, d2), gamma=e2,
+                 z=field.z)
+
+
+# --------------------------------------------------------------------------
+# local plane interface approximation
+# --------------------------------------------------------------------------
+
+class _Profile(object):
+    """Height h(x, y) of an interface and its gradient, at any point.
+
+    height: a callable h(x, y) (h(x) for one-dimensional fields) or an
+    array on the grid of `field` (interpolated with cubic splines, clamped
+    at the window). gradient: optional callable returning (h_x, h_y)
+    (h_x for one-dimensional fields); default: central differences of the
+    callable, or the derivatives of the spline.
+    """
+
+    def __init__(self, height, field, gradient=None):
+        from scipy.interpolate import RectBivariateSpline
+        self.one_d = field.one_d
+        self._grad = gradient
+        self._delta = 1E-3*_spacing(field.x)
+        if callable(height):
+            self._h = height
+            self._spline = None
+        else:
+            v = np.asarray(height, dtype=float)
+            self._lo = (field.x[0], field._y[0])
+            self._hi = (field.x[-1], field._y[-1])
+            if field.one_d:
+                if v.shape != (len(field.x),):
+                    raise ValueError("height array does not match the grid")
+                self._spline = CubicSpline(field.x, v)
+            else:
+                if v.shape != (len(field._y), len(field.x)):
+                    raise ValueError("height array does not match the grid")
+                self._spline = RectBivariateSpline(field._y, field.x, v, kx=3, ky=3)
+
+    def _clip(self, x, y):
+        return np.clip(x, self._lo[0], self._hi[0]), np.clip(y, self._lo[1], self._hi[1])
+
+    def __call__(self, x, y):
+        if self._spline is not None:
+            x, y = self._clip(x, y)
+            if self.one_d:
+                return self._spline(x)
+            return self._spline.ev(y, x)
+        if self.one_d:
+            return np.broadcast_to(np.asarray(self._h(x), dtype=float), np.shape(x))
+        return np.broadcast_to(np.asarray(self._h(x, y), dtype=float), np.shape(x))
+
+    def gradient(self, x, y):
+        if self._grad is not None:
+            if self.one_d:
+                return np.asarray(self._grad(x), dtype=float), np.zeros(np.shape(x))
+            gx, gy = self._grad(x, y)
+            return (np.broadcast_to(np.asarray(gx, dtype=float), np.shape(x)),
+                    np.broadcast_to(np.asarray(gy, dtype=float), np.shape(x)))
+        if self._spline is not None:
+            xc, yc = self._clip(x, y)
+            if self.one_d:
+                return self._spline(xc, 1), np.zeros(np.shape(x))
+            return self._spline.ev(yc, xc, dx=0, dy=1), self._spline.ev(yc, xc, dx=1, dy=0)
+        d = self._delta
+        gx = (self(x + d, y) - self(x - d, y))/(2*d)
+        gy = np.zeros(np.shape(x)) if self.one_d else (self(x, y + d) - self(x, y - d))/(2*d)
+        return gx, gy
+
+
+def _perpendicular(d):
+    """A unit vector perpendicular to every row of d."""
+    a = np.where(np.abs(d[:, :1]) < 0.9, [[1.0, 0.0, 0.0]], [[0.0, 1.0, 0.0]])
+    v = np.cross(d, a)
+    return v/np.linalg.norm(v, axis=1, keepdims=True)
+
+
+def _lpia_trace(P, D, S, E, surfaces, media, wavelength, fresnel=True, shape=None, info=None):
+    """Rays through interfaces z = z_j + h_j(x, y) in the local plane
+    interface approximation.
+
+    P, D (unit), S (optical path), E (complex field vectors): flat arrays
+    of the rays (positions in a frame whose z axis is the optical axis).
+    surfaces: list of (z_j, profile) with profile a _Profile or None (plane
+    z = z_j); media: the indices n_0, ..., n_J before, between and behind
+    them. At every interface the ray is intersected with the surface
+    (Newton's method), the surface is replaced by its tangent plane, the
+    direction follows the vector law of refraction and the field vector the
+    Fresnel coefficients t_s, t_p of that plane at the local angle of
+    incidence (fresnel=False: lossless, sqrt(n_1 cos_1/(n_2 cos_2)) for
+    both). The factor sqrt(cos_2/cos_1) of the change of the tube's cross
+    section at the interface is included, so that the energy law of
+    rays_to_field() gives the transmitted power. Neighbouring rays (on the
+    structured grid `shape`) whose heights jump (a step of the profile, a
+    phase mismatch of more than pi/4 against the local slopes) are marked
+    invalid.
+
+    Returns P, D, S, E, valid; diagnostics are added to the dict info.
+    """
+    from .interfaces import t_s, t_p
+
+    k0 = wavenumber(wavelength)
+    P, D, S, E = P.copy(), D.copy(), S.copy().astype(float), E.copy()
+    valid = np.all(np.isfinite(P), axis=1) & np.all(np.isfinite(D), axis=1)
+    info = {} if info is None else info
+    info.setdefault("tir", np.zeros(len(P), bool))
+    info.setdefault("shadow", np.zeros(len(P), bool))
+    info.setdefault("step", np.zeros(len(P), bool))
+    info.setdefault("max_incidence", 0.0)
+    info.setdefault("min_radius", np.inf)
+    info.setdefault("min_facet", np.inf)
+    info.setdefault("bright", np.ones(len(P), bool))
+    for j, (zj, prof) in enumerate(surfaces):
+        n1, n2 = media[j], media[j + 1]
+        # intersection
+        if prof is None:
+            s = (zj - P[:, 2])/D[:, 2]
+            gx = gy = np.zeros(len(P))
+        else:
+            s = (zj + prof(P[:, 0], P[:, 1]) - P[:, 2])/D[:, 2]
+            tol = 1E-7*wavelength
+            done = np.zeros(len(P), bool)
+            for _ in range(60):
+                x, y = P[:, 0] + s*D[:, 0], P[:, 1] + s*D[:, 1]
+                f = P[:, 2] + s*D[:, 2] - zj - prof(x, y)
+                gx, gy = prof.gradient(x, y)
+                fp = D[:, 2] - gx*D[:, 0] - gy*D[:, 1]
+                with np.errstate(invalid="ignore", divide="ignore"):
+                    ds = np.where(fp > 0, f/fp, 0.0)
+                s = s - ds
+                done = np.abs(f) < tol
+                if np.all(done | ~valid):
+                    break
+            x, y = P[:, 0] + s*D[:, 0], P[:, 1] + s*D[:, 1]
+            gx, gy = prof.gradient(x, y)
+            f = P[:, 2] + s*D[:, 2] - zj - prof(x, y)
+            valid &= np.abs(f) < 1E3*tol
+        S = S + np.real(n1)*s
+        att = np.exp(-k0*np.imag(n1)*s)
+        P = P + s[:, None]*D
+        N = np.stack([-gx, -gy, np.ones(len(P))], axis=1)
+        N /= np.linalg.norm(N, axis=1, keepdims=True)
+        # steps of the profile between neighbouring rays
+        if prof is not None and shape is not None and abs(np.real(n2 - n1)) > 0:
+            H = (P[:, 2] - zj).reshape(shape)
+            Xg, Yg = P[:, 0].reshape(shape), P[:, 1].reshape(shape)
+            Gx, Gy = gx.reshape(shape), gy.reshape(shape)
+            lim = np.pi/4/(k0*abs(np.real(n2 - n1)))
+            jump = np.zeros(shape, bool)
+            for ax in (0, 1):
+                if shape[ax] < 2:
+                    continue
+                sl0 = (slice(None, -1), slice(None)) if ax == 0 else (slice(None), slice(None, -1))
+                sl1 = (slice(1, None), slice(None)) if ax == 0 else (slice(None), slice(1, None))
+                dH = H[sl1] - H[sl0]
+                pred = 0.5*(Gx[sl0] + Gx[sl1])*(Xg[sl1] - Xg[sl0]) + \
+                    0.5*(Gy[sl0] + Gy[sl1])*(Yg[sl1] - Yg[sl0])
+                with np.errstate(invalid="ignore"):
+                    st = np.abs(dH - pred) > lim
+                jump[sl1] |= st
+                # curvature of the facets and their widths (between steps)
+                dist = np.hypot(Xg[sl1] - Xg[sl0], Yg[sl1] - Yg[sl0])
+                with np.errstate(invalid="ignore", divide="ignore"):
+                    kap = np.hypot(Gx[sl1] - Gx[sl0], Gy[sl1] - Gy[sl0])/dist
+                br = info["bright"].reshape(shape)
+                both = br[sl0] & br[sl1]
+                kap = kap[~st & both & np.isfinite(kap)]
+                if kap.size:
+                    info["min_radius"] = min(info["min_radius"], 1/max(kap.max(), 1E-300))
+                stb = st & both
+                if np.any(stb):
+                    lines = stb.T if ax == 0 else stb
+                    dl = dist.T if ax == 0 else dist
+                    for row, drow in zip(lines, dl):
+                        idx = np.flatnonzero(row)
+                        if len(idx) > 1:
+                            c = np.concatenate([[0.0], np.cumsum(np.nan_to_num(drow))])
+                            info["min_facet"] = min(info["min_facet"], np.diff(c[idx + 1]).min())
+            jump = jump.reshape(-1)
+            info["step"] |= jump & valid
+            valid &= ~jump
+        # refraction at the tangent plane
+        cos1 = np.sum(D*N, axis=1)
+        shadow = ~(cos1 > 0)
+        info["shadow"] |= shadow & valid
+        valid &= ~shadow
+        cos1 = np.clip(cos1, 0.0, 1.0)
+        eta = np.real(n1)/np.real(n2)
+        c2sq = 1 - eta**2*(1 - cos1**2)
+        tir = c2sq <= 0
+        info["tir"] |= tir & valid
+        valid &= ~tir
+        cos2 = np.sqrt(np.maximum(c2sq, 0.0))
+        with np.errstate(invalid="ignore"):
+            inc = np.degrees(np.arccos(cos1[valid])) if np.any(valid) else np.zeros(1)
+        info["max_incidence"] = max(info["max_incidence"], float(inc.max()) if inc.size else 0.0)
+        D2 = eta*D + (cos2 - eta*cos1)[:, None]*N
+        sv = np.cross(D, N)
+        ns = np.linalg.norm(sv, axis=1, keepdims=True)
+        sv = np.where(ns > 1E-12, sv/np.maximum(ns, 1E-300), _perpendicular(D))
+        p1 = np.cross(D, sv)
+        p2 = np.cross(D2, sv)
+        Es = np.sum(E*sv, axis=1)
+        Ep = np.sum(E*p1, axis=1)
+        if fresnel:
+            phi = np.arccos(cos1)
+            ts, tp = t_s(phi, n1, n2), t_p(phi, n1, n2)
+        else:
+            with np.errstate(invalid="ignore", divide="ignore"):
+                ts = tp = np.sqrt(np.real(n1)*cos1/(np.real(n2)*cos2))
+        with np.errstate(invalid="ignore", divide="ignore"):
+            g = att*np.sqrt(cos2/cos1)
+        E = g[:, None]*((ts*Es)[:, None]*sv + (tp*Ep)[:, None]*p2)
+        D = D2
+    return P, D, S, E, valid
+
+
+def _lpia_step(*args, **kw):
+    """Shared part of LocalPlaneInterface and ThinElement(method="lpia")."""
+    with np.errstate(invalid="ignore", divide="ignore", over="ignore"):
+        return _lpia_step_(*args, **kw)
+
+
+def _lpia_step_(field, surfaces, media, distance, fresnel, oversample, n_rays, x_out, y_out,
+                max_N, extra_opl=0.0, keep_window=True):
+    notes = []
+    if oversample > 1:
+        x = _window(field.x[0], field.x[-1], (len(field.x) - 1)*oversample + 1)
+        y = None if field.one_d else _window(field._y[0], field._y[-1],
+                                              (len(field._y) - 1)*oversample + 1)
+        field_r = field.resample(x, y)
+    else:
+        field_r = field
+    if not np.isclose(np.real(field.n), np.real(media[0])):
+        notes.append("field medium n={} differs from n_before={}".format(field.n, media[0]))
+    L = _local_plane_waves(field_r, n_rays, cap=None, notes=notes)
+    M = int(np.prod(L.shape))
+    P0 = np.stack([L.X, L.Y, np.zeros_like(L.X)], axis=-1).reshape(-1, 3)
+    D0 = L.D.reshape(-1, 3)
+    info = {"bright": L.I.reshape(-1) > 1E-4*L.I.max()}
+    P, D, S, E, valid = _lpia_trace(P0, D0, L.S.reshape(-1), L.E.reshape(-1, 3), surfaces,
+                                    media, field.wavelength, fresnel, L.shape, info)
+    hits = np.where(valid, P[:, 2], np.nan)
+    if distance is None or distance == "behind":
+        distance = float(np.nanmax(hits))
+    elif isinstance(distance, str):
+        raise ValueError("distance must be a number or 'behind'")
+    n_out = media[-1]
+    s = (distance - P[:, 2])/D[:, 2]
+    S = S + np.real(n_out)*s + extra_opl
+    E = E*np.exp(-wavenumber(field.wavelength)*np.imag(n_out)*s)[:, None]
+    P = P + s[:, None]*D
+    with np.errstate(invalid="ignore", divide="ignore"):
+        scale = np.sqrt(np.abs(D0[:, 2])/np.abs(D[:, 2]))
+    amp = E[:, :2]*scale[:, None]
+    Iw = L.I.reshape(-1)
+    tot = np.sum(Iw)
+    for key, text in (("tir", "total internal reflection"), ("shadow", "shadowed (grazing) rays"),
+                      ("step", "rays at steps of the profile")):
+        share = np.sum(Iw[info[key]])/tot
+        if share > 1E-6:
+            notes.append("{}: {:.1e} of the power dropped".format(text, share))
+    if info["min_facet"] < 10*field.wavelength:
+        notes.append("facets down to {:.1f} wavelengths wide: LPIA questionable, consider a "
+                     "rigorous model (RCWA, FDTD)".format(info["min_facet"]/field.wavelength))
+    if info["min_radius"] < 2*field.wavelength:
+        notes.append("radius of curvature of the profile down to {:.1f} wavelengths: LPIA "
+                     "questionable".format(info["min_radius"]/field.wavelength))
+    if info["max_incidence"] > 60:
+        notes.append("angles of incidence up to {:.0f} deg".format(info["max_incidence"]))
+    # rays that cross between the interface and the output plane (a fold of
+    # the ray map: a caustic in the geometrical part of the step)
+    bright = (valid & (Iw > 1E-4*Iw.max())).reshape(L.shape)
+    Pg = P[:, :2].reshape(L.shape + (2,))
+    fold = False
+    for ax in ((1,) if field.one_d else (0, 1)):
+        dP = np.diff(Pg[..., 1 - ax], axis=ax)
+        dQ = np.diff(L.launch[..., 1 - ax], axis=ax)
+        both = bright[1:] & bright[:-1] if ax == 0 else bright[:, 1:] & bright[:, :-1]
+        fold |= bool(np.any((dP*dQ <= 0) & both))
+    if fold:
+        notes.append("rays cross between the interface and the output plane (caustic): put the "
+                     "output plane in front of the interface (e.g. distance=0, back to the "
+                     "input plane) and propagate with wave optics")
+    window = None
+    if keep_window:
+        window = (field.x[0], field.x[-1], field._y[0], field._y[-1])
+    out = _assemble_rays(field, L, P[:, :2], D, S, amp, valid, float(np.real(n_out)),
+                         x_out, y_out, max_N, notes, window=window)
+    out.n = n_out
+    out.z = field.z + distance
+    return out, notes, info
+
+
+class LocalPlaneInterface(Step):
+    """Curved or structured interface in the local plane interface
+    approximation (LPIA).
+
+    The interface z = z_field + h(x, y) separates the field's medium
+    (n_before) from n_after. Every sample of the field is a local plane wave
+    (see Trace) and becomes a ray; at the point where it meets the surface,
+    the surface is replaced by its tangent plane, and the plane wave is
+    refracted (vector law of refraction) and transmitted with the Fresnel
+    matrix (t_s, t_p) of that plane at the local angle of incidence, so the
+    polarization is followed vectorially. The rays continue straight to the
+    output plane z_field + distance, where the field is collected by ray
+    field summation (energy law of the ray tubes, the quadratic part of the
+    phase analytic) as in Trace. Heights may be negative and the output
+    plane may lie in front of parts of the surface: rays are then followed
+    backwards (virtual fields in the homogeneous media).
+
+    Compared with the thin element approximation (ThinElement, a phase
+    k_0*(n_2 - n_1)*h in a single plane) the LPIA includes the refraction
+    inside the profile (the lateral walk-off of the light between the
+    planes), the dependence of the phase and of the Fresnel transmission on
+    the angle of incidence, and the polarization. It is a geometrical
+    optics approximation of the interface: it holds where the profile is
+    locally plane on the scale of the wavelength (facets and radii of
+    curvature of many wavelengths) and the field is locally one plane wave
+    (homeomorphic: no foci or caustics at the interface). Steps of the
+    profile (Fresnel lenses, kinoforms) are detected; the light at a step
+    (about one ray) is dropped, which models the loss at the draft facet
+    roughly. Structures of a few wavelengths need a rigorous model
+    (litho.rcwa, the FDTD). `ChainResult.report()` lists total internal
+    reflection, shadowing, steps, the smallest facet width and radius of
+    curvature and the largest angle of incidence.
+
+    Parameters
+    ----------
+    height : callable or array
+        h(x, y) (h(x) for one-dimensional fields), relative to the field's
+        plane, or values on the field's grid (cubic spline interpolation).
+    n_after : number
+        Index behind the interface (complex: absorbing).
+    n_before : number, optional
+        Index in front (default: the field's medium).
+    gradient : callable, optional
+        (h_x, h_y) = gradient(x, y) (h_x = gradient(x) in 1D). Default:
+        central differences (callable) or spline derivatives (array).
+    distance : number or "behind", optional
+        Output plane relative to the field's plane. "behind" (default): the
+        largest height met by the light, just behind the interface. A
+        smaller value puts the output plane in front of (parts of) the
+        interface: the transmitted field is propagated back geometrically
+        (a virtual field). The geometrical propagation between the
+        interface and the output plane misses diffraction and fails where
+        rays cross (focusing surfaces; reported). For strongly focusing
+        surfaces use distance=0 (the transmitted field taken back to the
+        input plane, where the backward rays diverge) and a following
+        Propagate, which carries it through the caustic.
+    fresnel : bool, optional
+        Fresnel transmission (default); False for a lossless interface.
+    oversample : int, optional
+        Rays per sample (per axis) of the field: the field is interpolated
+        onto a finer grid first. Use it when the profile varies faster than
+        the field's sampling.
+    n_rays : int, optional
+        Rays per axis over the lit part of the field (default: one per
+        sample).
+    x_out, y_out : arrays, optional
+        Output grid (default: the input window, extended to the footprint
+        of the rays, with more samples where the residual phase needs
+        them, at most max_N per axis).
+    max_N : int, optional
+    """
+
+    def __init__(self, height, n_after, n_before=None, gradient=None, distance=None,
+                 fresnel=True, oversample=1, n_rays=None, x_out=None, y_out=None, max_N=4096,
+                 label=None):
+        self.height = height
+        self.gradient = gradient
+        self.n_after = n_after
+        self.n_before = n_before
+        self.distance = distance
+        self.fresnel = fresnel
+        self.oversample = int(oversample)
+        self.n_rays = n_rays
+        self.x_out, self.y_out = x_out, y_out
+        self.max_N = int(max_N)
+        self.label = label or "LPIA interface n={}".format(n_after)
+        self.last_info = None
+
+    def apply(self, field, ctx):
+        n1 = field.n if self.n_before is None else self.n_before
+        prof = _Profile(self.height, field, self.gradient)
+        out, notes, info = _lpia_step(field, [(0.0, prof)], [n1, self.n_after], self.distance,
+                                      self.fresnel, self.oversample, self.n_rays, self.x_out,
+                                      self.y_out, self.max_N)
+        self.last_info = info
+        return out, {"method": "LPIA", "notes": notes}
+
+
 class Trace(Step):
     """Geometrical optics field tracing through a raytrace.System.
 
@@ -1487,7 +2184,6 @@ class Trace(Step):
 
     def apply(self, field, ctx):
         from .raytrace import Rays
-        from .raywave import rays_to_field
 
         if field.one_d:
             raise ValueError("Trace needs a two-dimensional field")
@@ -1499,117 +2195,30 @@ class Trace(Step):
         k0 = wavenumber(field.wavelength)
         if not np.isclose(field.wavelength, sysm.wavelength, rtol=1E-9):
             notes.append("field wavelength differs from the system's: tracing at the system's indices")
-        C = field._components()
-        I = np.sum(np.abs(C)**2, axis=2)
-        lit = I > 1E-8*I.max()
-        rows, cols = np.flatnonzero(np.any(lit, axis=1)), np.flatnonzero(np.any(lit, axis=0))
-        # one ray beyond the lit region on each side
-        r0, r1 = max(rows[0] - 1, 0), min(rows[-1] + 1, I.shape[0] - 1)
-        c0, c1 = max(cols[0] - 1, 0), min(cols[-1] + 1, I.shape[1] - 1)
-        nr = self.n_rays or min(256, max(r1 - r0, c1 - c0) + 1)
-        iy = np.unique(np.round(np.linspace(r0, r1, nr)).astype(int))
-        ix = np.unique(np.round(np.linspace(c0, c1, nr)).astype(int))
-        # local wave vector of the dominant component: gradient of the
-        # analytic phase plus Im(A* grad A)/|A|**2 (no phase unwrapping); in
-        # the dark the analytic phase alone
-        dom = int(np.argmax(np.sum(np.abs(C)**2, axis=(0, 1))))
-        Ad = field._A[:, :, dom if field.is_vector else 0]
-        X, Y = np.meshgrid(field.x, field._y)
-        dAy, dAx = np.gradient(Ad, field._y, field.x)
-        Ad2 = np.abs(Ad)**2
-        wet = Ad2 > 1E-8*Ad2.max()
-        with np.errstate(invalid="ignore", divide="ignore"):
-            gx = np.where(wet, np.imag(np.conj(Ad)*dAx)/Ad2, 0.0)
-            gy = np.where(wet, np.imag(np.conj(Ad)*dAy)/Ad2, 0.0)
-        gx = gx + 2*field.alpha[0]*X + field.beta[0]
-        gy = gy + 2*field.alpha[1]*Y + field.beta[1]
-        # complete (unwrapped) phase: the optical path of the rays
-        q = field._qpf(dom) if field.is_vector else field._qpf(0)
-        Phi = np.where(lit, _unwrapped_phase(q), field._phase())
-        sel = np.ix_(iy, ix)
-        Xs, Ys, kx, ky = X[sel], Y[sel], gx[sel], gy[sel]
-        k = np.real(field.k)
-        kz2 = k**2 - kx**2 - ky**2
-        bad = kz2 <= 0
-        if np.any(bad):
-            share = np.sum(I[sel][bad])/np.sum(I[sel])
-            if share > 1E-3:
-                raise PropagationFailure("Trace: evanescent local wave vectors in the input "
-                                         "({:.1e} of the power)".format(share))
-            notes.append("{:.1e} of the power in evanescent local waves: dropped".format(share))
-            kx, ky = np.where(bad, 0.0, kx), np.where(bad, 0.0, ky)
-            kz2 = k**2 - kx**2 - ky**2
-        kz = np.sqrt(np.maximum(kz2, 1E-12*k**2))
-        D = np.stack([kx, ky, kz], axis=-1)/k
-        # input field vectors relative to exp(i*Phi), E_z from k.E = 0
-        rel = np.exp(1j*(field._phase()[sel] - Phi[sel]))
-        Ex, Ey = C[:, :, 0][sel]*rel, C[:, :, 1][sel]*rel
-        Ez = -(kx*Ex + ky*Ey)/kz
-        E_in = np.stack([Ex, Ey, Ez], axis=-1)
+        L = _local_plane_waves(field, self.n_rays, cap=256, notes=notes)
         # rays from the field plane
         o0 = sysm.frames()[0][0][0]
         z0 = o0[2] - self.distance
-        P0 = np.stack([Xs, Ys, np.full_like(Xs, z0)], axis=-1)
-        shape = Xs.shape
-        rays = Rays(P0.reshape(-1, 3), D.reshape(-1, 3), (Phi[sel]/k0).reshape(-1))
+        P0 = np.stack([L.X, L.Y, np.full_like(L.X, z0)], axis=-1)
+        rays = Rays(P0.reshape(-1, 3), L.D.reshape(-1, 3), L.S.reshape(-1))
         pb = sysm.trace_polarization(rays, clip=self.clip, coatings=self.coatings, media=self.media)
         b = pb.bundle
         valid = b.valid
-        lost = 1 - np.sum(I[sel].reshape(-1)*b.valid)/np.sum(I[sel])
+        lost = 1 - np.sum(L.I.reshape(-1)*b.valid)/np.sum(L.I)
         if lost > 1E-6:
             notes.append("{:.1e} of the power vignetted or lost".format(lost))
         _, R_img = sysm.frames()[1]
         P_out, D_out = sysm.to_image_frame(b.points[-1], b.directions[-1])
         n_out = float(np.real(sysm.n[-1]))
-        E_out = np.einsum("nij,nj->ni", pb.P[-1], E_in.reshape(-1, 3)) @ R_img
-        cos_in = np.abs(D.reshape(-1, 3)[:, 2])
+        E_out = np.einsum("nij,nj->ni", pb.P[-1], L.E.reshape(-1, 3)) @ R_img
+        cos_in = np.abs(L.D.reshape(-1, 3)[:, 2])
         cos_out = np.abs(D_out[:, 2])
         with np.errstate(invalid="ignore", divide="ignore"):
             scale = np.sqrt(np.real(n_in)*cos_in/(n_out*cos_out))
         amp = E_out[:, :2]*scale[:, None]
-        amp[~valid] = np.nan
-        S = b.opl[-1].copy()
-        S[~valid] = np.nan
-        Pxy = P_out[:, :2].copy()
-        Pxy[~valid] = np.nan
-        # analytic quadratic part of the output phase k0*S
-        ok = valid & np.all(np.isfinite(amp), axis=1)
-        w = np.sum(np.abs(amp[ok])**2, axis=1) + 1E-300
-        a2, b2, c2, d2, e2 = _fit_separable_quadratic(k0*S[ok], Pxy[ok, 0], Pxy[ok, 1], w)
-        S_rest = S - (a2*Pxy[:, 0]**2 + b2*Pxy[:, 1]**2 + c2*Pxy[:, 0] + d2*Pxy[:, 1] + e2)/k0
-        D_rest = D_out.copy()
-        D_rest[:, 0] -= (2*a2*Pxy[:, 0] + c2)/(k0*n_out)
-        D_rest[:, 1] -= (2*b2*Pxy[:, 1] + d2)/(k0*n_out)
-        # output grid
-        if self.x_out is not None:
-            xo, yo = _linear(self.x_out, "x_out"), _linear(self.y_out, "y_out")
-        else:
-            # footprint of the rays that carry power
-            wr = np.sum(np.abs(amp)**2, axis=1)
-            bright = ok & (np.nan_to_num(wr) > 1E-4*np.nanmax(wr))
-            pts = Pxy[bright]
-            x0, x1 = pts[:, 0].min(), pts[:, 0].max()
-            y0, y1 = pts[:, 1].min(), pts[:, 1].max()
-            mx, my = 0.1*(x1 - x0) + 1E-12, 0.1*(y1 - y0) + 1E-12
-            x0, x1, y0, y1 = x0 - mx, x1 + mx, y0 - my, y1 + my
-            # samples: the input's number, or more if the residual phase
-            # (beyond the analytic quadratic) needs them (two samples per
-            # period of its largest local frequency)
-            kr = k0*n_out*np.abs(D_rest[bright, :2])
-            kxm, kym = kr.max(axis=0) if len(kr) else (0.0, 0.0)
-            Nx = max(len(field.x), int(np.ceil((x1 - x0)*kxm/np.pi*1.25)) + 1)
-            Ny = max(len(field._y), int(np.ceil((y1 - y0)*kym/np.pi*1.25)) + 1)
-            if max(Nx, Ny) > self.max_N:
-                notes.append("output grid limited to {} samples (residual phase needs {}x{})"
-                             .format(self.max_N, Nx, Ny))
-                Nx, Ny = min(Nx, self.max_N), min(Ny, self.max_N)
-            xo, yo = _window(x0, x1, Nx), _window(y0, y1, Ny)
-        launch = np.stack([Xs, Ys], axis=-1)
-        u = rays_to_field(xo, yo, Pxy.reshape(shape + (2,)), D_rest.reshape(shape + (3,)),
-                          S_rest.reshape(shape), field.wavelength, launch=launch, irradiance=1.0,
-                          n=n_out, amplitude=amp.reshape(shape + (2,)))
-        out = Field(u, xo, yo, field.wavelength, n_out, alpha=(a2, b2), beta=(c2, d2), gamma=e2,
-                    z=field.z + self.distance + float(sysm.frames()[1][0][2] - o0[2]))
+        out = _assemble_rays(field, L, P_out[:, :2], D_out, b.opl[-1], amp, valid, n_out,
+                             self.x_out, self.y_out, self.max_N, notes)
+        out.z = field.z + self.distance + float(sysm.frames()[1][0][2] - o0[2])
         return out, {"method": "geometric (ray trace)", "notes": notes}
 
 

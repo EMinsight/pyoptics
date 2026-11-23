@@ -45,8 +45,25 @@ beam widths, divergence angles and beam propagation ratios - Part 3: Intrinsic
 and geometrical laser beam classification, propagation and details of test
 methods", International Organization for Standardization (2004).
 
+ISO 11146-2:2021, "Lasers and laser-related equipment - Test methods for laser
+beam widths, divergence angles and beam propagation ratios - Part 2: General
+astigmatic beams", International Organization for Standardization (2021).
+
 A. E. Siegman, "New developments in laser resonators", Proc. SPIE 1224, 2-14
 (1990).
+
+G. Nemes and A. E. Siegman, "Measurement of all ten second-order moments of
+an astigmatic beam by the use of rotating simple astigmatic (anamorphic)
+optics", J. Opt. Soc. Am. A 11, 2257-2264 (1994).
+
+General astigmatic beams
+------------------------
+moment_matrix() computes all ten second moments of a coherent field as a
+4x4 matrix P over (x, y, u_x, u_y); intrinsic_parameters() derives the M²
+along x and y, the effective M² = (4*pi/lambda)*det(P)**(1/4), the two
+intrinsic M² (from the symplectic eigenvalues of P, invariant in every
+lossless first-order system), the intrinsic astigmatism and the twist
+parameter <x u_y> - <y u_x>.
 """
 
 import warnings
@@ -294,3 +311,130 @@ def fit_caustic(z, d, wavelength):
     M2 = np.pi/(4*wavelength)*d_0*theta
 
     return CausticFit(d_0, z_0, theta, z_R, M2, (a, b, c))
+
+
+# general astigmatic beams (ISO 11146-2):
+def moment_matrix(field, x, y, wavelength):
+    """All ten second moments of a coherent beam as a 4x4 matrix.
+
+    The Wigner second moments (ISO 11146-2) of a sampled field E(x, y) in a
+    paraxial beam, in the order (x, y, u_x, u_y) with the angles u = lambda
+    times the spatial frequency (reduced angles, vacuum wavelength) ::
+
+        P = [[<x x>,   <x y>,   <x u_x>,   <x u_y>],
+             [<y x>,   <y y>,   <y u_x>,   <y u_y>],
+             [<u_x x>, ...                         ],
+             [...                     <u_y u_y>]],
+
+    all central (centroid and mean direction subtracted). The angular moments
+    come from the power spectrum, the mixed ones from the local direction
+    u = (lambda/(2*pi))*grad(phase), i.e. <x u_j> = (1/k)*integral
+    x*Im(conj(E)*dE/dx_j)/P (derivatives by FFT). Through a first-order
+    system M, P transforms as M P M^T.
+
+    Parameters
+    ----------
+    field : 2d array
+        Complex field (exp(+i*k*z) convention).
+    x, y : arrays
+        Equidistant coordinates (linear or meshed).
+    wavelength : number
+        Vacuum wavelength (with reduced angles; the wavelength in the medium
+        for true angles).
+
+    Returns
+    -------
+    P : array
+        4x4 symmetric moment matrix.
+    centroid : array
+        (x_c, y_c, u_xc, u_yc).
+    """
+
+    X, Y = ensure_meshgrid(x, y)
+    dx, dy = X[0, 1] - X[0, 0], Y[1, 0] - Y[0, 0]
+    E = np.asarray(field, dtype=complex)
+    I = np.abs(E)**2
+    power = I.sum()
+    f_x = np.fft.fftfreq(E.shape[1], dx)
+    f_y = np.fft.fftfreq(E.shape[0], dy)
+    F_x, F_y = np.meshgrid(f_x, f_y)
+    E_f = np.fft.fft2(E)
+    S = np.abs(E_f)**2
+    S /= S.sum()
+    dE_x = np.fft.ifft2(2j*np.pi*F_x*E_f)
+    dE_y = np.fft.ifft2(2j*np.pi*F_y*E_f)
+    k = 2*np.pi/wavelength
+    # local directions weighted with the intensity:
+    J_x = np.imag(np.conj(E)*dE_x)/k
+    J_y = np.imag(np.conj(E)*dE_y)/k
+
+    r = [X, Y]
+    c_r = [np.sum(I*X)/power, np.sum(I*Y)/power]
+    c_u = [np.sum(J_x)/power, np.sum(J_y)/power]
+    u_f = [wavelength*F_x, wavelength*F_y]
+    J = [J_x, J_y]
+    P = np.zeros((4, 4))
+    for i in range(2):
+        for j in range(2):
+            P[i, j] = np.sum(I*(r[i] - c_r[i])*(r[j] - c_r[j]))/power
+            P[2 + i, 2 + j] = np.sum(S*(u_f[i] - c_u[i])*(u_f[j] - c_u[j]))
+            P[i, 2 + j] = np.sum((r[i] - c_r[i])*J[j])/power
+            P[2 + j, i] = P[i, 2 + j]
+
+    return P, np.array(c_r + c_u)
+
+
+IntrinsicBeam = namedtuple("IntrinsicBeam", ["M2_x", "M2_y", "M2_eff", "M2_intrinsic", "a", "t"])
+IntrinsicBeam.__doc__ = """Beam propagation ratios of a general astigmatic beam.
+
+Attributes
+----------
+M2_x, M2_y : float
+    M² along the lab x and y axes, (4*pi/lambda)*sqrt(<x x><u u> - <x u>**2).
+M2_eff : float
+    Effective M², (4*pi/lambda)*det(P)**(1/4) (ISO 11146-2); invariant in
+    all lossless first-order systems.
+M2_intrinsic : array
+    The two intrinsic M² (4*pi/lambda times the symplectic eigenvalues of P),
+    the smaller one first. Their product is M2_eff**2. No lossless
+    first-order system (lenses, cylindrical lenses, rotations, free space)
+    changes them.
+a : float
+    Intrinsic astigmatism, (M2_intrinsic[1] - M2_intrinsic[0])**2/2. Like
+    the intrinsic astigmatism of ISO 11146-2 it is 0 exactly for
+    intrinsically stigmatic beams, which a suitable first-order system can
+    make rotationally symmetric; the normalization used here is our own.
+t : float
+    Twist parameter <x u_y> - <y u_x>. It does not change in free space or
+    under rotations; t != 0 means the intensity ellipse rotates during
+    propagation, and t is proportional to the orbital angular momentum,
+    t = lambda/(2*pi) * L_z/(hbar*N) for N photons.
+"""
+
+
+def intrinsic_parameters(P, wavelength):
+    """M², intrinsic astigmatism and twist of a beam from its moment matrix.
+
+    Parameters
+    ----------
+    P : array
+        4x4 moment matrix (`moment_matrix()`).
+    wavelength : number
+        Vacuum wavelength (as in `moment_matrix()`).
+
+    Returns
+    -------
+    IntrinsicBeam
+    """
+
+    P = np.asarray(P, dtype=float)
+    scale = 4*np.pi/wavelength
+    J = np.block([[np.zeros((2, 2)), np.eye(2)], [-np.eye(2), np.zeros((2, 2))]])
+    nu = np.sort(np.abs(np.linalg.eigvals(J @ P).imag))[::2]
+    M2_int = scale*nu
+    M2_x = scale*np.sqrt(P[0, 0]*P[2, 2] - P[0, 2]**2)
+    M2_y = scale*np.sqrt(P[1, 1]*P[3, 3] - P[1, 3]**2)
+    M2_eff = scale*np.linalg.det(P)**0.25
+    a = (M2_int[1] - M2_int[0])**2/2
+
+    return IntrinsicBeam(M2_x, M2_y, M2_eff, M2_int, a, P[0, 3] - P[1, 2])

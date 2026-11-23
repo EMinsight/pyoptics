@@ -71,6 +71,8 @@ example `".[plot,test]"`:
   faster ray traces and ray aiming, most for large lenses)
 - `nufft`: finufft, for faster exact propagation onto tilted planes
   (`tilted`, rotations about a general axis)
+- `cad`: build123d (with OpenCascade), for the STEP export of lens systems
+  and ray fans (`cad`)
 - `tie`: sympy and matplotlib, for the TIE module
 - `notebooks`: matplotlib, JupyterLab and ipywidgets, for running the example
   notebooks (including the interactive one)

@@ -6,7 +6,6 @@
 
 * rotation angle in apertures
 
-* astigmatic beams
 * Fresnel numbers for general annular apertures
 
 ## Medium
@@ -49,9 +48,15 @@
 
 ## More challenging
 
-* Ince-Gaussian beams
-
 ## DONE
+
+* Ince-Gaussian beams (`ince`: Ince polynomials, even, odd and helical IG
+  modes, HG and LG content; notebook 163 (Ince-Gaussian beams))
+
+* General astigmatic beams (`abcd`: 4x4 matrices, beam matrix Q,
+  `collins_4x4()`; `beam_quality`: ten second moments, intrinsic M² and
+  twist; notebooks 08 (ABCD matrices), sections 11 and 12, and 07 (beam
+  quality), section 4)
 
 * Radiometry and photometry (`radiometry`: black bodies, V(λ) and V'(λ)
   fits, luminous efficacy, view factors, the integrating sphere, the

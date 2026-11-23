@@ -53,6 +53,8 @@ def test_paraxial_ray_imaging():
     sketch.fpm_microscope,
     sketch.twyman_green,
     sketch.fizeau_interferometer,
+    sketch.cgh_null_test,
+    lambda ax: sketch.cgh_null_test(ax, show="zones"),
     sketch.shack_hartmann_sensor,
     sketch.phase_diversity_setup,
     sketch.holography_setup,
@@ -204,6 +206,15 @@ def test_paraxial_ray_imaging():
     lambda ax: sketch.propagation_operators(ax, "geometric"),
     sketch.ball_lens_handover,
     sketch.mach_zehnder_defect,
+    sketch.lpia_principle,
+    lambda ax: sketch.lpia_principle(ax, "tea"),
+    sketch.lpia_output_plane,
+    lambda ax: sketch.lpia_output_plane(ax, "input"),
+    sketch.rod_lens_lpia_chain,
+    sketch.plano_convex_orientation,
+    lambda ax: sketch.plano_convex_orientation(ax, "back"),
+    sketch.relief_grating_orders,
+    lambda ax: sketch.relief_grating_orders(ax, "blazed"),
     sketch.babinet_split,
     sketch.diode_collimator,
     lambda ax: sketch.diode_collimator(ax, astigmatism=False),
@@ -223,6 +234,16 @@ def test_paraxial_ray_imaging():
     lambda ax: sketch.resonator_types(ax, "concentric"),
     sketch.folded_resonator,
     lambda ax: sketch.folded_resonator(ax, theta=35),
+    sketch.mode_decomposition,
+    lambda ax: sketch.mode_decomposition(ax, "pulse"),
+    sketch.multimode_fibre,
+    sketch.led_behind_collimator,
+    sketch.young_broadband,
+    sketch.fox_li_unfolded,
+    sketch.aperture_selection,
+    sketch.thermal_lens_resonator,
+    lambda ax: sketch.thermal_lens_resonator(ax, f=1.03),
+    sketch.unstable_resonator,
 ])
 def test_sketches_draw(draw):
     fig, ax = plt.subplots()
@@ -423,6 +444,38 @@ def test_metrology_sketches():
 def test_crystal_and_modulator_sketches():
     for draw, kinds in ((sketch.crystal_optics_layout, ("calcite", "glan_taylor", "wollaston", "isolator")),
                         (sketch.modulator_layout, ("pockels", "mzm", "lc_cell", "tn_cell", "aom", "aotf"))):
+        for kind in kinds:
+            fig, ax = plt.subplots()
+            draw(ax, kind, title=kind)
+            assert ax.get_title() == kind and (ax.lines or ax.patches)
+            plt.close(fig)
+        fig, ax = plt.subplots()
+        with pytest.raises(ValueError):
+            draw(ax, "unknown")
+        plt.close(fig)
+
+
+def test_thermal_lens_mode_matches_abcd():
+    # the lens guide mode of the sketch is the abcd eigenmode of the round trip
+    from pyoptics import abcd
+    f, d, wl = 1.5, 2.0, 0.07
+    z, w = sketch._lens_guide_mode(f, d, wl)
+    M = abcd.compose(abcd.free_space(d), abcd.thin_lens(f), abcd.free_space(2*d),
+                     abcd.thin_lens(f), abcd.free_space(d))
+    assert w[0] == pytest.approx(abcd.beam_radius(abcd.eigenmode(M), wl), rel=1e-9)
+    assert w[0] == pytest.approx(w[-1], rel=1e-9)          # symmetric resonator
+    assert sketch._lens_guide_mode(0.9, d, wl) is None       # f < L/4: unstable
+    fig, ax = plt.subplots()
+    with pytest.raises(ValueError):
+        sketch.thermal_lens_resonator(ax, f=0.9)
+    with pytest.raises(ValueError):
+        sketch.mode_decomposition(ax, "coherent")
+    plt.close(fig)
+
+
+def test_eyepiece_and_binocular_sketches():
+    for draw, kinds in ((sketch.eyepiece_layout, ("telescope", "reversed", "pupil")),
+                        (sketch.binocular_layout, ("kepler", "porro", "roof"))):
         for kind in kinds:
             fig, ax = plt.subplots()
             draw(ax, kind, title=kind)

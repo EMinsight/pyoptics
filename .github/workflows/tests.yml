@@ -14,10 +14,10 @@ jobs:
       fail-fast: false
       matrix:
         python-version: ["3.9", "3.11", "3.13"]
-        # the NumPy ray trace on 3.9 and 3.11, the numba kernel on 3.13
+        # the NumPy ray trace on 3.9 and 3.11, the numba kernel and the CAD export on 3.13
         include:
           - python-version: "3.13"
-            extras: ",fast"
+            extras: ",fast,cad"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

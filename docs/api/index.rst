@@ -16,6 +16,7 @@ Propagation
    pyoptics.tilted
    pyoptics.analytic_phase
    pyoptics.fieldtrace
+   pyoptics.source_modes
    pyoptics.wpm
    pyoptics.fft
 
@@ -53,6 +54,7 @@ Beams, modes and paraxial optics
    pyoptics.beam_quality
    pyoptics.modes
    pyoptics.vortices
+   pyoptics.ince
    pyoptics.ultrafast
    pyoptics.abcd
 
@@ -81,6 +83,9 @@ Imaging and ray tracing
    pyoptics.superresolution
    pyoptics.schlieren
    pyoptics.raytrace
+   pyoptics.cad
+   pyoptics.nsrt
+   pyoptics.bsdf
    pyoptics.raywave
    pyoptics.billiard
    pyoptics.grin
@@ -90,8 +95,11 @@ Imaging and ray tracing
    pyoptics.radiometry
    pyoptics.speckle
    pyoptics.freeform
+   pyoptics.polishing
    pyoptics.photography
    pyoptics.sensor
+   pyoptics.restoration
+   pyoptics.lens_correction
    pyoptics.lightfield
    pyoptics.delano
    pyoptics.lens_optimization
@@ -103,8 +111,11 @@ Imaging and ray tracing
    pyoptics.tolerancing
    pyoptics.glasses
    pyoptics.qaspheres
+   pyoptics.phone_lens
    pyoptics.zoom
    pyoptics.spectacles
+   pyoptics.eyepieces
+   pyoptics.prisms
 
 Lithography
 -----------
@@ -167,6 +178,7 @@ Measurement and phase retrieval
    :toctree: generated
 
    pyoptics.interferometry
+   pyoptics.cgh
    pyoptics.coherence
    pyoptics.oct
    pyoptics.holography
@@ -216,6 +228,7 @@ Lasers
    :toctree: generated
 
    pyoptics.lasers
+   pyoptics.resonators
 
 Nonlinear optics
 ----------------

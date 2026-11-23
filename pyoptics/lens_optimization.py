@@ -7,7 +7,8 @@ Two optimizers:
 
 - `DampedLeastSquares`, the classical lens design optimizer (see the section
   further down): `Variable` objects (`Curvature`, `Thickness`, `AirSpace`,
-  `Conic`, `Aspheric`, the phase coefficients of diffractive surfaces
+  `Conic`, `Aspheric`, `CurvatureX`/`ConicX` of toroidal and biconic
+  surfaces (toric and cylinder lenses), the phase coefficients of diffractive surfaces
   `DiffractivePhase` with `diffractive()`, freeform terms `ZernikeTerm`
   with `zernike_terms()`, `Tilt`, `Decenter` and `ImageTilt` of off-axis
   systems (notebook 155, off-axis mirrors and nodal aberrations), model glasses
@@ -1176,6 +1177,47 @@ class Curvature(Variable):
             return other
 
         return super().perturbed(system, h)
+
+
+class CurvatureX(Variable):
+    """Curvature 1/R_x of the x-z section of a `raytrace.ToroidalSurface`
+    or `raytrace.BiconicSurface` (cylinder and toric powers; the y-z
+    section is `Curvature`). Analytic with ``jac="analytic"``."""
+
+    def __init__(self, surface, bounds=(None, None)):
+        super().__init__(bounds)
+        self.surface = surface
+        self.name = "cx{}".format(surface)
+
+    def get(self, system):
+        R = system.surfaces[self.surface].R_x
+
+        return 0.0 if np.isinf(R) else 1/R
+
+    def set(self, system, value):
+        system.surfaces[self.surface].R_x = 1/value if value != 0 else np.inf
+
+    def typical(self, system):
+        return 1/_length_scale(system)
+
+
+class ConicX(Variable):
+    """Conic constant conic_x of the x-z section of a
+    `raytrace.BiconicSurface`."""
+
+    def __init__(self, surface, bounds=(None, None)):
+        super().__init__(bounds)
+        self.surface = surface
+        self.name = "Kx{}".format(surface)
+
+    def get(self, system):
+        return system.surfaces[self.surface].conic_x
+
+    def set(self, system, value):
+        system.surfaces[self.surface].conic_x = value
+
+    def typical(self, system):
+        return 1.0
 
 
 class Thickness(Variable):
@@ -2579,8 +2621,9 @@ class DampedLeastSquares:
         differences, the variables that the differential trace does not
         cover central differences, of complete evaluations (see
         `ray_derivatives` for the full list). Solves are differentiated with
-        the system (their paraxial effect by central differences). Not
-        with a `MultiConfiguration` (forward differences there). Faster
+        the system (their paraxial effect by central differences). With a
+        `MultiConfiguration`, each configuration is linearized on its own
+        (the columns of variables of other configurations are zero). Faster
         for many variables and ray traced operands, slower for small or
         paraxial problems: see "When analytic Jacobians pay off" in
         `ray_derivatives`.
@@ -2747,7 +2790,7 @@ class DampedLeastSquares:
         """
 
         system = self.system if system is None else system
-        if self.jac == "analytic" and not self.multi and system is self.system:
+        if self.jac == "analytic" and system is self.system:
             return self._analytic_jacobian()
         r = self.residuals(system)
         g = self.constraint_values(system)[0]
@@ -2766,15 +2809,28 @@ class DampedLeastSquares:
 
         from .ray_derivatives import Linearization
 
-        return Linearization(self.system_at, self.x, 1e-5*self._scale, system=self.system)
+        return Linearization(self.system_at, self.x, 1e-5*self._scale, system=self.system,
+                             analyse=not self.multi)
 
     def _analytic_jacobian(self):
         lin = self.linearization()
         rs, Js = [], []
-        for w, op in zip(self.weights, self.operands):
-            r, J = lin.jacobian(op)
-            rs.append(w*r)
-            Js.append(w*J)
+        if self.multi:
+            # one linearization per configuration with all the variables (those
+            # of other configurations give zero columns)
+            per = [lin.mapped(lambda mc, k=k: mc.configs[k]) for k in range(len(self.system.configs))]
+            for w, op in zip(self.weights, self.operands):
+                for k in op.which(self.system):
+                    r, J = per[k].jacobian(op.function)
+                    if op.weighted:
+                        r, J = self.system.weights[k]*r, self.system.weights[k]*J
+                    rs.append(w*r)
+                    Js.append(w*J)
+        else:
+            for w, op in zip(self.weights, self.operands):
+                r, J = lin.jacobian(op)
+                rs.append(w*r)
+                Js.append(w*J)
         _drop_cache(self.system)
         r = np.concatenate(rs) if rs else np.zeros(0)
         J = np.concatenate(Js) if Js else np.zeros((0, len(self.variables)))

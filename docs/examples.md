@@ -87,6 +87,7 @@ Gaussian and structured beams, beam quality, resonators, modes and ultrashort pu
 - {doc}`notebooks/09_mode_analysis`
 - {doc}`notebooks/68_bessel_airy_self_healing`
 - {doc}`notebooks/69_optical_vortices`
+- {doc}`163 Ince-Gaussian beams <notebooks/163_ince_gaussian_beams>`
 - {doc}`notebooks/81_ultrashort_pulses_lenses`
 
 ```{toctree}
@@ -99,6 +100,7 @@ notebooks/08_abcd_matrices
 notebooks/09_mode_analysis
 notebooks/68_bessel_airy_self_healing
 notebooks/69_optical_vortices
+notebooks/163_ince_gaussian_beams
 notebooks/81_ultrashort_pulses_lenses
 ```
 
@@ -200,6 +202,7 @@ Sequential and polarization ray tracing, from rays to waves, glass catalogues, l
 - {doc}`notebooks/102_sine_herschel_lagrange`
 - {doc}`notebooks/109_field_tracing`
 - {doc}`notebooks/112_field_tracing_applications`
+- {doc}`168 Local plane interface approximation <notebooks/168_local_plane_interface_approximation>`
 - {doc}`notebooks/127_zoom_lenses`
 - {doc}`notebooks/128_forbes_q_aspheres`
 - {doc}`notebooks/129_progressive_lenses`
@@ -208,6 +211,14 @@ Sequential and polarization ray tracing, from rays to waves, glass catalogues, l
 - {doc}`153 Multi-configuration optimization <notebooks/153_multiconfig_optimization>`
 - {doc}`154 Global optimization and saddle points <notebooks/154_global_optimization_saddle_points>`
 - {doc}`155 Off-axis mirrors and nodal aberrations <notebooks/155_off_axis_mirrors_nodal_aberrations>`
+- {doc}`159 Phone camera lens with Forbes Q polynomials <notebooks/159_phone_camera_lens_forbes_q>`
+- {doc}`162 CAD export of lens systems <notebooks/162_cad_export_lens_systems>`
+- {doc}`166 Non-sequential ray tracing <notebooks/166_non_sequential_ray_tracing>`
+- {doc}`167 Stray light in Caldwell's lens <notebooks/167_stray_light_caldwell_lens>`
+- {doc}`169 Source models in field tracing <notebooks/169_source_models_field_tracing>`
+- {doc}`171 Eyepieces <notebooks/171_eyepieces>`
+- {doc}`172 Binoculars and erecting prisms <notebooks/172_binoculars_erecting_prisms>`
+- {doc}`175 Polishing errors <notebooks/175_polishing_errors>`
 
 ```{toctree}
 :hidden:
@@ -228,6 +239,7 @@ notebooks/77_grin_optics
 notebooks/102_sine_herschel_lagrange
 notebooks/109_field_tracing
 notebooks/112_field_tracing_applications
+notebooks/168_local_plane_interface_approximation
 notebooks/127_zoom_lenses
 notebooks/128_forbes_q_aspheres
 notebooks/129_progressive_lenses
@@ -236,6 +248,14 @@ notebooks/151_hybrid_diffractive_lenses
 notebooks/153_multiconfig_optimization
 notebooks/154_global_optimization_saddle_points
 notebooks/155_off_axis_mirrors_nodal_aberrations
+notebooks/159_phone_camera_lens_forbes_q
+notebooks/162_cad_export_lens_systems
+notebooks/166_non_sequential_ray_tracing
+notebooks/167_stray_light_caldwell_lens
+notebooks/169_source_models_field_tracing
+notebooks/171_eyepieces
+notebooks/172_binoculars_erecting_prisms
+notebooks/175_polishing_errors
 ```
 
 ## Interferometry, holography and wavefront sensing
@@ -418,8 +438,9 @@ notebooks/72_twinkling_stars_adaptive_optics
 The optics of cameras: the out-of-focus image of a lens (bokeh), the
 star its iris makes of a bright light (sunstars), the ghosts its
 surfaces make of it (flare), what the sensor does to the image,
-what is sharp (depth of field and tilt-shift), and how a light field
-camera focuses after the exposure.
+what is sharp (depth of field and tilt-shift), how a light field
+camera focuses after the exposure, and how much of the blur of a phone
+lens deconvolution can undo.
 
 - {doc}`notebooks/90_bokeh`
 - {doc}`notebooks/91_sunstars`
@@ -427,6 +448,8 @@ camera focuses after the exposure.
 - {doc}`notebooks/93_sensor`
 - {doc}`notebooks/94_tilt_shift_depth_of_field`
 - {doc}`notebooks/95_light_field_camera`
+- {doc}`160 Image restoration and PSF deconvolution <notebooks/160_image_restoration_deconvolution>`
+- {doc}`161 Distortion, lateral colour and lens shading correction <notebooks/161_distortion_shading_correction>`
 
 ```{toctree}
 :hidden:
@@ -438,6 +461,8 @@ notebooks/92_flare_ghosts
 notebooks/93_sensor
 notebooks/94_tilt_shift_depth_of_field
 notebooks/95_light_field_camera
+notebooks/160_image_restoration_deconvolution
+notebooks/161_distortion_shading_correction
 ```
 
 ## Astronomy
@@ -560,13 +585,16 @@ How fabs and optics shops measure surfaces and films: coherence scanning
 (white-light) interferometry for surface heights from nanometres to
 millimetres, spectroscopic ellipsometry and its model fits for film
 thicknesses and optical constants, scatterometry of line gratings too
-small to image, and phase measuring deflectometry for the shape and the
-ripples of specular freeforms.
+small to image, phase measuring deflectometry for the shape and the
+ripples of specular freeforms, and the null test of aspheres with a
+computer-generated hologram, from the hologram design to the surface form
+deviation.
 
 - {doc}`134 Coherence scanning interferometry (white light interferometry, WLI) <notebooks/134_coherence_scanning_interferometry>`
 - {doc}`135 Ellipsometry <notebooks/135_ellipsometry>`
 - {doc}`136 Scatterometry <notebooks/136_scatterometry>`
 - {doc}`137 Deflectometry <notebooks/137_deflectometry>`
+- {doc}`165 CGH null testing of aspheres <notebooks/165_cgh_null_testing_aspheres>`
 
 ```{toctree}
 :hidden:
@@ -576,6 +604,7 @@ notebooks/134_coherence_scanning_interferometry
 notebooks/135_ellipsometry
 notebooks/136_scatterometry
 notebooks/137_deflectometry
+notebooks/165_cgh_null_testing_aspheres
 ```
 
 ## Crystal optics and light modulators
@@ -611,8 +640,9 @@ notebooks/141_acousto_optics
 
 How a laser works and what limits it: gain and saturation, the threshold
 and the best output coupler, the modes of the resonator and the width of a
-single one, relaxation oscillations, Q-switched and mode-locked pulses, and
-the laser diode of every fibre link with its chirp and noise. Related: the
+single one, relaxation oscillations, Q-switched and mode-locked pulses, the
+laser diode of every fibre link with its chirp and noise, and the
+transverse modes of real resonators with finite mirrors (Fox and Li). Related: the
 resonator in {doc}`08 ABCD matrices <notebooks/08_abcd_matrices>`, pulses
 in {doc}`81 Ultrashort pulses <notebooks/81_ultrashort_pulses_lenses>`, and
 the directly modulated laser of {doc}`120 Fibre link <notebooks/120_fibre_link>`.
@@ -620,6 +650,7 @@ the directly modulated laser of {doc}`120 Fibre link <notebooks/120_fibre_link>`
 - {doc}`142 Laser fundamentals <notebooks/142_laser_fundamentals>`
 - {doc}`143 Q-switching and mode-locking <notebooks/143_q_switching_mode_locking>`
 - {doc}`144 Laser diodes <notebooks/144_laser_diodes>`
+- {doc}`170 Laser resonator modes <notebooks/170_laser_resonator_modes>`
 
 ```{toctree}
 :hidden:
@@ -628,6 +659,7 @@ the directly modulated laser of {doc}`120 Fibre link <notebooks/120_fibre_link>`
 notebooks/142_laser_fundamentals
 notebooks/143_q_switching_mode_locking
 notebooks/144_laser_diodes
+notebooks/170_laser_resonator_modes
 ```
 
 ## Nonlinear optics

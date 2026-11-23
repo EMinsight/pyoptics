@@ -46,6 +46,9 @@ Setup sketches for the other example notebooks:
   (notebook 23, interferometry).
 - fizeau_interferometer(): Fizeau interferometer with a transmission
   sphere, confocal and cat's eye positions (notebook 24, radius interferometer).
+- cgh_null_test(): a CGH null test of a concave asphere in the beam of a
+  transmission sphere, the diffraction orders of the tilt carrier or the
+  alignment zones (notebook 165, CGH null testing of aspheres).
 - shack_hartmann_sensor(), phase_diversity_setup(): two ways to measure a
   lens (notebook 25, Shack-Hartmann vs phase diversity).
 - holography_setup(): off-axis digital holography, lensless or with a
@@ -79,6 +82,34 @@ Setup sketches for the other example notebooks:
   of operators, what each free-space operator does, rays through a ball lens
   handing over to waves at the caustic, a Mach-Zehnder interferometer with
   a small defect, and Babinet's principle (notebook 109, field tracing).
+- lpia_principle(), relief_grating_orders(), rod_lens_lpia_chain(),
+  lpia_output_plane(), plano_convex_orientation(): a structured interface in
+  the thin element and in the local plane interface approximation, a relief
+  grating and its orders, the LPIA chain through a rod lens, where to put
+  the output plane behind a focusing surface, and the two orientations of a
+  plano-convex lens (notebook 168, local plane interface approximation).
+- polishing_layout(): a bonnet tool on an asphere and its removal spot,
+  raster and spiral tool paths, the ripple of overlapping tracks and the
+  turned-down edge under an overhanging tool (notebook 175,
+  polishing errors).
+- mode_decomposition(): a source as modes traced one by one and added
+  incoherently or, for a pulse, coherently; multimode_fibre(): a
+  multimode beam, its embedded Gaussian and a single-mode fibre;
+  led_behind_collimator(): an LED die in the focal plane of a collimator,
+  the tilted plane waves of its emitters on a screen; young_broadband():
+  Young's double slit in broadband light
+  (notebook 169, source models in field tracing).
+- fox_li_unfolded(): the Fox-Li iteration as a row of apertures;
+  aperture_selection(): an aperture that clips TEM01 more than TEM00;
+  thermal_lens_resonator(): plane mirrors and a rod with a thermal lens;
+  unstable_resonator(): a positive-branch confocal unstable resonator and
+  its output beam (notebook 170, laser resonator modes).
+- eyepiece_layout(): an eyepiece behind a telescope objective, the
+  eyepiece traced backwards from the eye pupil, and the exit pupil with
+  pupil aberration (notebook 171, eyepieces).
+- binocular_layout(): a Keplerian telescope, a Porro binocular and a roof
+  prism binocular with its Schmidt–Pechan prism
+  (notebook 172, binoculars and erecting prisms).
 - diode_collimator(), fibre_coupling(): an astigmatic laser diode with an
   aspheric collimator and a focusing lens, and a Gaussian beam focused into
   a single-mode fibre by a spherical lens or an asphere (notebook 112, field tracing applications).
@@ -374,7 +405,10 @@ __all__ = ["lens", "stop", "plane", "prism", "mirror", "detector", "point_source
            "pancake_lens", "hud_layout", "zoom_cams", "qbfs_geometry",
            "progressive_lens_layout", "lidar_layout", "beam_scanner", "scan_lens_layout",
            "structured_light_layout", "crystal_optics_layout", "modulator_layout", "laser_layout",
-           "hybrid_lens_layout", "litho_stochastics_layout", "text_scale"]
+           "hybrid_lens_layout", "litho_stochastics_layout", "mode_decomposition",
+           "multimode_fibre", "led_behind_collimator", "young_broadband", "fox_li_unfolded",
+           "aperture_selection", "thermal_lens_resonator", "unstable_resonator", "eyepiece_layout",
+           "binocular_layout", "text_scale"]
 
 
 GLASS = "#cfe3f3"
@@ -1604,6 +1638,133 @@ def fizeau_interferometer(ax, cat_eye=True, title=None):
     beam_splitter(ax, z_bs, 0.0, 0.7, "\\")
     label(ax, z_bs + 0.35, -0.6, "beam\nsplitter", va="top", fontsize=8)
     _finish(ax, (-2.4, 5.6), (-1.6, y_il + 1.0), title)
+
+
+def cgh_null_test(ax, show="orders", title=None):
+    """Sketch of a null test of a concave asphere with a computer-generated
+    hologram (CGH) in the converging beam of a Fizeau transmission sphere.
+
+    The collimated beam of the interferometer enters the transmission
+    sphere (TS), whose last surface (blue) reflects the reference wave.
+    The test wave converges through the CGH. Its tilt carrier sends the
+    order +1 (the null wave) off axis: it focuses beside the TS focus and
+    meets the asphere, which sits on the tilted axis, everywhere at normal
+    incidence, so it returns on itself. The orders 0 and -1 go elsewhere;
+    after the second pass, light of the wrong orders leaves at an angle and
+    misses the stop in the focus of the interferometer.
+
+    Parameters
+    ----------
+    ax : matplotlib Axes
+    show : {"orders", "zones"}, optional
+        "orders": the orders +1, 0 and -1 of the null region. "zones": the
+        alignment zones around the null region instead, a Littrow ring that
+        reflects the light back into the interferometer (aligns the CGH)
+        and a cat's eye ring that focuses onto the vertex of the asphere
+        (sets the spacing).
+    title : str, optional
+    """
+
+    h = 0.75
+    z_ts, z_ref = 0.55, 1.05
+    z_f = 3.6  # TS focus
+    z_c = 2.15  # CGH (pattern on the side facing the asphere)
+    th = 0.22  # carrier angle (exaggerated)
+    R_t = 2.0  # asphere radius (about its centre of curvature, near the +1 focus)
+    d_c = z_f - z_c
+    # converging beam half width on the CGH
+    y_c = h*d_c/(z_f - z_ref)
+    f1 = (z_f + d_c*(np.cos(th) - 1), d_c*np.sin(th))  # +1 focus (rotated about the CGH centre)
+    # collimated beam from the interferometer
+    band(ax, [-1.25, z_ts], [h, h], [-1.25, z_ts], [-h, -h])
+    arrow(ax, -1.2, 1.05, -0.4, 1.05, text="from the Fizeau\ninterferometer", text_pos=(-0.8, 1.22),
+          va="bottom", fontsize=8)
+    arrow(ax, -0.4, -1.05, -1.2, -1.05, text="to the stop and camera", text_pos=(-0.8, -1.2),
+          va="top", fontsize=8)
+    # transmission sphere: a weakly convex front, the reference surface concentric with the focus
+    R_ref = z_f - z_ref
+    yy = np.linspace(-0.92, 0.92, 61)
+    front = z_ts + 0.1 - 0.25*(1 - (yy/0.92)**2)
+    back = z_f - np.sqrt(R_ref**2 - yy**2)
+    ax.add_patch(_patches().Polygon(np.r_[np.c_[front, yy], np.c_[back, yy][::-1]], closed=True,
+                                    facecolor=GLASS, edgecolor=EDGE, lw=1, zorder=3))
+    ax.plot(back, yy, color=REFERENCE, lw=2, zorder=4)
+    label(ax, z_ts + 0.15, -1.0, "TS\n(reference\nsurface)", va="top", fontsize=8)
+    # CGH substrate
+    ax.add_patch(_patches().Rectangle((z_c - 0.1, -1.0), 0.1, 2.0, facecolor=GLASS, edgecolor=EDGE,
+                                      lw=1, zorder=3))
+    for yk in np.linspace(-0.97, 0.97, 40):
+        ax.plot([z_c, z_c + 0.03], [yk, yk + 0.02], color="0.3", lw=0.5, zorder=4)
+    label(ax, z_c - 0.05, -1.08, "CGH", va="top", fontsize=9)
+    # converging test wave from the reference surface to the CGH
+    ys = np.linspace(-h, h, 7)
+    for y0 in ys:
+        z0 = z_f - np.sqrt(R_ref**2 - y0**2)
+        yc = y0*d_c/(z_f - z0)
+        ax.plot([z_ts - 0.05, z0], [y0, y0], color=LASER, lw=0.9, alpha=0.6, zorder=3.5)
+        ax.plot([z0, z_c], [y0, yc], color=LASER, lw=0.9, zorder=2)
+    # asphere: concave, centred on the +1 focus, on the tilted axis
+    phi = np.linspace(-0.42, 0.42, 81) + th
+    za, ya = f1[0] + R_t*np.cos(phi), f1[1] + R_t*np.sin(phi)
+    ax.add_patch(_patches().Polygon(np.r_[np.c_[za, ya], np.c_[za + 0.25*np.cos(th), ya + 0.25*np.sin(th)][::-1]],
+                                    closed=True, facecolor="0.88", edgecolor="0.5", lw=0.6, zorder=3))
+    ax.plot(za, ya, color=TEST, lw=2.2, zorder=4)
+    label(ax, za[-1] + 0.1, ya[-1] + 0.12, "concave asphere\n(on the axis of order +1)", fontsize=8,
+          va="bottom", color=TEST)
+    ax.plot([z_c, f1[0] + (R_t + 0.4)*np.cos(th)], [0.0, f1[1] + (R_t + 0.4)*np.sin(th)], color="0.5",
+            lw=0.6, ls="-.", zorder=1)
+    ax.plot([z_c, z_f + 1.4], [0.0, 0.0], color="0.5", lw=0.6, ls=":", zorder=1)
+    if show == "orders":
+        def order(m, color, ls, lw, to_asphere):
+            fm = (z_f + d_c*(np.cos(m*th) - 1), d_c*np.sin(m*th))
+            for y0 in ys:
+                yc = y0*d_c/(z_f - z_ref)
+                if to_asphere:
+                    v = np.array([fm[0] - z_c, fm[1] - yc])
+                    v /= np.hypot(*v)
+                    # straight through the focus to the sphere around it
+                    zz = fm[0] + R_t*v[0]
+                    yy_ = fm[1] + R_t*v[1]
+                    ax.plot([z_c, zz], [yc, yy_], color=color, lw=lw, ls=ls, zorder=2)
+                else:
+                    ext = 1.25
+                    ax.plot([z_c, z_c + ext*(fm[0] - z_c)], [yc, yc + ext*(fm[1] - yc)], color=color,
+                            lw=lw, ls=ls, zorder=2, alpha=0.8)
+            return fm
+        order(1, LASER, "-", 0.9, True)
+        f0 = order(0, STRAY, "--", 0.7, False)
+        fm1 = order(-1, "#8e5ba8", "--", 0.7, False)
+        ax.plot(*f1, "o", color="0.2", ms=3, zorder=6)
+        label(ax, f1[0] - 0.05, f1[1] + 0.13, "+1", fontsize=9, va="bottom")
+        label(ax, f0[0] + 0.05, f0[1] + 0.07, "0", fontsize=9, va="bottom", color=STRAY)
+        label(ax, fm1[0] + 0.05, fm1[1] - 0.08, "-1", fontsize=9, va="top", color="#8e5ba8")
+        label(ax, 4.2, -1.12, "orders 0, -1 (and +2, -2, ...)\nleave at other angles", fontsize=8,
+              va="top", color=STRAY)
+    else:
+        # alignment zones in the rim of the beam around the null region
+        for y0, kind in ((h, "littrow"), (0.85*h, "cat"), (-h, "littrow"), (-0.85*h, "cat")):
+            yc = y0*d_c/(z_f - z_ref)
+            if kind == "littrow":
+                z0 = z_f - np.sqrt(R_ref**2 - y0**2)
+                arrow(ax, z_c - 0.12, yc + (yc - y0)*0.12/(z_c - z0), z0 + 0.4,
+                      y0 + (yc - y0)*0.4/(z_c - z0), color=REFERENCE, lw=1.0)
+            else:
+                vz = f1[0] + R_t*np.cos(th) - z_c
+                vy = f1[1] + R_t*np.sin(th) - yc
+                ax.plot([z_c, z_c + vz], [yc, yc + vy], color="#2ca02c", lw=0.9, zorder=2)
+        ax.plot([f1[0] + R_t*np.cos(th)], [f1[1] + R_t*np.sin(th)], "o", color="#2ca02c", ms=4, zorder=6)
+        label(ax, z_c - 0.25, 1.12, "Littrow ring: reflects the\nlight back (aligns the CGH)",
+              fontsize=8, va="bottom", color=REFERENCE)
+        label(ax, 4.2, -1.12, "cat's eye ring: focuses on the vertex\n(sets the spacing)",
+              fontsize=8, va="top", color="#2ca02c")
+        for y0 in np.linspace(-0.6*h, 0.6*h, 5):
+            yc = y0*d_c/(z_f - z_ref)
+            v = np.array([f1[0] - z_c, f1[1] - yc])
+            v /= np.hypot(*v)
+            ax.plot([z_c, f1[0] + R_t*v[0]], [yc, f1[1] + R_t*v[1]], color=LASER, lw=0.6, alpha=0.5,
+                    zorder=2)
+        label(ax, 2.95, 0.62, "null region", fontsize=8, color=LASER, va="bottom")
+    _finish(ax, (-1.4, 6.6), (-1.6, 1.9), title)
 
 
 def _lens_under_test(ax, z_lens, f, h, n_rays=9, spherical=0.25, z_end=None, color=LASER):
@@ -11848,6 +12009,1111 @@ def euv_layout(ax, kind="multilayer", title=None):
         _finish(ax, (-0.45, 0.95), (-0.36, 0.36), title)
     else:
         raise ValueError("unknown kind {!r}".format(kind))
+
+
+# ------------------ notebook 168, local plane interface approximation
+
+
+def _surface_hits(h_fun, dh_fun, z0, y, d=np.array([1.0, 0.0]), n1=1.5, n2=1.0):
+    """Ray (z0, y) along d meets z = h_fun(y) (fixed point iteration);
+    returns the hit point, the unit normal (towards -z) and the refracted
+    direction."""
+    p = np.array([z0, y], dtype=float)
+    s = 0.0
+    for _ in range(50):
+        q = p + s*d
+        s = s + (h_fun(q[1]) - q[0])/(d[0] - dh_fun(q[1])*d[1])
+    q = p + s*d
+    nrm = np.array([-1.0, dh_fun(q[1])])
+    nrm = nrm/np.linalg.norm(nrm)
+    k = 1 - (n1/n2)**2*(1 - np.dot(nrm, d)**2)
+    d2 = _refract(d, nrm, n1, n2) if k > 0 else None
+    return q, nrm, d2
+
+
+def lpia_principle(ax, kind="lpia", title=None):
+    """Sketch of a structured interface (glass on the left, air on the
+    right, light along z) in the thin element approximation (kind="tea":
+    the rays cross the profile straight and get its optical thickness as a
+    phase in one plane) or in the local plane interface approximation
+    (kind="lpia": every local plane wave is refracted at the tangent plane
+    where it meets the surface, with the Fresnel coefficients of that
+    plane, and goes straight on to an output plane behind the profile).
+
+    Parameters
+    ----------
+    ax : matplotlib Axes
+    kind : {"lpia", "tea"}, optional
+    title : str, optional
+    """
+
+    mpatches = _patches()
+    P, d = 2.0, 0.55
+    h_fun = lambda y: d/2*(1 + np.cos(2*np.pi*y/P))
+    dh_fun = lambda y: -d/2*2*np.pi/P*np.sin(2*np.pi*y/P)
+    ys = np.linspace(-2.1, 2.1, 300)
+    z_in, z_out, z_end = -1.6, d + 0.05, 2.3
+    poly = np.r_[np.c_[np.full(2, z_in - 0.4), [-2.1, 2.1]][::-1], np.c_[h_fun(ys), ys]]
+    poly = np.r_[np.c_[h_fun(ys), ys], [[z_in - 0.4, 2.1], [z_in - 0.4, -2.1]]]
+    ax.add_patch(mpatches.Polygon(poly, closed=True, facecolor=GLASS, edgecolor="none", zorder=1))
+    ax.plot(h_fun(ys), ys, color=EDGE, lw=1.6, zorder=3)
+    label(ax, z_in - 0.15, -2.35, "glass, $n$", fontsize=9, ha="left")
+    label(ax, 1.9, -2.35, "air", fontsize=9)
+    y_rays = np.linspace(-1.75, 1.75, 9)
+    if kind == "tea":
+        ax.plot([0.0, 0.0], [-2.1, 2.1], color=FIELD_COLOR, lw=2.2, zorder=4)
+        label(ax, -0.2, 2.35, "one plane:\n$t = e^{ik_0(n-1)h}$", fontsize=8, color=FIELD_COLOR,
+              va="bottom")
+        for y in y_rays:
+            ax.plot([z_in, z_end - 0.1], [y, y], color=RAY_COLOR, lw=1.0, zorder=3)
+            ax.annotate("", xy=(z_end, y), xytext=(z_in, y),
+                        arrowprops=dict(arrowstyle="-|>", color=RAY_COLOR, lw=1.0), zorder=3)
+        label(ax, 1.45, -2.65, "no deflection,\nno angle dependence", fontsize=8, color="0.35",
+              va="top")
+    else:
+        for y in y_rays:
+            q, nrm, d2 = _surface_hits(h_fun, dh_fun, z_in, y)
+            t = np.array([-nrm[1], nrm[0]])
+            ax.plot([q[0] - 0.35*t[0], q[0] + 0.35*t[0]], [q[1] - 0.35*t[1], q[1] + 0.35*t[1]],
+                    color="0.25", lw=1.6, zorder=4)
+            ax.plot([z_in, q[0]], [y, y], color=RAY_COLOR, lw=1.0, zorder=3)
+            s = (z_end - q[0])/d2[0]
+            ax.annotate("", xy=q + s*d2, xytext=q,
+                        arrowprops=dict(arrowstyle="-|>", color=RAY_COLOR, lw=1.0), zorder=3)
+        ax.plot([z_out, z_out], [-2.1, 2.1], color="0.35", lw=1.0, ls="--", zorder=2)
+        label(ax, z_out + 0.05, 2.35, "output plane:\nray field summation", fontsize=8,
+              va="bottom", ha="left", color="0.3")
+        label(ax, -0.9, 2.35, "tangent planes:\nSnell, $t_s$, $t_p$", fontsize=8, va="bottom",
+              color="0.25")
+    ax.plot([z_in, z_in], [-2.1, 2.1], color="0.55", lw=0.8, ls=":", zorder=2)
+    label(ax, z_in, -2.6, "input field", fontsize=8, color="0.4")
+    _finish(ax, (z_in - 0.45, z_end + 0.15), (-2.8, 3.05), title)
+
+
+def lpia_output_plane(ax, plane="behind", title=None):
+    """Sketch of a strongly focusing interface (glass on the left) and two
+    choices of the output plane of the LPIA step. plane="behind": the
+    refracted rays are carried geometrically to a plane behind the surface
+    and cross on the way (geometrical optics fails at the caustic).
+    plane="input": the transmitted field is carried back to the input plane
+    (virtual rays that diverge backwards, nothing crosses), and the
+    spectrum of plane waves takes it forward through the caustic.
+
+    Parameters
+    ----------
+    ax : matplotlib Axes
+    plane : {"behind", "input"}, optional
+    title : str, optional
+    """
+
+    mpatches = _patches()
+    R, n = 1.6, 1.5
+    z_in = 0.0
+    zc = z_in + 0.25
+    h_fun = lambda y: zc + np.sqrt(np.maximum(R**2 - y**2, 0.0))
+    dh_fun = lambda y: -y/np.sqrt(np.maximum(R**2 - y**2, 1E-9))
+    ys = np.linspace(-1.35, 1.35, 200)
+    poly = np.r_[np.c_[h_fun(ys), ys], [[z_in - 0.3, 1.35], [z_in - 0.3, -1.35]]]
+    ax.add_patch(mpatches.Polygon(poly, closed=True, facecolor=GLASS, edgecolor="none", zorder=1))
+    ax.plot(h_fun(ys), ys, color=EDGE, lw=1.6, zorder=3)
+    z_v = zc + R
+    rays = []
+    for y in np.linspace(-0.9, 0.9, 9):
+        q, nrm, d2 = _surface_hits(h_fun, dh_fun, z_in, y, n1=n, n2=1.0)
+        rays.append((y, q, d2))
+        ax.plot([z_in, q[0]], [y, y], color=RAY_COLOR, lw=1.0, zorder=3)
+    if plane == "behind":
+        z_o = z_v + 2.0
+        for y, q, d2 in rays:
+            s = (z_o - q[0])/d2[0]
+            ax.plot([q[0], q[0] + s*d2[0]], [q[1], q[1] + s*d2[1]], color=RAY_COLOR, lw=1.0,
+                    zorder=3)
+        ax.plot([z_o, z_o], [-1.5, 1.5], color="0.35", lw=1.2, ls="--", zorder=4)
+        label(ax, z_o, 1.75, "output plane", fontsize=8, color="0.3")
+        # where the outermost rays cross the axis
+        y, q, d2 = rays[0]
+        s = -q[1]/d2[1]
+        zx = q[0] + s*d2[0]
+        ax.plot(zx, 0.0, "x", color=STRAY, ms=9, mew=2, zorder=5)
+        label(ax, zx, -1.75, "rays cross:\ngeometrical optics fails", fontsize=8, color=STRAY,
+              va="top")
+        z_lim = z_o + 0.4
+    else:
+        z_o = z_in
+        for y, q, d2 in rays:
+            s = (z_o - q[0])/d2[0]
+            ax.plot([q[0], q[0] + s*d2[0]], [q[1], q[1] + s*d2[1]], color=RAY_COLOR, lw=0.9,
+                    ls=":", zorder=3)
+            ax.plot([q[0], q[0] + 0.35/d2[0]*d2[0]], [q[1], q[1] + 0.35/d2[0]*d2[1]],
+                    color=RAY_COLOR, lw=1.0, zorder=3)
+        ax.add_patch(mpatches.Rectangle((z_o, -1.5), z_v + 2.4 - z_o, 3.0, facecolor=WAVE_COLOR,
+                                        alpha=0.08, edgecolor="none", zorder=0))
+        ax.plot([z_o, z_o], [-1.5, 1.5], color="0.35", lw=1.2, ls="--", zorder=4)
+        label(ax, z_o, 1.75, "output plane = input plane\n(virtual rays, dotted)", fontsize=8,
+              color="0.3", va="bottom")
+        label(ax, z_v + 1.3, -1.75, "Propagate (spectrum of plane\nwaves) through the caustic",
+              fontsize=8, color=WAVE_COLOR, va="top")
+        z_lim = z_v + 2.4
+    label(ax, z_in + 0.3, -1.2, "glass", fontsize=8, ha="left")
+    _finish(ax, (z_in - 0.35, z_lim), (-2.45, 2.35), title)
+
+
+def rod_lens_lpia_chain(ax, title=None):
+    """Sketch of the LPIA chain through a dielectric rod: the front surface
+    (LocalPlaneInterface, output plane just behind it), the spectrum of
+    plane waves through the glass to the axis, the back surface with its
+    output plane back on the axis, and the spectrum of plane waves through
+    the focus to the observation plane.
+
+    Parameters
+    ----------
+    ax : matplotlib Axes
+    title : str, optional
+    """
+
+    mpatches = _patches()
+    a, n = 1.0, 1.5
+    t = np.linspace(0, 2*np.pi, 200)
+    ax.add_patch(mpatches.Polygon(np.c_[a*np.cos(t), a*np.sin(t)], closed=True,
+                                  facecolor=GLASS, edgecolor=EDGE, lw=1.2, zorder=2))
+    z_obs = 2.1
+    for h in np.linspace(-0.6, 0.6, 9):
+        z1 = -np.sqrt(a**2 - h**2)
+        p1 = np.array([z1, h])
+        d1 = _refract(np.array([1.0, 0.0]), p1/a, 1.0, n)
+        s = -2*np.dot(p1, d1)
+        p2 = p1 + s*d1
+        d2 = _refract(d1, -p2/a, n, 1.0)
+        s3 = (z_obs - p2[0])/d2[0]
+        ax.plot([-1.6, z1], [h, h], color=RAY_COLOR, lw=0.9, zorder=3)
+        ax.plot([p1[0], p2[0]], [p1[1], p2[1]], color=RAY_COLOR, lw=0.9, zorder=3)
+        ax.plot([p2[0], p2[0] + s3*d2[0]], [p2[1], p2[1] + s3*d2[1]], color=RAY_COLOR, lw=0.9,
+                zorder=3)
+    z_f1 = -np.sqrt(a**2 - 0.6**2)
+    for z, text in ((-a, "input\n$z=-a$"), (z_f1 + 0.02, None), (0.0, "axis"),
+                    (z_obs, "observation\nplane")):
+        ax.plot([z, z], [-1.25, 1.25], color="0.4", lw=1.0, ls="--", zorder=4)
+        if text:
+            label(ax, z, -1.35, text, fontsize=8, va="top", color="0.3")
+    ax.add_patch(mpatches.Rectangle((z_f1 + 0.02, -1.25), -z_f1 - 0.02, 2.5, facecolor=WAVE_COLOR,
+                                    alpha=0.10, edgecolor="none", zorder=1))
+    ax.add_patch(mpatches.Rectangle((0.0, -1.25), z_obs, 2.5, facecolor=WAVE_COLOR, alpha=0.06,
+                                    edgecolor="none", zorder=0))
+    y_box = 1.75
+    boxes = ((-1.0, 0.6, "LPIA\nfront", RAY_COLOR), (-0.35, 0.45, "SPW", WAVE_COLOR),
+             (0.55, 0.6, "LPIA\nback", RAY_COLOR), (1.6, 0.45, "SPW", WAVE_COLOR))
+    for z, w, text, color in boxes:
+        _operator_box(ax, z, y_box, text, color, width=w, height=0.5, fontsize=8)
+    for (z0, w0, _, _), (z1, w1, _, _) in zip(boxes[:-1], boxes[1:]):
+        ax.annotate("", xy=(z1 - w1/2 - 0.02, y_box), xytext=(z0 + w0/2 + 0.02, y_box),
+                    arrowprops=dict(arrowstyle="-|>", color="0.4", lw=0.8), zorder=6)
+    _finish(ax, (-1.65, 2.6), (-2.0, 2.15), title)
+
+
+def plano_convex_orientation(ax, face="front", title=None):
+    """Sketch of a plano-convex lens focusing a collimated beam, with the
+    curved face towards the light (face="front", the refraction shared by
+    both faces, little spherical aberration) or behind (face="back", all
+    the refraction at the curved face, the marginal rays focus much
+    shorter). Rays are traced exactly.
+
+    Parameters
+    ----------
+    ax : matplotlib Axes
+    face : {"front", "back"}, optional
+    title : str, optional
+    """
+
+    mpatches = _patches()
+    R, n, half, base = 2.0, 1.5, 1.0, 0.08
+    sag = R - np.sqrt(R**2 - half**2)
+    t_c = sag + base
+    ys = np.linspace(-half, half, 200)
+    if face == "front":
+        curve = np.c_[R - np.sqrt(R**2 - ys**2), ys]
+        poly = np.r_[curve, [[t_c, half], [t_c, -half]]]
+        surfaces = [("sphere", 0.0), ("plane", t_c)]
+    else:
+        curve = np.c_[t_c - (R - np.sqrt(R**2 - ys**2)), ys]
+        poly = np.r_[[[0.0, -half], [0.0, half]], curve[::-1]]
+        surfaces = [("plane", 0.0), ("sphere", t_c)]
+    ax.add_patch(mpatches.Polygon(poly, closed=True, facecolor=GLASS, edgecolor=EDGE, lw=1.2,
+                                  zorder=2))
+    f = R/(n - 1)
+    z_end = t_c + f + 0.8
+    for y in np.linspace(-0.9, 0.9, 11):
+        p, d = np.array([-0.8, y]), np.array([1.0, 0.0])
+        pts = [p]
+        media = [(1.0, n), (n, 1.0)]
+        for (kind, z_s), (n1, n2) in zip(surfaces, media):
+            if kind == "plane":
+                s = (z_s - p[0])/d[0]
+                q = p + s*d
+                nrm = np.array([-1.0, 0.0])
+            else:
+                # sphere with its vertex at z_s, convex towards the light
+                # (front) or towards the image (back)
+                c = np.array([z_s + R, 0.0]) if face == "front" else np.array([z_s - R, 0.0])
+                o = p - c
+                b = np.dot(o, d)
+                disc = b**2 - (np.dot(o, o) - R**2)
+                s = -b - np.sqrt(disc) if face == "front" else -b + np.sqrt(disc)
+                q = p + s*d
+                nrm = (q - c)/R
+                if np.dot(nrm, d) > 0:
+                    nrm = -nrm
+            d = _refract(d, nrm, n1, n2)
+            p = q
+            pts.append(p)
+        s = (z_end - p[0])/d[0]
+        pts.append(p + s*d)
+        pts = np.array(pts)
+        marginal = abs(y) > 0.8
+        ax.plot(pts[:, 0], pts[:, 1], color=STRAY if marginal else RAY_COLOR, lw=0.9, zorder=3)
+        if marginal and y < 0:
+            z_m = p[0] - p[1]*d[0]/d[1]          # where the marginal ray crosses the axis
+    ax.plot(z_m, 0.0, "x", color=STRAY, ms=7, mew=1.8, zorder=5)
+    ax.plot([z_m, z_m], [0.08, 0.95], color=STRAY, lw=0.6, zorder=1)
+    label(ax, z_m, 1.0, "marginal\nfocus", fontsize=8, va="bottom", color=STRAY)
+    z_f = t_c + (f - t_c/n if face == "front" else f)    # paraxial back focal distance
+    ax.plot([z_f, z_f], [-0.9, 0.9], color="0.45", lw=0.8, ls=":", zorder=1)
+    label(ax, z_f, -1.05, "paraxial focus", fontsize=8, va="top", color="0.35")
+    label(ax, 0.3, 1.45, "curved face towards the light" if face == "front"
+          else "flat face towards the light", fontsize=9, va="bottom")
+    _finish(ax, (-0.85, z_end + 0.05), (-1.35, 1.85), title)
+
+
+def relief_grating_orders(ax, kind="sinusoidal", title=None):
+    """Sketch of a surface relief grating etched into glass (light from the
+    glass at normal incidence) and its transmitted orders: a sinusoidal
+    profile (several orders) or a blazed sawtooth of depth lambda/(n - 1)
+    (ideally all light in order +1).
+
+    Parameters
+    ----------
+    ax : matplotlib Axes
+    kind : {"sinusoidal", "blazed"}, optional
+    title : str, optional
+    """
+
+    mpatches = _patches()
+    P, d = 1.0, 0.35
+    ys = np.linspace(-2.0, 2.0, 600)
+    if kind == "blazed":
+        prof = d*np.mod(ys + 2.0, P)/P
+    else:
+        prof = d/2*(1 + np.cos(2*np.pi*ys/P))
+    poly = np.r_[np.c_[prof, ys], [[-1.6, 2.0], [-1.6, -2.0]]]
+    ax.add_patch(mpatches.Polygon(poly, closed=True, facecolor=GLASS, edgecolor="none", zorder=1))
+    ax.plot(prof, ys, color=EDGE, lw=1.4, zorder=3)
+    for y in np.linspace(-1.5, 1.5, 7):
+        ax.plot([-1.5, -0.32], [y, y], color=RAY_COLOR, lw=0.9)
+        ax.annotate("", xy=(-0.25, y), xytext=(-1.5, y),
+                    arrowprops=dict(arrowstyle="-|>", color=RAY_COLOR, lw=0.9))
+    label(ax, -1.05, -2.25, "plane wave\nin the glass", fontsize=8, va="top")
+    orders = (-1, 0, 1, 2) if kind == "sinusoidal" else (1,)
+    widths = {-1: 1.6, 0: 0.8, 1: 1.6, 2: 1.2} if kind == "sinusoidal" else {1: 2.6}
+    sin1 = 0.35
+    for m in orders:
+        s = m*sin1
+        c = np.sqrt(1 - s**2)
+        ax.plot([d + 0.3, d + 0.3 + 1.8*c], [0.0, 1.8*s], color=WAVE_COLOR, lw=widths[m])
+        ax.annotate("", xy=(d + 0.3 + 1.9*c, 1.9*s), xytext=(d + 0.3, 0.0),
+                    arrowprops=dict(arrowstyle="-|>", color=WAVE_COLOR, lw=widths[m]))
+        label(ax, d + 0.3 + 2.15*c, 2.15*s, "{:+d}".format(m) if m else "0", fontsize=9,
+              color=WAVE_COLOR)
+    label(ax, 0.17, 2.2, "period $\\Lambda$, depth $d$", fontsize=8, va="bottom")
+    label(ax, 2.0, -2.25, "transmitted orders\n$\\sin\\theta_m = m\\lambda/\\Lambda$", fontsize=8,
+          va="top", color=WAVE_COLOR)
+    _finish(ax, (-1.65, 2.9), (-2.85, 2.6), title)
+
+
+def polishing_layout(ax, kind="tool", title=None):
+    """Sketches of sub-aperture polishing and the errors it leaves (all
+    proportions exaggerated).
+
+    Parameters
+    ----------
+    ax : matplotlib Axes
+    kind : {"tool", "paths", "ripple", "edge"}, optional
+        "tool": a bonnet tool on a spindle polishes an asphere in a small
+        contact spot whose removal profile is the tool influence function
+        (TIF). "paths": raster and spiral tool paths in a top view of the
+        surface, with the pitch p. "ripple": the removal of neighbouring
+        tracks (Gaussian TIF of width w, pitch p) adds up to a mean removal
+        with a periodic residual. "edge": a tool that overhangs the rim
+        presses harder on the remaining contact area and turns the edge
+        down.
+    title : str, optional
+    """
+
+    mpatches = _patches()
+    tool_color, removal_color = "#e0a000", "#c0392b"
+    if kind == "tool":
+        z = np.linspace(-2.6, 2.6, 300)
+        top = 1.0 - 0.11*z**2
+        ax.add_patch(mpatches.Polygon(np.r_[np.c_[z, top], [[2.6, -0.4], [-2.6, -0.4]]], closed=True,
+                                      facecolor=GLASS, edgecolor=EDGE, lw=1.2, zorder=2))
+        z0 = 0.9
+        y0 = 1.0 - 0.11*z0**2
+        nz, ny = 0.22*z0, 1.0
+        nn = np.hypot(nz, ny)
+        nz, ny = nz/nn, ny/nn
+        rb = 0.55
+        cz, cy = z0 + rb*nz, y0 + rb*ny
+        ax.add_patch(mpatches.Circle((cz, cy), rb, facecolor=tool_color, edgecolor="0.3", lw=1,
+                                     zorder=4))
+        # spindle, tilted by the precession angle against the local normal
+        a = np.radians(20.0)
+        sz, sy = nz*np.cos(a) - ny*np.sin(a), nz*np.sin(a) + ny*np.cos(a)
+        ax.plot([cz, cz + 1.4*sz], [cy, cy + 1.4*sy], color="0.3", lw=7, solid_capstyle="butt",
+                zorder=3)
+        label(ax, cz + 1.55*sz + 0.1, cy + 1.55*sy, "spindle (precessed)", fontsize=8, ha="left")
+        label(ax, cz + 0.75, cy - 0.05, "bonnet", fontsize=8, ha="left")
+        # contact spot
+        zz = np.linspace(z0 - 0.3, z0 + 0.3, 40)
+        ax.plot(zz, 1.0 - 0.11*zz**2 - 0.015, color=removal_color, lw=3, zorder=5)
+        arrow(ax, z0 - 0.7, y0 + 0.45, z0 - 1.9, y0 + 0.45 + 0.11*(z0**2 - (z0 - 1.2)**2),
+              color="0.25", text="traverse along\nthe tool path", text_pos=(z0 - 1.6, y0 + 1.0),
+              fontsize=8)
+        # TIF below the part
+        u = np.linspace(-0.9, 0.9, 200)
+        ax.plot(z0 + u, -0.75 - 0.45*np.exp(-u**2/(2*0.22**2)), color=removal_color, lw=1.4)
+        ax.plot(z0 + u, -0.75 + 0*u, color="0.5", lw=0.6)
+        label(ax, z0 + 1.05, -1.0, "removal profile of the spot\n(tool influence function,\n"
+              "FWHM $w$)", fontsize=8, ha="left", color=removal_color)
+        label(ax, -1.6, 0.25, "asphere", fontsize=9)
+        _finish(ax, (-2.8, 4.0), (-1.5, 3.4), title)
+    elif kind == "paths":
+        t = np.linspace(0, 2*np.pi, 200)
+        for zc, name in ((-1.4, "raster"), (1.4, "spiral")):
+            ax.add_patch(mpatches.Circle((zc, 0), 1.15, facecolor=GLASS, edgecolor=EDGE, lw=1.2))
+            if name == "raster":
+                ys = np.arange(-1.05, 1.06, 0.15)
+                pts = []
+                for k, y in enumerate(ys):
+                    h = np.sqrt(max(1.15**2 - y**2, 0)) - 0.05
+                    seg = [(zc - h, y), (zc + h, y)]
+                    pts += seg if k % 2 == 0 else seg[::-1]
+                pts = np.array(pts)
+                ax.plot(pts[:, 0], pts[:, 1], color=tool_color, lw=1.1)
+                arrow(ax, zc + 1.3, ys[6], zc + 1.3, ys[7], color="0.2", style="<|-|>")
+                label(ax, zc + 1.45, 0.5*(ys[6] + ys[7]), "$p$", fontsize=9, ha="left")
+            else:
+                th = np.linspace(0, 7*2*np.pi, 1500)
+                r = 1.1*(1 - th/th[-1])
+                ax.plot(zc + r*np.cos(th), r*np.sin(th), color=tool_color, lw=1.1)
+                arrow(ax, zc + 0.943, 0.0, zc + 1.1, 0.0, color="0.2", style="<|-|>")
+                label(ax, zc + 1.02, 0.12, "$p$", fontsize=9, va="bottom")
+            label(ax, zc, -1.35, name, fontsize=9, va="top")
+        _finish(ax, (-2.8, 3.0), (-1.7, 1.35), title)
+    elif kind == "ripple":
+        p, w = 1.0, 0.9
+        s = w/(2*np.sqrt(2*np.log(2)))
+        x = np.linspace(-3.2, 3.2, 800)
+        total = 0*x
+        for k in range(-6, 7):
+            g = 0.55*np.exp(-(x - k*p)**2/(2*s**2))
+            total += g
+            if abs(k) <= 2:
+                ax.plot(x, -g, color=removal_color, lw=0.8, ls="--")
+        mean = total[(x > -2) & (x < 2)].mean()
+        ax.plot(x, 0*x, color="0.5", lw=0.8)
+        ax.plot(x, -total, color=EDGE, lw=1.8)
+        ax.plot(x, -mean + 0*x, color="0.4", lw=0.8, ls=":")
+        label(ax, -3.3, 0.12, "surface before", fontsize=8, ha="left", va="bottom")
+        label(ax, 3.3, -mean - 0.12, "mean removal $D$", fontsize=8, ha="right", va="top")
+        label(ax, -3.3, -1.6, "after: ripple $\\propto 2D\\,e^{-2\\pi^2 s^2/p^2}$, "
+              "$s = w/2.355$", fontsize=8, ha="left", color=EDGE)
+        arrow(ax, 0, 0.35, p, 0.35, color="0.2", style="<|-|>", text="$p$", text_pos=(0.5*p, 0.5),
+              fontsize=9)
+        label(ax, -2.1, -0.75, "one track\n(TIF across it)", fontsize=8, color=removal_color)
+        _finish(ax, (-3.4, 3.4), (-1.8, 0.75), title)
+    elif kind == "edge":
+        ax.add_patch(mpatches.Rectangle((-2.5, -0.8), 4.0, 0.8, facecolor=GLASS, edgecolor="none"))
+        z = np.linspace(-2.5, 1.5, 300)
+        prof = -0.22*np.clip((z - 0.5)/1.0, 0, None)**2
+        ax.plot(z, prof, color=EDGE, lw=1.6)
+        ax.plot([1.5, 1.5], [prof[-1], -0.8], color=EDGE, lw=1.2)
+        ax.plot(z[z > 0.4], 0*z[z > 0.4], color="0.5", lw=0.8, ls=":")
+        ax.add_patch(mpatches.Rectangle((0.3, 0.05), 2.0, 0.3, facecolor=tool_color, edgecolor="0.3",
+                                        lw=1, alpha=0.9))
+        label(ax, 1.3, 0.55, "tool overhangs the rim", fontsize=8)
+        for zp in np.linspace(0.45, 1.4, 6):
+            hgt = 0.12 + 0.45*((zp - 0.4)/1.0)**3
+            y_top = -0.22*max(zp - 0.5, 0)**2
+            arrow(ax, zp, y_top, zp, y_top - hgt, color=removal_color)
+        label(ax, 0.2, -0.45, "pressure rises\ntowards the edge", fontsize=8, color=removal_color,
+              ha="right")
+        label(ax, 1.65, -0.35, "turned-\ndown\nedge", fontsize=8, ha="left", color=EDGE)
+        _finish(ax, (-2.6, 2.6), (-1.0, 0.9), title)
+    else:
+        raise ValueError("kind must be 'tool', 'paths', 'ripple' or 'edge'.")
+
+
+# ---------------------------------------------------------------------------
+# notebook 169 (source models in field tracing) and
+# notebook 170 (laser resonator modes)
+# ---------------------------------------------------------------------------
+
+_MODE_COLORS = ("#2a7ab9", "#5aa469", "#d6604d")
+
+
+def _hg(n, xi):
+    """Hermite-Gaussian function of order n (unnormalized, peak about 1)."""
+
+    h = [np.ones_like(xi), 2*xi]
+    for k in range(1, n):
+        h.append(2*xi*h[k] - 2*k*h[k - 1])
+    u = h[n]*np.exp(-xi**2/2)
+    return u/np.abs(u).max()
+
+
+def _profile(ax, z, y, s, values, width, height, color, lw=1.2, ls="-", baseline=True,
+             zorder=5):
+    """A transverse profile drawn sideways: z + width*values(s), y + height*s."""
+
+    if baseline:
+        ax.plot([z, z], [y - height, y + height], color="0.75", lw=0.6, zorder=zorder - 1)
+    ax.plot(z + width*values, y + height*s, color=color, lw=lw, ls=ls, zorder=zorder)
+
+
+def _flow_box(ax, z, y, w, h, text, color="0.94", fontsize=8):
+    ax.add_patch(_patches().FancyBboxPatch((z - w/2, y - h/2), w, h, boxstyle="round,pad=0.04",
+                                           facecolor=color, edgecolor="0.35", lw=0.9, zorder=3))
+    label(ax, z, y, text, fontsize=fontsize)
+
+
+def mode_decomposition(ax, kind="incoherent", title=None):
+    """Sketch of a source decomposed into modes that a field tracing chain
+    traces one by one (notebook 169, source models in field tracing).
+
+    - "incoherent": the coherent modes of a partially coherent beam
+      (Hermite-Gaussians with the weights w_j); each is traced through the
+      chain, and the detector adds the irradiances w_j abs(E_j)^2.
+    - "pulse": the spectral components of a pulse at the frequencies
+      omega_j; the detector adds the fields with their complex amplitudes
+      a_j, and the sum is a short pulse.
+
+    Parameters
+    ----------
+    ax : matplotlib Axes
+    kind : str, optional
+        "incoherent" or "pulse".
+    title : str, optional
+    """
+
+    if kind not in ("incoherent", "pulse"):
+        raise ValueError("kind must be 'incoherent' or 'pulse'.")
+    rows = [1.5, 0.0, -1.5]
+    s = np.linspace(-1, 1, 201)
+    z_in, z_chain, z_out, z_sum = 0.0, 2.1, 3.7, 5.9
+    weights = [0.6, 0.27, 0.13]
+    for j, (y, col) in enumerate(zip(rows, _MODE_COLORS)):
+        if kind == "incoherent":
+            _profile(ax, z_in, y, s, _hg(j, 2.6*s), 0.45, 0.6, col)
+            label(ax, z_in - 0.5, y, f"$E_{j}$", fontsize=9, ha="right", color=col)
+            label(ax, z_in + 0.55, y + 0.62, f"$w_{j}$ = {weights[j]:.2f}", fontsize=8,
+                  ha="left", color=col)
+            _profile(ax, z_out, y, s, _hg(j, 3.0*s)**2, 0.55, 0.6, col)
+            label(ax, z_out + 0.6, y + 0.62, f"$|E_{j}'|^2$", fontsize=8, ha="left", color=col)
+        else:
+            # one spectral component: a harmonic field and its oscillation in time
+            _profile(ax, z_in, y, s, np.exp(-(2.2*s)**2), 0.45, 0.6, col)
+            label(ax, z_in - 0.5, y, f"$\\omega_{j}$", fontsize=9, ha="right", color=col)
+            t = np.linspace(-1, 1, 300)
+            w_j = 7.0 + 2.2*(j - 1)
+            ax.plot(z_out + 0.55*t + 0.55, y + 0.3*np.cos(w_j*np.pi*t), color=col, lw=1.0,
+                    zorder=5)
+            label(ax, z_out + 0.55, y + 0.62, f"$a_{j} E_{j}' e^{{-i\\omega_{j} t}}$",
+                  fontsize=8, color=col)
+        arrow(ax, z_in + 0.65, y, z_chain - 0.65, y, color="0.35")
+        _flow_box(ax, z_chain, y, 1.1, 0.7, "chain\n(one λ)" if kind == "pulse" else "chain")
+        arrow(ax, z_chain + 0.65, y, z_out - 0.15, y, color="0.35")
+        arrow(ax, z_out + 1.2, y, z_sum - 0.35, 0.0 + 0.25*np.sign(y), color="0.35")
+    ax.add_patch(_patches().Circle((z_sum, 0.0), 0.28, facecolor="white", edgecolor="0.2", lw=1.2,
+                                   zorder=4))
+    label(ax, z_sum, 0.0, "+", fontsize=14, zorder=6)
+    z_res = z_sum + 0.6
+    if kind == "incoherent":
+        total = sum(w*_hg(j, 3.0*s)**2 for j, w in enumerate(weights))
+        _profile(ax, z_res, 0.0, s, total/total.max(), 0.6, 0.9, "k", lw=1.8)
+        label(ax, z_res + 0.35, -1.15, "$I = \\sum_j w_j |E_j'|^2$", fontsize=9, va="top")
+        label(ax, z_in + 0.2, -2.35, "mutually incoherent modes: irradiances add",
+              fontsize=9, ha="left", va="top")
+    else:
+        t = np.linspace(-1, 1, 400)
+        env = np.exp(-(3.2*t)**2)
+        ax.plot(z_res + 0.7 + 0.8*t, 0.9*env*np.cos(7*np.pi*t), color="k", lw=1.2, zorder=5)
+        ax.plot(z_res + 0.7 + 0.8*t, 0.9*env, color="k", lw=0.8, ls="--", zorder=5)
+        label(ax, z_res + 0.7, -1.15, "$E(t) = \\sum_j a_j E_j' e^{-i\\omega_j t}$", fontsize=9,
+              va="top")
+        label(ax, z_in + 0.2, -2.35, "mutually coherent frequencies: fields add",
+              fontsize=9, ha="left", va="top")
+    label(ax, z_in + 0.2, 2.45, "source = modes", fontsize=9, va="bottom")
+    label(ax, z_chain, 2.45, "each traced\non its own", fontsize=9, va="bottom")
+    label(ax, z_sum + 0.6, 2.45, "detector", fontsize=9, va="bottom")
+    _finish(ax, (-1.1, z_res + 1.7), (-2.75, 3.2), title)
+
+
+def multimode_fibre(ax, M2=2.0, title=None):
+    """Sketch of a multimode laser beam focused into a single-mode fibre
+    (notebook 169, source models in field tracing).
+
+    The beam (shaded) has the second-moment radius W and the divergence of
+    M^2 times a Gaussian beam's; its fundamental mode, the embedded Gaussian
+    (dashed), is narrower by sqrt(M^2) everywhere. A fibre matched to the
+    focus of the embedded Gaussian takes the power of that mode and nothing
+    else: the higher order modes are orthogonal to the fibre mode. The bars
+    show the thermal mode powers p_n, proportional to kappa^n.
+
+    Parameters
+    ----------
+    ax : matplotlib Axes
+    M2 : number, optional
+        Beam quality factor drawn.
+    title : str, optional
+    """
+
+    P = _patches()
+    m = np.sqrt(M2)
+    W, f, z_l = 0.62, 2.6, 1.6
+    z_f = z_l + f
+    w0 = 0.09*m                                   # waist of the real beam
+    z = np.linspace(z_l, z_f + 0.9, 200)
+    w = np.sqrt(w0**2 + (W*(z - z_f)/f)**2)
+    we = w/m
+    # the beam before the lens and behind it
+    band(ax, [0.0, z_l], [W, W], [0.0, z_l], [-W, -W], color=LASER, alpha=0.22, edges=False)
+    band(ax, z, w, z, -w, color=LASER, alpha=0.22, edges=False)
+    ax.plot([0.0, z_l], [W, W], color=LASER, lw=0.9)
+    ax.plot([0.0, z_l], [-W, -W], color=LASER, lw=0.9)
+    ax.plot(z, w, color=LASER, lw=0.9)
+    ax.plot(z, -w, color=LASER, lw=0.9)
+    for sgn in (1, -1):
+        ax.plot([0.0, z_l], [sgn*W/m, sgn*W/m], color=REFERENCE, lw=1.1, ls="--", zorder=4)
+        ax.plot(z, sgn*we, color=REFERENCE, lw=1.1, ls="--", zorder=4)
+    lens(ax, z_l, 0.95, text="lens f", text_y=-1.05)
+    # the fibre: cladding and core, the core matched to the embedded Gaussian
+    ax.add_patch(P.Rectangle((z_f, -0.38), 1.6, 0.76, facecolor=CLADDING, edgecolor=FIBRE_EDGE,
+                             lw=0.8, zorder=2))
+    ax.add_patch(P.Rectangle((z_f, -w0/m), 1.6, 2*w0/m, facecolor="#f6d7b0", edgecolor="none",
+                             zorder=2.5))
+    s = np.linspace(-1, 1, 101)
+    _profile(ax, z_f + 1.95, 0.0, s, np.exp(-2*(0.45*s/(w0/m))**2), 0.4, 0.45, REFERENCE,
+             baseline=False)
+    label(ax, z_f + 0.8, -0.5, "single-mode fibre", fontsize=8, va="top")
+    label(ax, z_f + 2.15, 0.55, "fibre mode", fontsize=8, va="bottom", color=REFERENCE)
+    label(ax, 0.8, W + 0.1, f"beam, radius W, $M^2$ = {M2:g}", fontsize=8, va="bottom",
+          color=LASER)
+    label(ax, 0.6, -W - 0.1, "embedded Gaussian (dashed),\nradius $W/\\sqrt{M^2}$", fontsize=8,
+          va="top", color=REFERENCE)
+    # thermal mode powers
+    kappa = (M2 - 1)/(M2 + 1)
+    p = (1 - kappa)*kappa**np.arange(6)
+    z_b, y_b = 0.0, 1.35
+    for n, pn in enumerate(p):
+        ax.add_patch(P.Rectangle((z_b + 0.28*n, y_b), 0.2, 1.1*pn,
+                                 facecolor=REFERENCE if n == 0 else "0.7", edgecolor="none",
+                                 zorder=3))
+        label(ax, z_b + 0.28*n + 0.1, y_b - 0.05, str(n), fontsize=7, va="top")
+    label(ax, z_b + 1.85, y_b + 0.55, "mode powers\n$p_n \\propto \\kappa^n$", fontsize=8,
+          ha="left")
+    label(ax, z_f + 0.8, 1.2,
+          "coupled: only $p_0 = (1-\\kappa)^2$\n" + f"= {(1 - kappa)**2:.2f} for both axes",
+          fontsize=8, color=REFERENCE)
+    _finish(ax, (-0.2, z_f + 2.6), (-1.45, 2.75), title)
+
+
+def led_behind_collimator(ax, title=None):
+    """Sketch of an LED die in the front focal plane of a collimator, and a
+    screen far behind it (notebook 169, source models in field tracing).
+
+    Every emitter of the die becomes a plane wave tilted by its height over
+    the focal length, cut by the lens aperture. The emitters are mutually
+    incoherent, so the screen shows the sum of the shifted copies of the
+    aperture (black): the aperture convolved with the image of the die,
+    without the diffraction ripples of a single emitter. Directly behind
+    the lens the coherence width is about lambda f/D for a die of width D
+    (van Cittert-Zernike with the distance replaced by f).
+
+    Parameters
+    ----------
+    ax : matplotlib Axes
+    title : str, optional
+    """
+
+    f, r, z_s = 1.6, 0.55, 5.4
+    ys = [0.2, 0.0, -0.2]
+    colours = [STAR, IMAGING, STAR2]
+    ax.add_patch(_patches().Rectangle((-0.06, -0.24), 0.12, 0.48, facecolor="#fbe7b0",
+                                      edgecolor=ILLUMINATION, lw=1, zorder=3))
+    for y0, col in zip(ys, colours):
+        point_source(ax, 0.0, y0, color=col, size=40)
+        u = -y0/f                                       # tilt behind the lens
+        top, bot = r + u*(z_s - f), -r + u*(z_s - f)
+        band(ax, [f, z_s], [r, top], [f, z_s], [-r, bot], color=col, alpha=0.12, edges=False)
+        for h in (r, -r):
+            ax.plot([0.0, f, z_s], [y0, h, h + u*(z_s - f)], color=col, lw=0.8, alpha=0.9,
+                    zorder=2)
+    lens(ax, f, 0.75, text="collimator f,\naperture", text_y=-0.95)
+    stop(ax, f + 0.1, 0.75, openings=((0.0, r),), width=0.05)
+    ax.plot([z_s, z_s], [-1.1, 1.1], color="0.35", lw=2.5, zorder=4)
+    label(ax, z_s, -1.2, "screen", va="top")
+    # irradiance: the sum of the shifted aperture copies (a trapezoid)
+    y = np.linspace(-1.1, 1.1, 400)
+    shifts = np.linspace(-0.2, 0.2, 31)/f*(z_s - f)
+    total = np.mean([(np.abs(y + d) < r).astype(float) for d in shifts], axis=0)
+    for y0, col in zip(ys, colours):
+        d = y0/f*(z_s - f)
+        ax.plot(z_s + 0.12 + 0.3*(np.abs(y + d) < r), y, color=col, lw=0.8, zorder=5)
+    ax.plot(z_s + 0.12 + 0.6*total, y, color="k", lw=1.6, zorder=6)
+    label(ax, z_s + 0.5, 1.2, "one emitter (colour)\nall of them (black)", fontsize=8,
+          va="bottom")
+    label(ax, 0.0, -0.35, "LED die,\nwidth D", fontsize=8, va="top")
+    arrow(ax, 0.0, -0.95, f - 0.1, -0.95, style="<|-|>", color="0.4", text="f",
+          text_pos=(f/2, -1.03), va="top")
+    label(ax, (f + z_s)/2 + 0.3, 1.15, "each emitter: a plane wave tilted by y/f", fontsize=8,
+          va="bottom")
+    label(ax, f, 0.85, "coherence width\n≈ λf/D", fontsize=8, va="bottom", color=STRAY)
+    _finish(ax, (-0.5, z_s + 1.2), (-1.55, 1.75), title)
+
+
+def young_broadband(ax, title=None):
+    """Sketch of Young's double slit in broadband light
+    (notebook 169, source models in field tracing). Every wavelength makes fringes with a
+    period lambda L/d; they agree at the centre of the screen and drift
+    apart where the path difference d y/L approaches the coherence length
+    lambda^2/Delta lambda, and the sum (black) loses its visibility.
+
+    Parameters
+    ----------
+    ax : matplotlib Axes
+    title : str, optional
+    """
+
+    d, L = 0.5, 4.0
+    for z0 in (-1.2, -0.8, -0.4):
+        ax.plot([z0, z0], [-0.9, 0.9], color="0.4", lw=1.1)
+    label(ax, -0.8, -1.0, "broadband\nplane wave", fontsize=8, va="top")
+    stop(ax, 0.0, 1.0, openings=((d/2 - 0.03, d/2 + 0.03),), width=0.05)
+    label(ax, 0.0, 1.1, "slits, d apart", fontsize=8, va="bottom")
+    ax.plot([L, L], [-1.3, 1.3], color="0.35", lw=2.5, zorder=4)
+    label(ax, L, -1.4, "screen", va="top", fontsize=8)
+    y_p = 1.0
+    for ys in (d/2, -d/2):
+        ax.plot([0.0, L], [ys, y_p], color="0.3", lw=0.8)
+        ax.plot([0.0, L], [ys, 0.0], color="0.6", lw=0.6, ls=":")
+    ax.plot([L], [y_p], "o", color="k", ms=4, zorder=6)
+    label(ax, L - 0.1, y_p + 0.1, "OPD = d y/L", fontsize=8, ha="right", va="bottom")
+    y = np.linspace(-1.3, 1.3, 600)
+    lams = [0.8, 1.0, 1.25]
+    cols = [_SPECTRUM["blue"], _SPECTRUM["green"], _SPECTRUM["red"]]
+    period0 = 0.3
+    for lam, col in zip(lams, cols):
+        _fringe_curve(ax, L + 0.12, y, 0.0, period0*lam, 0.18, color=col, lw=0.7)
+    lam = np.linspace(0.7, 1.4, 25)
+    total = np.mean([1 + np.cos(2*np.pi*y/(period0*la)) for la in lam], axis=0)
+    ax.plot(L + 0.6 + 0.2*total, y, color="k", lw=1.5, zorder=6)
+    label(ax, L + 0.45, 1.45, "each λ, and the sum", fontsize=8, va="bottom")
+    label(ax, L + 1.3, 0.0, "fringes\nagree", fontsize=8, ha="left")
+    label(ax, L + 1.3, 1.0, "OPD ≈ λ²/Δλ:\nwashed out", fontsize=8, ha="left", color=STRAY)
+    _finish(ax, (-1.5, L + 2.4), (-1.75, 1.8), title)
+
+
+def _transit_profile(t, s):
+    """Field amplitude after a few transits of a Fox-Li iteration: from a
+    uniform start with edge ripples (t = 0) towards the smooth mode (t = 1)."""
+
+    flat = np.ones_like(s) + 0.3*(1 - t)*np.cos(14*(1 - np.abs(s)))*np.abs(s)**6
+    mode = np.cos(0.47*np.pi*s)
+    return np.where(np.abs(s) <= 1, (1 - t)*flat + t*mode, 0.0)
+
+
+def fox_li_unfolded(ax, transits=5, title=None):
+    """Sketch of the Fox-Li iteration (notebook 170, laser resonator modes).
+
+    Top: two plane mirrors of half width a, a distance L apart. Bottom: the
+    same resonator unfolded into a row of apertures; a uniform field enters,
+    each transit diffracts it and the next aperture cuts off the light that
+    spills past the edge (the diffraction loss). After many transits the
+    field no longer changes its shape: it is the lowest-loss mode, an
+    eigenfunction of the round trip.
+
+    Parameters
+    ----------
+    ax : matplotlib Axes
+    transits : int, optional
+        Number of transits drawn.
+    title : str, optional
+    """
+
+    a, L = 0.6, 1.3
+    y_top = 2.0
+    # the resonator
+    for z_m in (0.0, L):
+        ax.plot([z_m, z_m], [y_top - a, y_top + a], color="0.25", lw=3.0, zorder=4)
+    band(ax, [0.0, L], [y_top + a, y_top + a], [0.0, L], [y_top - a, y_top - a], color=LASER,
+         alpha=0.15, edges=False)
+    arrow(ax, -0.25, y_top - a, -0.25, y_top + a, style="<|-|>", color="0.4")
+    label(ax, -0.32, y_top, "2a", fontsize=8, ha="right")
+    arrow(ax, 0.0, y_top + a + 0.15, L, y_top + a + 0.15, style="<|-|>", color="0.4", text="L",
+          text_pos=(L/2, y_top + a + 0.28), va="bottom")
+    label(ax, L + 0.4, y_top + 0.2, "plane mirrors, Fresnel number $N = a^2/(\\lambda L)$",
+          fontsize=9, ha="left")
+    label(ax, L + 0.4, y_top - 0.25, "unfolded: one aperture per transit", fontsize=9,
+          ha="left")
+    # the unfolded row of apertures
+    s = np.linspace(-1.0, 1.0, 301)
+    ts = np.r_[0.0, 1 - 0.55**np.arange(1, transits)]
+    for k in range(transits + 1):
+        stop(ax, k*L, 1.0, openings=((0.0, a),), width=0.05)
+    for k, t in enumerate(ts):
+        z0 = k*L + 0.12
+        prof = _transit_profile(t, s)
+        ax.plot([z0, z0], [-a, a], color="0.75", lw=0.6)
+        ax.plot(z0 + 0.45*prof, a*s, color=LASER, lw=1.2, zorder=5)
+        if k > 0:
+            for sgn in (1, -1):
+                arrow(ax, k*L - 0.35, sgn*(a - 0.05), k*L - 0.05, sgn*(a + 0.28), color=STRAY,
+                      lw=0.8)
+    label(ax, 0.12, -1.15, "uniform\nstart", fontsize=8, va="top")
+    label(ax, transits*L - L + 0.3, -1.15, "lowest-loss\nmode", fontsize=8, va="top")
+    label(ax, 1.5*L, 1.1, "light spilling past the edge: diffraction loss", fontsize=8,
+          color=STRAY, va="bottom")
+    label(ax, transits*L + 0.25, 0.0, "$K E = \\gamma E$", fontsize=10, ha="left")
+    _finish(ax, (-0.6, transits*L + 1.2), (-1.55, y_top + a + 0.55), title)
+
+
+def aperture_selection(ax, ratio=1.4, title=None):
+    """Sketch of mode selection with an aperture in a half-symmetric
+    resonator (notebook 170, laser resonator modes): a plane mirror with an
+    aperture of radius a = ratio*w in front of it, a concave mirror, the
+    TEM00 mode (radius w on the plane mirror) and the wider TEM01 mode. The
+    profiles on the left show how much of each mode the aperture cuts off
+    (red).
+
+    Parameters
+    ----------
+    ax : matplotlib Axes
+    ratio : number, optional
+        Aperture radius in units of the TEM00 radius on the plane mirror.
+    title : str, optional
+    """
+
+    L, R2, wl = 3.0, 6.0, 0.06
+    z_R = np.sqrt(L*(R2 - L))                     # waist on the plane mirror
+    w0 = np.sqrt(wl*z_R/np.pi)
+    z = np.linspace(0.0, L, 101)
+    w = w0*np.sqrt(1 + (z/z_R)**2)
+    band(ax, z, np.sqrt(3)*w, z, -np.sqrt(3)*w, color=REFERENCE, alpha=0.12, edges=False)
+    band(ax, z, w, z, -w, color=LASER, alpha=0.3, edges=False)
+    ax.plot([0.0, 0.0], [-1.0, 1.0], color="0.25", lw=3.0, zorder=4)
+    _mirror_arc(ax, L, -R2, -1.0, 1.0)
+    a = ratio*w0
+    stop(ax, 0.15, 1.0, openings=((0.0, a),), width=0.06)
+    # profiles at the aperture, drawn to the left of the plane mirror
+    y = np.linspace(-1.0, 1.0, 401)
+    for k, (prof, col, name) in enumerate([
+            (np.exp(-2*y**2/w0**2), LASER, "TEM$_{00}$"),
+            ((2*y**2/w0**2)*np.exp(1 - 2*y**2/w0**2), REFERENCE, "TEM$_{01}$")]):
+        zb = -0.45 - 0.95*k
+        ax.plot([zb, zb], [-1.0, 1.0], color="0.75", lw=0.6)
+        ax.plot(zb - 0.6*prof, y, color=col, lw=1.2, zorder=5)
+        out = np.abs(y) > a
+        for sgn in (1, -1):
+            sel = out & (sgn*y > 0)
+            ax.fill_betweenx(y[sel], zb, zb - 0.6*prof[sel], color=STRAY, alpha=0.5, lw=0,
+                             zorder=4)
+        label(ax, zb - 0.3, 1.1, name, fontsize=8, color=col, va="bottom")
+    for sgn in (1, -1):
+        ax.plot([-2.15, 0.15], [sgn*a, sgn*a], color="0.4", lw=0.6, ls=":")
+    label(ax, 0.15, -1.15, f"aperture\na ≈ {ratio:g} w", fontsize=8, va="top")
+    label(ax, L, -1.15, "concave\nmirror R", fontsize=8, va="top")
+    label(ax, L/2, 0.9, "TEM$_{01}$ is wider:\nthe aperture costs it more", fontsize=8,
+          color=REFERENCE, va="bottom")
+    label(ax, -1.0, -1.15, "clipped (red)", fontsize=8, color=STRAY, va="top")
+    _finish(ax, (-2.3, L + 0.4), (-1.55, 1.55), title)
+
+
+def _lens_guide_mode(f, d, wl):
+    """Radius w(z) of the Gaussian mode between two plane mirrors a
+    distance 2d apart with a thin lens f in the middle, sampled over the
+    resonator, or None if unstable."""
+
+    def P(L):
+        return np.array([[1.0, L], [0.0, 1.0]])
+
+    T = np.array([[1.0, 0.0], [-1/f, 1.0]])
+    M = P(d) @ T @ P(d) @ P(d) @ T @ P(d)          # from mirror 1 round trip
+    A, B, C, D = M.ravel()
+    if abs((A + D)/2) >= 1:
+        return None
+    # self-consistent q at mirror 1: 1/q = (D - A)/(2B) - i sqrt(1 - m^2)/|B|
+    m = (A + D)/2
+    inv_q = (D - A)/(2*B) - 1j*np.sqrt(1 - m**2)/abs(B)
+    q = 1/inv_q
+    z = np.linspace(0.0, 2*d, 201)
+    w = np.empty_like(z)
+    for i, zi in enumerate(z):
+        Mz = P(zi) if zi <= d else P(zi - d) @ T @ P(d)
+        qz = (Mz[0, 0]*q + Mz[0, 1])/(Mz[1, 0]*q + Mz[1, 1])
+        w[i] = np.sqrt(-wl/(np.pi*np.imag(1/qz)))
+    return z, w
+
+
+def thermal_lens_resonator(ax, f=30.0, title=None):
+    """Sketch of a resonator with two plane mirrors and a pumped laser rod
+    in the middle whose thermal lens (focal length f) makes it stable
+    (notebook 170, laser resonator modes). The shaded mode follows from
+    the ABCD round trip: a weak lens (long f) gives a large mode that the
+    rod aperture and the mirrors clip; near the far edge of stability
+    (f -> L/4) the mode is focused onto the mirrors and spreads out at the
+    rod.
+
+    Parameters
+    ----------
+    ax : matplotlib Axes
+    f : number, optional
+        Focal length of the thermal lens; the resonator length is 4 (stable
+        for f > 1).
+    title : str, optional
+    """
+
+    P = _patches()
+    L, h_rod, l_rod = 4.0, 0.42, 0.9
+    res = _lens_guide_mode(f, L/2, 0.07)
+    if res is None:
+        raise ValueError("the resonator is unstable for f <= L/4 = 1.")
+    z, w = res
+    band(ax, z, w, z, -w, color=LASER, alpha=0.3, edges=True)
+    for z_m in (0.0, L):
+        ax.plot([z_m, z_m], [-0.75, 0.75], color="0.25", lw=3.0, zorder=4)
+    ax.add_patch(P.Rectangle((L/2 - l_rod/2, -h_rod), l_rod, 2*h_rod, facecolor=GLASS,
+                             edgecolor=EDGE, lw=1, alpha=0.8, zorder=2))
+    for sgn in (1, -1):
+        for zp in np.linspace(L/2 - 0.3, L/2 + 0.3, 3):
+            arrow(ax, zp, sgn*0.95, zp, sgn*(h_rod + 0.04), color=ILLUMINATION, lw=1.0)
+    # where the mode is wider than the rod, the rod clips it
+    inside = np.abs(z - L/2) <= l_rod/2
+    if np.any(w[inside] > 0.9*h_rod):
+        for sgn in (1, -1):
+            ax.fill_between(z[inside], sgn*0.9*h_rod, sgn*np.maximum(w[inside], 0.9*h_rod),
+                            color=STRAY, alpha=0.45, lw=0, zorder=3)
+        label(ax, L/2 + l_rod/2 + 0.1, h_rod + 0.1, "clipped\nby the rod", fontsize=8,
+              ha="left", va="bottom", color=STRAY)
+    # the thermal lens: a parabolic index profile in the rod
+    yy = np.linspace(-h_rod, h_rod, 41)
+    ax.plot(L/2 + 0.25*(1 - (yy/h_rod)**2) - 0.12, yy, color=STRAY, lw=1.0, zorder=3)
+    label(ax, L/2, 1.0, "pump", fontsize=8, va="bottom", color=ILLUMINATION)
+    label(ax, L/2, -1.0, f"rod: thermal lens f = {f:g}\n(index highest on the axis)",
+          fontsize=8, va="top")
+    label(ax, 0.0, -0.85, "plane\nmirror", fontsize=8, va="top")
+    label(ax, L, -0.85, "plane\nmirror", fontsize=8, va="top")
+    _finish(ax, (-0.4, L + 0.4), (-1.6, 1.35), title)
+
+
+def unstable_resonator(ax, M=2.0, title=None):
+    """Sketch of a positive-branch confocal unstable resonator
+    (notebook 170, laser resonator modes). A large concave mirror and a small convex
+    mirror share their focal point F (behind the small mirror). A
+    collimated ray that hits the small mirror seems to come from F, and the
+    large mirror sends it back collimated, M = R1/abs(R2) times further from
+    the axis. Rays that pass the edge of the small mirror leave the cavity
+    as an annular (for strips: two-strip) output beam; the geometric output
+    coupling is 1 - 1/M for strips and 1 - 1/M^2 for round mirrors.
+
+    Parameters
+    ----------
+    ax : matplotlib Axes
+    M : number, optional
+        Magnification (larger than 1).
+    title : str, optional
+    """
+
+    f1 = 4.0
+    f2 = f1/M                       # |focal length| of the convex mirror
+    L = f1 - f2
+    z_F = f1
+    a = 0.35                        # half width of the small mirror
+    h1 = 1.05*M*a
+    _mirror_arc(ax, 0.0, 2*f1, -h1, h1)
+    _mirror_arc(ax, L, 2*f2, -a, a)
+    z_out = L + 1.6
+    # the output beam between a and M a
+    for sgn in (1, -1):
+        band(ax, [L, z_out], [sgn*M*a, sgn*M*a], [L, z_out], [sgn*a, sgn*a], color=LASER,
+             alpha=0.25, edges=False)
+    # rays: collimated towards the small mirror, diverging back as from F
+    ys = a/M**np.arange(3)[::-1]
+    for y in ys:
+        for sgn in (1, -1):
+            yy = sgn*y
+            ax.plot([0.0, L], [yy, yy], color=LASER, lw=1.0, zorder=3)
+            ax.plot([L, 0.0], [yy, yy*z_F/(z_F - L)], color=LASER, lw=1.0, zorder=3)
+            ax.plot([L, z_F], [yy, 0.0], color=LASER, lw=0.6, ls=":", zorder=2)
+    for sgn in (1, -1):
+        ax.plot([0.0, z_out], [sgn*M*a, sgn*M*a], color=LASER, lw=1.0, zorder=3)
+        arrow(ax, z_out - 0.3, sgn*0.75*(M + 1)/2*a, z_out, sgn*0.75*(M + 1)/2*a, color=LASER)
+    ax.plot([z_F], [0.0], "o", color="k", ms=4, zorder=6)
+    label(ax, z_F, -0.12, "F", fontsize=9, va="top")
+    ax.axhline(0.0, color="0.6", lw=0.6, ls="-.", zorder=0)
+    label(ax, 0.0, -h1 - 0.1, "concave $R_1$", fontsize=8, va="top")
+    label(ax, L, -a - 0.1, "convex $R_2$", fontsize=8, va="top")
+    label(ax, z_out + 0.1, (M + 1)/2*a, "output\nbeam", fontsize=8, ha="left", color=LASER)
+    label(ax, L/2, h1 + 0.15, f"each round trip ×M, M = $R_1/|R_2|$ = {M:g}", fontsize=8,
+          va="bottom")
+    label(ax, (L + z_F)/2 + 0.3, -h1 - 0.1, "output coupling\n1 − 1/M (strips)",
+          fontsize=8, va="top", color=STRAY)
+    _finish(ax, (-0.4, z_out + 0.9), (-h1 - 0.6, h1 + 0.5), title)
+
+
+
+
+def eyepiece_layout(ax, kind="telescope", title=None):
+    """Sketches of an eyepiece in a telescope (notebook 171, eyepieces).
+
+    Parameters
+    ----------
+    ax : matplotlib Axes
+    kind : {"telescope", "reversed", "pupil"}, optional
+        "telescope": a Keplerian telescope, objective, field stop in the
+        common focal plane, eyepiece, exit pupil (the image of the
+        objective) at the eye relief behind the eyepiece, the real field
+        angle and the apparent field angle. "reversed": the same eyepiece
+        traced backwards, as it is designed: the eye pupil is the aperture
+        stop, parallel beams at the apparent field angles come to a focus
+        in the field stop. "pupil": spherical aberration of the exit pupil,
+        the chief rays of the outer field cross the axis closer to the
+        eyepiece; an eye at the paraxial pupil loses parts of the outer
+        field (kidney beans).
+    title : str, optional
+    """
+
+    f_o, f_e = 6.0, 1.5
+    z_e = f_o + f_e
+    z_xp = z_e + f_e*(f_o + f_e)/f_o
+    lenses = [(0.0, f_o), (z_e, f_e)]
+    if kind == "telescope":
+        D = 1.2
+        lens(ax, 0.0, 1.45, text="objective\n$f_\\mathrm{o}$, diameter $D$", text_y=-1.65)
+        lens(ax, z_e, 0.95, text="eyepiece\n$f_\\mathrm{e}$", text_y=-1.65)
+        w = 0.085
+        stop(ax, f_o, 0.95, openings=((0.0, f_o*w*1.05),), width=0.06)
+        label(ax, f_o, -1.15, "field stop", fontsize=8, va="top")
+        for y0 in (-D/2, 0.0, D/2):
+            draw_ray(ax, lenses, -1.8, y0, 0.0, z_xp + 1.5, color=IMAGING, lw=1.0, arrow=y0 == 0)
+            draw_ray(ax, lenses, -1.8, y0 - 1.8*w, w, z_xp + 1.5, color=STRAY, lw=1.0,
+                     arrow=y0 == 0)
+        ax.plot([-1.6, 0], [0, 0], color="0.5", lw=0.6)
+        label(ax, -1.2, 0.75, "real field\nangle $\\omega$", fontsize=8, color=STRAY)
+        label(ax, z_xp + 1.25, -0.95, "apparent field\nangle $\\omega'$", fontsize=8, color=STRAY)
+        ax.plot([z_xp, z_xp + 1.5], [0, 0], color="0.5", lw=0.6)
+        stop(ax, z_xp, 0.6, openings=((0.0, D/2*f_e/f_o*1.05),), width=0.05, color="0.55")
+        label(ax, z_xp, 0.72, "exit pupil\n$D' = D f_\\mathrm{e}/f_\\mathrm{o}$", fontsize=8,
+              va="bottom")
+        arrow(ax, z_e, -1.0, z_xp, -1.0, style="<|-|>", text="eye relief", text_pos=(
+            0.5*(z_e + z_xp), -1.15), fontsize=8, va="top")
+        _finish(ax, (-2.3, z_xp + 2.0), (-2.3, 1.9), title)
+    elif kind == "reversed":
+        z0 = 0.0
+        zl = 1.0
+        fz = zl + f_e
+        stop(ax, z0, 0.7, openings=((0.0, 0.22),), width=0.05)
+        label(ax, z0 - 0.3, -0.85, "eye pupil\n= aperture stop", fontsize=8, va="top")
+        lens(ax, zl, 1.0, text="eyepiece", text_y=-1.45)
+        stop(ax, fz, 0.9, openings=((0.0, 0.8),), width=0.05)
+        label(ax, fz, -1.05, "field stop\n(image plane)", fontsize=8, va="top")
+        cols = [IMAGING, "#5aa469", STRAY]
+        for ang, c in zip((0.0, 0.25, 0.5), cols):
+            for p in (-0.2, 0.0, 0.2):
+                draw_ray(ax, [(zl, f_e)], z0 - 0.9, p - 0.9*ang, ang, fz, color=c, lw=0.9,
+                         arrow=p == 0.0)
+        label(ax, z0 - 0.5, 0.85, "parallel beams at the\napparent field angles", fontsize=8)
+        arrow(ax, z0 - 1.2, 1.35, fz + 0.4, 1.35, text="trace direction (reversed)",
+              text_pos=(0.5*(z0 - 1.2 + fz + 0.4), 1.5), fontsize=8, va="bottom")
+        _finish(ax, (-1.4, fz + 0.6), (-1.6, 1.75), title)
+    elif kind == "pupil":
+        zl = 0.0
+        lens(ax, zl, 1.2, text="eyepiece", text_y=-1.35)
+        xs = [2.0, 1.75, 1.35]
+        cols = [IMAGING, "#5aa469", STRAY]
+        for (h, zc, c) in zip((0.25, 0.6, 0.95), xs, cols):
+            for s in (1, -1):
+                ax.plot([-1.2, zl], [s*h*0.55 + s*0.0, s*h], color=c, lw=0.9, alpha=0.6)
+                ax.plot([zl, zc + 0.9], [s*h, s*h - s*h/zc*(zc + 0.9)], color=c, lw=1.1)
+        ax.plot([2.0, 2.0], [-0.55, 0.55], color="0.3", lw=2)
+        label(ax, 2.0, 0.65, "eye pupil at the\nparaxial eye relief", fontsize=8, va="bottom")
+        label(ax, 1.15, -0.95, "outer chief rays\ncross the axis earlier", fontsize=8, color=STRAY)
+        _finish(ax, (-1.3, 3.1), (-1.6, 1.5), title)
+    else:
+        raise ValueError("kind must be 'telescope', 'reversed' or 'pupil'.")
+
+
+def binocular_layout(ax, kind="porro", title=None):
+    """Sketches of the two kinds of binoculars
+    (notebook 172, binoculars and erecting prisms).
+
+    Parameters
+    ----------
+    ax : matplotlib Axes
+    kind : {"porro", "roof", "kepler"}, optional
+        "kepler": objective and eyepiece alone, the image upside down.
+        "porro": a Porro prism system between objective and eyepiece; the
+        path is folded twice (the two prisms are crossed in reality and
+        drawn in one plane here), the objectives sit further apart than
+        the eyepieces. "roof": a Schmidt-Pechan roof prism, objective and
+        eyepiece on one axis.
+    title : str, optional
+    """
+
+    mpatches = _patches()
+    prism_face, prism_edge = "#cfe3f3", EDGE
+    if kind == "kepler":
+        f_o, f_e = 5.0, 1.25
+        lens(ax, 0, 1.0, text="objective", text_y=-1.25)
+        lens(ax, f_o + f_e, 0.6, text="eyepiece", text_y=-1.25)
+        lenses = [(0, f_o), (f_o + f_e, f_e)]
+        for y0 in (-0.6, 0, 0.6):
+            draw_ray(ax, lenses, -1.0, y0 + 0.08, -0.08, 8.2, color=IMAGING, lw=0.9, arrow=y0 == 0)
+        ax.annotate("", xy=(f_o, -0.45), xytext=(f_o, 0.0),
+                    arrowprops=dict(arrowstyle="-|>", color=STRAY, lw=1.6))
+        label(ax, f_o + 0.1, -0.7, "inverted\nimage", fontsize=8, color=STRAY)
+        _finish(ax, (-1.2, 8.4), (-1.6, 1.3), title)
+    elif kind == "porro":
+        lens(ax, 0, 1.0, text="objective", text_y=-1.3)
+        tri1 = np.array([[2.0, -0.9], [3.6, 0.7], [2.0, 2.3]])
+        tri2 = np.array([[1.4, 1.0], [1.4, 4.2], [-0.2, 2.6]])
+        for tri in (tri1, tri2):
+            ax.add_patch(mpatches.Polygon(tri, closed=True, facecolor=prism_face,
+                                          edgecolor=prism_edge, lw=1, zorder=2))
+        path = np.array([[-1.0, 0.0], [2.9, 0.0], [2.9, 1.4], [1.0, 1.4], [1.0, 3.8], [5.6, 3.8]])
+        ax.plot(path[:, 0], path[:, 1], color=IMAGING, lw=1.3, zorder=3)
+        ax.add_patch(mpatches.Ellipse((4.8, 3.8), 0.22, 1.1, facecolor=GLASS, edgecolor=EDGE,
+                                      lw=1, zorder=3))
+        label(ax, 4.8, 3.05, "eyepiece", fontsize=9, va="top")
+        label(ax, 3.75, 0.0, "Porro\nprism 1", fontsize=8, ha="left")
+        label(ax, -0.35, 3.6, "Porro\nprism 2", fontsize=8, ha="right")
+        label(ax, 2.2, -2.0, "two TIR reflections in each prism; the prisms are\ncrossed "
+              "(drawn in one plane), together they turn the image by 180°", fontsize=8)
+        _finish(ax, (-1.6, 6.0), (-2.6, 4.5), title)
+    elif kind == "roof":
+        from . import prisms as _prisms
+        lens(ax, 0, 1.0, text="objective", text_y=-1.3)
+        sp = _prisms.schmidt_pechan(0.7)
+        z0 = 1.2
+        for pr_ in sp:
+            pr_.section = pr_.section + np.array([z0, 0.0])
+        _prisms.draw_section(ax, sp, start=(-1.0, 0.0), direction=(1.0, 0.0),
+                             ray_color=IMAGING)
+        pts, _ = _prisms.section_trace(sp, (-1.0, 0.0), (1.0, 0.0))
+        ax.plot([pts[-2][0], 9.2], [0, 0], color=IMAGING, lw=1.4)
+        lens(ax, 8.6, 0.55, text="eyepiece", text_y=-1.3)
+        label(ax, 3.6, 1.5, "Schmidt–Pechan prism: half-penta prism and\nSchmidt roof prism "
+              "(dashed: the roof edge)", fontsize=8)
+        _finish(ax, (-1.6, 9.4), (-3.2, 2.1), title)
+    else:
+        raise ValueError("kind must be 'kepler', 'porro' or 'roof'.")
 
 
 def imaging_pupil(ax, title=None):

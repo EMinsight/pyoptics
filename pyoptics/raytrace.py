@@ -6,11 +6,16 @@
 A `System` is a sequence of `Surface` objects (spheres, conics and even
 aspheres, refracting or reflecting), optional `IdealLens` surfaces, cones
 (`Axicon`), surfaces with a Fringe or Noll Zernike departure (`ZernikeSurface`: figure
-errors, mount deformations, freeforms), ruled diffraction gratings on plane
+errors, mount deformations, freeforms) or a gridded departure (`MapSurface`
+with a `SurfaceMap`: measured surfaces, polishing errors), ruled diffraction gratings on plane
 or curved surfaces (`GratingSurface`, one order per trace), rotationally
 symmetric diffractive surfaces with a phase polynomial (`DiffractiveSurface`:
 kinoforms and hybrid refractive-diffractive lenses, with their power, Seidel
-sums, colour and efficiency) and `CoordinateBreak` elements. Surfaces can be decentred and
+sums, colour and efficiency), diffractive surfaces with a linear carrier and
+a Zernike phase (`ZernikePhaseSurface`: computer-generated holograms, see
+`pyoptics.cgh`), toroidal and biconic surfaces with different
+curvatures in x and y (`ToroidalSurface`, `BiconicSurface`: cylinder and
+toric lenses, anamorphic optics) and `CoordinateBreak` elements. Surfaces can be decentred and
 tilted. Rays are traced exactly (exact intersections, vector law of refraction and
 reflection); paraxial marginal and chief rays, the pupils, the powers of
 the system, its surfaces and elements, the Seidel sums of every surface, the
@@ -122,13 +127,20 @@ matrices into the power along the trace, the transmittance and Jones
 matrices on the aplanatic bases of the object and image space ray
 directions. The optical path (and with it the OPD) stays the scalar one; P
 holds only the polarization dependent part of the phase.
+
+Gridded energy maps (``energy_map``, a `SurfaceMap` of the power fraction
+passed on, on any surface) model losses that vary over a surface: scatter
+from a rough zone, a non-uniform coating, digs and dust. `System.ray_power()`
+multiplies them along the rays; `pupil()` (and with it `psf()` and `mtf()`)
+uses the resulting amplitude as the pupil apodization, and
+`trace_polarization()` includes them in its matrices.
 `System.vectorial_focus()` sums the traced rays, with their output fields
 and OPDs, as plane waves into the vectorial focus (Debye-Wolf integral).
 
 Speed: if numba is installed (``pip install pyoptics[fast]``), `System.trace()`
 uses a compiled kernel that traces each ray through all surfaces in one loop
-(Surface, IdealLens, Axicon and CoordinateBreak; other surface types use the
-NumPy code). It agrees with the NumPy trace to rounding and is several times
+(Surface, IdealLens, Axicon, CoordinateBreak, ToroidalSurface, BiconicSurface
+and the Q-type aspheres of `qaspheres`; other surface types use the NumPy code). It agrees with the NumPy trace to rounding and is several times
 faster, most for the small bundles of ray aiming. The first trace in a
 session compiles the kernel (once, the result is cached on disk). Set
 ``raytrace.use_numba = False`` to trace with NumPy only.
@@ -138,8 +150,9 @@ Units: all lengths (radii, thicknesses, wavelength) share one unit, set by
 wavelength to nm for the dispersion of materials.
 
 Limitations: monochromatic traces (build systems at several wavelengths for
-colour), uniform pupil amplitude in the PSF, surfaces of revolution (no
-toroids) apart from the Zernike departures of `ZernikeSurface`, paraxial data only for the nominal centred system,
+colour), a pupil amplitude only from energy maps (no Fresnel losses) in
+the PSF, paraxial data only for the
+nominal centred system (of the y-z section for toroidal and biconic surfaces),
 no ray splitting in birefringent media (see `materials`).
 
 References
@@ -225,6 +238,13 @@ def _frame(origin, R, decenter=(0.0, 0.0), tilt=(0.0, 0.0, 0.0)):
     return origin, R @ rotation(*tilt)
 
 
+class _SharedCache(dict):
+    """A dict that copies of its owner share (deepcopy returns it)."""
+
+    def __deepcopy__(self, memo):
+        return self
+
+
 def _field_xy(field):
     """(x, y) components of a scalar (y) or pair field."""
 
@@ -233,6 +253,253 @@ def _field_xy(field):
         return 0.0, float(f[0])
 
     return float(f[0]), float(f[1])
+
+
+# gridded maps on surfaces:
+class SurfaceMap:
+    """A function of the local surface coordinates (x, y), given on a
+    rectangular grid and interpolated: figure error maps (the sag departure
+    of a `MapSurface`) and energy maps (the transmittance or reflectance of
+    a surface, ``energy_map`` of `Surface`).
+
+    A measured interferogram, a simulated polishing residual or a pixelated
+    defect map are samples ``values[i, j]`` at (x[j], y[i]) (the image
+    convention of `OPDMap`). Between the samples they are interpolated by
+
+    - ``kind="nearest"``: piecewise constant pixels (no gradient; for energy
+      maps such as digs, dust or a pixelated coating defect, not for sags),
+    - ``kind="linear"``: bilinear; continuous, but the slopes jump at the
+      cell borders, so ray normals are piecewise constant,
+    - ``kind="cubic"`` (default) and ``kind="quintic"``: interpolating
+      tensor product splines (`scipy.interpolate.RectBivariateSpline` with
+      s = 0); slopes and curvatures are continuous, the natural choice for
+      sag maps whose normals refract rays.
+
+    The gradient and the Hessian are those of the interpolant (analytic
+    spline derivatives), so the normals agree with the interpolated sag
+    to rounding. NaN samples (e.g. outside the measured aperture of an
+    interferometer) are replaced by the nearest valid sample before the
+    interpolant is built.
+
+    Parameters
+    ----------
+    x, y : 1d arrays
+        Equidistant or not, strictly increasing grid coordinates in the
+        local frame of the surface (length units).
+    values : 2d array, shape (len(y), len(x))
+        Samples: sag departure in length units, or a power fraction.
+    kind : {"nearest", "linear", "cubic", "quintic"}, optional
+    outside : "clamp", "nan" or number, optional
+        Beyond the grid: "clamp" (default) continues with the value on the
+        border of the grid (the coordinates are clipped to it, the slope
+        across the border is zero), "nan" loses the rays (NaN), a number is
+        a constant value (0 for a sag map, 1 for a lossless energy map).
+    scale : number, optional
+        Factor applied to the interpolated values and their derivatives
+        (see `scaled()`).
+    """
+
+    KINDS = {"nearest": 0, "linear": 1, "cubic": 3, "quintic": 5}
+
+    def __init__(self, x, y, values, kind="cubic", outside="clamp", scale=1.0):
+        from scipy.interpolate import RectBivariateSpline
+        from scipy.ndimage import distance_transform_edt
+
+        x, y = np.asarray(x, dtype=float), np.asarray(y, dtype=float)
+        values = np.array(values, dtype=float)
+        if values.shape != (len(y), len(x)):
+            raise ValueError("values must have the shape (len(y), len(x)) = ({}, {}), not {}."
+                             .format(len(y), len(x), values.shape))
+        if np.any(np.diff(x) <= 0) or np.any(np.diff(y) <= 0):
+            raise ValueError("x and y must be strictly increasing.")
+        if kind not in self.KINDS:
+            raise ValueError("kind must be one of {}.".format(", ".join(self.KINDS)))
+        if not (outside in ("clamp", "nan") or np.isscalar(outside)):
+            raise ValueError("outside must be 'clamp', 'nan' or a number.")
+        bad = ~np.isfinite(values)
+        if np.all(bad):
+            raise ValueError("values has no finite sample.")
+        if np.any(bad):
+            idx = distance_transform_edt(bad, return_distances=False, return_indices=True)
+            values = values[tuple(idx)]
+        k = self.KINDS[kind]
+        if k and min(len(x), len(y)) <= k:
+            raise ValueError("kind={!r} needs more than {} samples along x and y.".format(kind, k))
+        self.x, self.y, self.values = x, y, values
+        self.kind, self.outside, self.scale = kind, outside, float(scale)
+        self._spline = RectBivariateSpline(y, x, values, kx=k, ky=k, s=0) if k else None
+
+    @classmethod
+    def from_function(cls, f, x, y, **kwargs):
+        """Map sampled from a function f(X, Y) on the grid x, y.
+
+        Parameters
+        ----------
+        f : callable
+            f(X, Y) with 2d arrays X, Y (from np.meshgrid(x, y)).
+        x, y : 1d arrays
+        **kwargs
+            See `SurfaceMap`.
+
+        Returns
+        -------
+        SurfaceMap
+        """
+
+        X, Y = np.meshgrid(x, y)
+
+        return cls(x, y, f(X, Y), **kwargs)
+
+    def __repr__(self):
+        return "SurfaceMap({} x {} samples, x in [{:g}, {:g}], y in [{:g}, {:g}], kind={!r}{})".format(
+            len(self.x), len(self.y), self.x[0], self.x[-1], self.y[0], self.y[-1], self.kind,
+            "" if self.scale == 1 else ", scale={:g}".format(self.scale))
+
+    def __eq__(self, other):
+        if not isinstance(other, SurfaceMap):
+            return NotImplemented
+        return (self.kind == other.kind and self.outside == other.outside
+                and self.scale == other.scale and np.array_equal(self.x, other.x)
+                and np.array_equal(self.y, other.y) and np.array_equal(self.values, other.values))
+
+    __hash__ = None
+
+    def scaled(self, factor):
+        """Copy whose values (and derivatives) are multiplied by factor; the
+        interpolant is shared.
+
+        Parameters
+        ----------
+        factor : number
+
+        Returns
+        -------
+        SurfaceMap
+        """
+
+        new = copy.copy(self)
+        new.scale = self.scale*float(factor)
+
+        return new
+
+    @property
+    def extent(self):
+        """(x_min, x_max, y_min, y_max) of the grid, e.g. for imshow."""
+
+        return (self.x[0], self.x[-1], self.y[0], self.y[-1])
+
+    def _prepare(self, x, y):
+        x, y = np.broadcast_arrays(np.asarray(x, dtype=float), np.asarray(y, dtype=float))
+        xc = np.clip(x, self.x[0], self.x[-1])
+        yc = np.clip(y, self.y[0], self.y[-1])
+        with np.errstate(invalid="ignore"):
+            inside = (xc == x) & (yc == y)
+        finite = np.isfinite(x) & np.isfinite(y)
+
+        return x, y, np.where(finite, xc, self.x[0]), np.where(finite, yc, self.y[0]), \
+            inside, finite
+
+    def _nearest(self, xc, yc):
+        j = np.clip(np.searchsorted(self.x, xc), 1, len(self.x) - 1)
+        j = np.where(xc - self.x[j - 1] < self.x[j] - xc, j - 1, j)
+        i = np.clip(np.searchsorted(self.y, yc), 1, len(self.y) - 1)
+        i = np.where(yc - self.y[i - 1] < self.y[i] - yc, i - 1, i)
+
+        return self.values[i, j]
+
+    def _bilinear(self, xc, yc, dx, dy):
+        """Derivative (dx, dy in {0, 1}) of the bilinear interpolant (the
+        spline routines need orders below the spline degree)."""
+
+        j = np.clip(np.searchsorted(self.x, xc, side="right") - 1, 0, len(self.x) - 2)
+        i = np.clip(np.searchsorted(self.y, yc, side="right") - 1, 0, len(self.y) - 2)
+        hx, hy = self.x[j + 1] - self.x[j], self.y[i + 1] - self.y[i]
+        u, v = (xc - self.x[j])/hx, (yc - self.y[i])/hy
+        V = self.values
+        f00, f01, f10, f11 = V[i, j], V[i, j + 1], V[i + 1, j], V[i + 1, j + 1]
+        wu = (1 - u, u) if not dx else (-1/hx, 1/hx)
+        wv = (1 - v, v) if not dy else (-1/hy, 1/hy)
+
+        return wv[0]*(wu[0]*f00 + wu[1]*f01) + wv[1]*(wu[0]*f10 + wu[1]*f11)
+
+    def _finish(self, v, inside, finite, value_outside):
+        if self.outside == "nan":
+            v = np.where(inside, v, np.nan)
+        elif self.outside != "clamp":
+            v = np.where(inside, v, value_outside)
+
+        return np.where(finite, v, np.nan)
+
+    def __call__(self, x, y):
+        """Interpolated values at the points (x, y) (arrays of any shape).
+
+        Parameters
+        ----------
+        x, y : arrays
+
+        Returns
+        -------
+        values : array
+        """
+
+        x, y, xc, yc, inside, finite = self._prepare(x, y)
+        if self._spline is None:
+            v = self._nearest(xc, yc)
+        else:
+            v = self._spline.ev(yc, xc)
+
+        return self._finish(self.scale*v, inside, finite, float(self.outside)
+                            if self.outside not in ("clamp", "nan") else 0.0)
+
+    def _derivative(self, x, y, dx, dy):
+        x, y, xc, yc, inside, finite = self._prepare(x, y)
+        if self.kind == "linear" and max(dx, dy) <= 1:
+            v = self.scale*self._bilinear(xc, yc, dx, dy)
+            if dx:
+                v = np.where((xc == x) | ~finite, v, 0.0)
+            if dy:
+                v = np.where((yc == y) | ~finite, v, 0.0)
+        elif self._spline is None or max(dx, dy) >= self.KINDS[self.kind]:
+            v = np.zeros(x.shape)
+        else:
+            v = self.scale*self._spline.ev(yc, xc, dx=dy, dy=dx)
+            # clamped: constant across the border in the clipped direction
+            if dx:
+                v = np.where((xc == x) | ~finite, v, 0.0)
+            if dy:
+                v = np.where((yc == y) | ~finite, v, 0.0)
+
+        return self._finish(v, inside, finite, 0.0)
+
+    def gradient(self, x, y):
+        """(df/dx, df/dy) of the interpolant at the points (x, y).
+
+        Parameters
+        ----------
+        x, y : arrays
+
+        Returns
+        -------
+        fx, fy : arrays
+        """
+
+        return self._derivative(x, y, 1, 0), self._derivative(x, y, 0, 1)
+
+    def hessian(self, x, y):
+        """(f_xx, f_xy, f_yy) of the interpolant (zero for "nearest"; for
+        "linear" only the twist f_xy inside the cells).
+
+        Parameters
+        ----------
+        x, y : arrays
+
+        Returns
+        -------
+        fxx, fxy, fyy : arrays
+        """
+
+        return (self._derivative(x, y, 2, 0), self._derivative(x, y, 1, 1),
+                self._derivative(x, y, 0, 2))
 
 
 # surfaces:
@@ -280,11 +547,22 @@ class Surface:
         wavelength (index errors of a melt, see System.with_index_change()).
         Only for surfaces that change the medium. A Material keeps its own
         index in the polarization propagation of trace_polarization().
+    energy_map : SurfaceMap, optional
+        Fraction of the power that a ray passes on at this surface, as a
+        function of its local coordinates (x, y): the transmittance of a
+        refracting surface, the reflectance of a mirror (roughness and
+        scatter losses, coating non-uniformity, digs, dust). It does not
+        change the geometry of the rays; it enters `System.ray_power()`,
+        the pupil amplitude of `pupil()`, `psf()` and `mtf()`, and the
+        power of `trace_polarization()`. Any surface type can have one (set
+        the attribute ``energy_map`` on surfaces whose constructor does not
+        take it). None: no extra loss.
     """
 
     def __init__(self, R=np.inf, thickness=0.0, n_after=None, material=None, conic=0.0,
                  aspheric=(), semi_diameter=None, mirror=False, decenter=(0.0, 0.0),
-                 tilt=(0.0, 0.0, 0.0), coating=None, label=None, index_offset=0.0):
+                 tilt=(0.0, 0.0, 0.0), coating=None, label=None, index_offset=0.0,
+                 energy_map=None):
         if mirror and (n_after is not None or material is not None):
             raise ValueError("A mirror does not change the medium.")
         self.R = R
@@ -302,6 +580,7 @@ class Surface:
         if index_offset and not self.changes_medium:
             raise ValueError("index_offset needs a surface that changes the medium.")
         self.index_offset = index_offset
+        self.energy_map = energy_map
 
     @property
     def displaced(self):
@@ -805,6 +1084,26 @@ class ZernikeSurface(Surface):
 
         return gx/self.norm_radius, gy/self.norm_radius
 
+    def departure_hessian(self, x, y):
+        """(z_xx, z_xy, z_yy) of the departure: central differences of its
+        analytic gradient."""
+
+        x, y = np.asarray(x, dtype=float), np.asarray(y, dtype=float)
+        if not self.zernike:
+            z = np.zeros(np.broadcast(x, y).shape)
+            return z, z, z
+        h = 1e-5*self.norm_radius
+        gxp, gyp = ZernikeSurface.departure_gradient(self, x + h, y)
+        gxm, gym = ZernikeSurface.departure_gradient(self, x - h, y)
+        zxx, zxy = (gxp - gxm)/(2*h), (gyp - gym)/(2*h)
+        gxp, gyp = ZernikeSurface.departure_gradient(self, x, y + h)
+        gxm, gym = ZernikeSurface.departure_gradient(self, x, y - h)
+
+        return zxx, zxy, (gyp - gym)/(2*h)
+
+    def _has_departure(self):
+        return bool(self.zernike)
+
     def sag_xy(self, x, y):
         """Sag z(x, y), base sag plus the Zernike departure."""
 
@@ -823,7 +1122,7 @@ class ZernikeSurface(Surface):
         Newton steps on the full sag (see `Surface.intersect()`)."""
 
         t = super().intersect(P, d)
-        if not self.zernike:
+        if not self._has_departure():
             return t
         t = np.where(np.isfinite(t), t, -P[:, 2]/d[:, 2])
         for _ in range(50):
@@ -849,6 +1148,356 @@ class ZernikeSurface(Surface):
         N = np.stack([-gx, -gy, np.ones(len(Q))], axis=-1)
 
         return N/_norm(N)[:, None]
+
+
+class MapSurface(ZernikeSurface):
+    """Surface with a gridded (e.g. measured or simulated) sag departure
+    from its base sag, optionally on top of a Zernike departure.
+
+    The sag is ::
+
+        z(x, y) = z_base(r**2) + sum_j c_j Z_j(...) + m(x, y)
+
+    with the base sag and the Zernike terms of `ZernikeSurface` and the
+    `SurfaceMap` m, interpolated from its samples on a grid of the local
+    frame (x, y) of the surface (after its decenter and tilt; the map is
+    not shifted by `centre`). Use it for interferometric surface
+    measurements and for figure, mid-spatial frequency and edge errors of
+    polishing (`pyoptics.polishing`, notebook 175,
+    polishing errors): the Zernikes hold the low orders, the map the rest.
+
+    The rays are intersected by Newton steps on the full sag and refracted
+    with the normals of the interpolant (its analytic spline gradient), so
+    the slopes of the map deflect the rays exactly as the interpolated
+    surface does. A sag map needs a smooth interpolant (``kind="cubic"``
+    or ``"quintic"``); ``"linear"`` gives piecewise constant normals, i.e.
+    small facets, which scatter the rays at every cell border. The grid
+    must resolve the shortest period of the map with several samples, and
+    the pupil sampling of `System.opd()`, `pupil()` and `psf()` (N) must
+    resolve its image in the pupil.
+
+    Like `ZernikeSurface`, the departure only enters the real ray trace
+    (paraxial data, Seidel sums and draw() see the base surface) and
+    systems with map surfaces are traced with NumPy. The differential ray
+    trace of `ray_derivatives` covers map surfaces (with the analytic
+    Hessian of the spline).
+
+    Parameters
+    ----------
+    R, thickness, ... : optional
+        As for `ZernikeSurface` and `Surface` (all keyword arguments are
+        passed on; zernike, norm_radius, ordering and centre describe the
+        Zernike part).
+    sag_map : SurfaceMap, optional
+        Gridded departure in length units. None: no map.
+    """
+
+    def __init__(self, R=np.inf, thickness=0.0, sag_map=None, **kwargs):
+        super().__init__(R, thickness, **kwargs)
+        self.sag_map = sag_map
+
+    def __repr__(self):
+        return "MapSurface(R={}, thickness={}, sag_map={!r}, zernike={})".format(
+            self.R, self.thickness, self.sag_map, dict(self.zernike))
+
+    def _has_departure(self):
+        return bool(self.zernike) or self.sag_map is not None
+
+    def departure(self, x, y):
+        """Zernike part plus the map at the points (x, y) of the local frame."""
+
+        z = super().departure(x, y)
+        if self.sag_map is not None:
+            z = z + self.sag_map(x, y)
+
+        return z
+
+    def departure_gradient(self, x, y):
+        """(dz/dx, dz/dy) of the departure: analytic Zernike gradients plus
+        the spline gradient of the map."""
+
+        gx, gy = super().departure_gradient(x, y)
+        if self.sag_map is not None:
+            mx, my = self.sag_map.gradient(x, y)
+            gx, gy = gx + mx, gy + my
+
+        return gx, gy
+
+    def departure_hessian(self, x, y):
+        """(z_xx, z_xy, z_yy) of the departure (Zernike part from central
+        differences, map analytic)."""
+
+        h = super().departure_hessian(x, y)
+        if self.sag_map is not None:
+            h = tuple(a + b for a, b in zip(h, self.sag_map.hessian(x, y)))
+
+        return h
+
+
+def _dslope_over_r(c, K, aspheric, r2):
+    """d/d(r2) of (dz/dr)/r of the rotationally symmetric sag (conic and
+    even aspheric terms)."""
+
+    with np.errstate(invalid="ignore", divide="ignore"):
+        ds = (1 + K)*c**3/(2*(1 - (1 + K)*c**2*r2)**1.5)
+    for j, A in enumerate(aspheric):
+        ds = ds + 2*(j + 2)*(j + 1)*A*r2**j
+
+    return ds
+
+
+class _AnamorphicSurface(Surface):
+    """Base of surfaces with different curvatures in x and y
+    (`ToroidalSurface`, `BiconicSurface`): exact sag z(x, y), its analytic
+    gradient and Hessian, intersections by Newton steps from a quadric
+    that osculates the surface at its vertex.
+
+    The parameters of `Surface` (R, conic, aspheric) describe the y-z
+    section, so that the paraxial data, Seidel sums, ``sag(r2)`` and
+    draw() of the meridional section are those of this section.
+    """
+
+    def sag(self, r2):
+        """Sag of the y-z section at y**2 = r2 (the section that the
+        paraxial trace and the meridional drawing use)."""
+
+        return super().sag(r2)
+
+    def _c_x(self):
+        return 0.0 if np.isinf(self.R_x) else 1.0/self.R_x
+
+    def sag_xy(self, x, y):
+        """Sag z(x, y)."""
+
+        return self._sag_derivatives(np.asarray(x, float), np.asarray(y, float), 0)[0]
+
+    def _gradient(self, x, y):
+        """Analytic dz/dx and dz/dy."""
+
+        z, zx, zy = self._sag_derivatives(np.asarray(x, float), np.asarray(y, float), 1)
+
+        return zx, zy
+
+    def hessian_xy(self, x, y):
+        """Analytic second derivatives (z_xx, z_xy, z_yy) of the sag."""
+
+        return self._sag_derivatives(np.asarray(x, float), np.asarray(y, float), 2)[3:]
+
+    def intersect(self, P, d):
+        """Distance along the rays to the surface: from the quadric with the
+        vertex curvatures of the surface by Newton steps on the exact sag
+        (NaN for rays that miss it)."""
+
+        cx, cy = self._c_x(), self.c
+        c = cx if abs(cx) >= abs(cy) else cy
+        x, y, z = P.T
+        dx, dy, dz = d.T
+        a = cx*dx**2 + cy*dy**2 + c*dz**2
+        b = 2*(cx*x*dx + cy*y*dy + c*z*dz - dz)
+        C = cx*x**2 + cy*y**2 + c*z**2 - 2*z
+        with np.errstate(invalid="ignore", divide="ignore"):
+            D = b**2 - 4*a*C
+            t = -2*C/(b + np.where(b >= 0, 1.0, -1.0)*np.sqrt(D))
+        t = np.where(np.isfinite(t), t, -z/dz)
+        for _ in range(60):
+            Q = P + t[:, None]*d
+            with np.errstate(invalid="ignore", divide="ignore"):
+                G, gx, gy = self._sag_derivatives(Q[:, 0], Q[:, 1], 1)
+                step = (Q[:, 2] - G)/(dz - gx*dx - gy*dy)
+            t = t - step
+            with np.errstate(invalid="ignore"):
+                if np.all(~np.isfinite(step) | (np.abs(step) < 1e-14*(1 + np.abs(t)))):
+                    break
+        Q = P + t[:, None]*d
+        with np.errstate(invalid="ignore"):
+            ok = np.isfinite(self.sag_xy(Q[:, 0], Q[:, 1]))
+
+        return np.where(ok, t, np.nan)
+
+    def normal(self, Q):
+        """Unit normals (pointing into +z) at the points Q relative to the vertex."""
+
+        with np.errstate(invalid="ignore"):
+            gx, gy = self._gradient(Q[:, 0], Q[:, 1])
+        N = np.stack([-gx, -gy, np.ones(len(Q))], axis=-1)
+
+        return N/_norm(N)[:, None]
+
+    def paraxial_power_x(self, n1, n2):
+        """Paraxial power in the x-z section, c_x (n2 - n1) (the paraxial
+        trace of `System` uses the y-z section, `paraxial_power()`)."""
+
+        return self._c_x()*(n2 - n1)
+
+
+class ToroidalSurface(_AnamorphicSurface):
+    """Toroidal surface: a curve in the y-z plane rotated about an axis
+    parallel to y (as Zemax's "Toroidal" surface).
+
+    The curve is the sag of `Surface` in y,
+
+        z_y(y) = c y**2/(1 + sqrt(1 - (1 + K) c**2 y**2)) + A4 y**4 + A6 y**6 + ...,
+
+    (c = 1/R, the conic and the aspheric terms of the y-z section). It is
+    rotated about the axis x = 0, z = R_x, so that every section y = const is
+    a circular arc and the vertex radius of the x-z section is R_x ::
+
+        z(x, y) = z_y + c_x x**2/(u + sqrt(u**2 - c_x**2 x**2)),   u = 1 - c_x z_y,
+
+    with c_x = 1/R_x. Spheres are R = R_x, cylinders R_x = inf (power in
+    y, the cylinder axis along x) or R = inf (power in x, axis along y);
+    R_x = R with a conic or aspheric terms is not an asphere of revolution
+    but a "barrel". A rotation of the cylinder axis is a tilt
+    ``(0, 0, a_z)``. The x-z section is an exact circle, so it is a
+    torus of revolution for a circular y curve: a toric spectacle or
+    contact lens, the cornea of an astigmatic eye, a cylinder lens.
+
+    Sign: like R, R_x > 0 if the centre of curvature lies in +z.
+
+    The paraxial data, Seidel sums and the meridional drawing use the y-z
+    section (R, conic, aspheric). Real rays see the exact surface (Newton
+    iterations from the osculating quadric; analytic normals), also in
+    the compiled kernel of `System.trace()`; `ray_derivatives`
+    differentiates it analytically (`lens_optimization.CurvatureX`).
+
+    Parameters
+    ----------
+    R : number, optional
+        Vertex radius of the y-z section.
+    thickness : number, optional
+    R_x : number, optional
+        Radius of rotation, the vertex radius of the x-z section
+        (np.inf: a cylinder with power in y only).
+    **kwargs :
+        As for `Surface` (conic and aspheric describe the y curve).
+    """
+
+    def __init__(self, R=np.inf, thickness=0.0, R_x=np.inf, **kwargs):
+        super().__init__(R, thickness, **kwargs)
+        self.R_x = R_x
+
+    def __repr__(self):
+        return ("ToroidalSurface(R={}, thickness={}, R_x={}, n_after={}, material={}, conic={}, "
+                "aspheric={}, semi_diameter={})".format(self.R, self.thickness, self.R_x,
+                                                        self.n_after, self.material, self.conic,
+                                                        self.aspheric, self.semi_diameter))
+
+    def _sag_derivatives(self, x, y, order):
+        cx = self._c_x()
+        y2 = y**2
+        with np.errstate(invalid="ignore", divide="ignore"):
+            zy = Surface.sag(self, y2)
+            u = 1 - cx*zy
+            S = np.sqrt(u**2 - cx**2*x**2)
+            z = zy + cx*x**2/(u + S)
+            if order == 0:
+                return (np.where(u > 0, z, np.nan),)
+            s = Surface._slope_over_r(self, y2)
+            zy1 = y*s                                  # dz_y/dy
+            gx = cx*x/S
+            gy = u*zy1/S
+            out = (np.where(u > 0, z, np.nan), gx, gy)
+            if order == 1:
+                return out
+            zy2 = s + 2*y2*_dslope_over_r(self.c, self.conic, self.aspheric, y2)
+            S3 = S**3
+            zxx = cx*u**2/S3
+            zxy = cx**2*x*u*zy1/S3
+            zyy = (u*zy2 - cx*zy1**2)/S + cx*u**2*zy1**2/S3
+
+        return out + (zxx, zxy, zyy)
+
+
+class BiconicSurface(_AnamorphicSurface):
+    """Biconic surface (as Zemax's "Biconic" surface, with even polynomial
+    terms in x and in y):
+
+        z = (c_x x**2 + c y**2)/(1 + sqrt(1 - (1 + K_x) c_x**2 x**2 - (1 + K) c**2 y**2))
+            + sum_j A_j y**(2j + 4) + sum_j B_j x**(2j + 4),
+
+    with c = 1/R, K = conic and A_j = aspheric of the y-z section (as for
+    `Surface`) and c_x = 1/R_x, K_x = conic_x and B_j = aspheric_x of the
+    x-z section. Both sections are conics; with R = R_x, K = K_x and no
+    polynomial terms it is the surface of revolution of `Surface`.
+    Anamorphic lenses, laser diode collimators and off-axis segments of
+    conic mirrors are biconics. Tracing and derivatives as for
+    `ToroidalSurface`.
+
+    Parameters
+    ----------
+    R : number, optional
+        Vertex radius of the y-z section.
+    thickness : number, optional
+    R_x : number, optional
+        Vertex radius of the x-z section.
+    conic_x : number, optional
+        Conic constant of the x-z section.
+    aspheric_x : sequence, optional
+        Coefficients of x**4, x**6, ...
+    **kwargs :
+        As for `Surface` (conic and aspheric of the y-z section).
+    """
+
+    def __init__(self, R=np.inf, thickness=0.0, R_x=np.inf, conic_x=0.0, aspheric_x=(),
+                 **kwargs):
+        super().__init__(R, thickness, **kwargs)
+        self.R_x = R_x
+        self.conic_x = conic_x
+        self.aspheric_x = tuple(aspheric_x)
+
+    def __repr__(self):
+        return ("BiconicSurface(R={}, thickness={}, R_x={}, conic={}, conic_x={}, aspheric={}, "
+                "aspheric_x={}, n_after={}, material={}, semi_diameter={})".format(
+                    self.R, self.thickness, self.R_x, self.conic, self.conic_x, self.aspheric,
+                    self.aspheric_x, self.n_after, self.material, self.semi_diameter))
+
+    def _sag_derivatives(self, x, y, order):
+        cx, cy = self._c_x(), self.c
+        px, py = (1 + self.conic_x)*cx**2, (1 + self.conic)*cy**2
+        x2, y2 = x**2, y**2
+        f = cx*x2 + cy*y2
+        B = 1 - px*x2 - py*y2
+        with np.errstate(invalid="ignore", divide="ignore"):
+            S = np.sqrt(B)
+            g = 1 + S
+            z = f/g
+            for j, A in enumerate(self.aspheric):
+                z = z + A*y2**(j + 2)
+            for j, A in enumerate(self.aspheric_x):
+                z = z + A*x2**(j + 2)
+            if order == 0:
+                return (z,)
+            fx, fy = 2*cx*x, 2*cy*y
+            gx, gy = -px*x/S, -py*y/S                  # S_x = B_x/(2 S)
+            zx = (fx*g - f*gx)/g**2
+            zy = (fy*g - f*gy)/g**2
+            pa = [(j, A) for j, A in enumerate(self.aspheric)]
+            pb = [(j, A) for j, A in enumerate(self.aspheric_x)]
+            for j, A in pa:
+                zy = zy + 2*(j + 2)*A*y*y2**(j + 1)
+            for j, A in pb:
+                zx = zx + 2*(j + 2)*A*x*x2**(j + 1)
+            if order == 1:
+                return z, zx, zy
+            # S_ij = B_ij/(2 S) - B_i B_j/(4 S**3), B_x = -2 px x, B_xx = -2 px
+            S3 = S**3
+            gxx = -px/S - px**2*x2/S3
+            gyy = -py/S - py**2*y2/S3
+            gxy = -px*py*x*y/S3
+            g2, g3 = g**2, g**3
+
+            def second(fi, fj, fij, gi, gj, gij):
+                return (fij*g + fi*gj - fj*gi - f*gij)/g2 - 2*(fi*g - f*gi)*gj/g3
+
+            zxx = second(fx, fx, 2*cx, gx, gx, gxx)
+            zyy = second(fy, fy, 2*cy, gy, gy, gyy)
+            zxy = second(fx, fy, 0.0, gx, gy, gxy)
+            for j, A in pa:
+                zyy = zyy + 2*(j + 2)*(2*j + 3)*A*y2**(j + 1)
+            for j, A in pb:
+                zxx = zxx + 2*(j + 2)*(2*j + 3)*A*x2**(j + 1)
+
+        return z, zx, zy, zxx, zxy, zyy
 
 
 class GratingSurface(Surface):
@@ -1282,6 +1931,194 @@ class DiffractiveSurface(Surface):
         return d2, dopl
 
 
+class ZernikePhaseSurface(Surface):
+    """Diffractive surface with a linear carrier plus a Zernike phase
+    (computer-generated holograms, CGHs, for null tests).
+
+    A phase function ::
+
+        phi(x, y) = 2*pi*(f_x x + f_y y) + sum_j c_j Z_j((x - x0)/r_norm, (y - y0)/r_norm)
+
+    in radians on a refracting (or reflecting) base surface of `Surface`,
+    like Zemax's "Zernike Standard Phase" surface with an added grating
+    carrier of the spatial frequency (f_x, f_y) (cycles per length unit).
+    Unlike `DiffractiveSurface`, phi need not be rotationally symmetric: a
+    null hologram for an asphere is usually written with a tilt carrier
+    that sends the measuring order off axis, away from the other orders,
+    and the phase that compensates the asphere in that tilted geometry has
+    every Zernike term. A ray of vacuum wavelength lambda in the order m
+    leaves by the local grating equation on the tangent plane ::
+
+        n' d'_t = n d_t + m*lambda/(2*pi) grad_t(phi),
+
+    and the optical path gains m*lambda*phi/(2*pi) (sign of m flipped on
+    a mirror, as for `GratingSurface`), so ray maps and OPDs behind it are
+    those of the diffracted wave. One order is traced per trace
+    (`with_order()` for the others, `cgh.order_paths()` for all
+    combinations of a double pass).
+
+    The phase enters only the real ray trace; paraxial data, Seidel sums
+    and draw() treat the surface as its base surface (a Zernike defocus in
+    phi is not counted as power). The compiled kernel does not cover it.
+    Polarization ray tracing treats the surface as its base surface.
+
+    Parameters
+    ----------
+    R, thickness, ... : optional
+        As for `Surface` (all keyword arguments are passed on).
+    carrier : (f_x, f_y), optional
+        Spatial frequency of the linear carrier, in cycles per length unit
+        (e.g. (0, 50) for 50 lines/mm, the order m = +1 bent towards +y).
+    zernike : dict, optional
+        {j: c_j}, Zernike index in `ordering` and phase coefficient in
+        radians.
+    norm_radius : number, optional
+        Normalization radius r_norm of the Zernikes.
+    ordering : {"noll", "standard", "fringe"}, optional
+        Index ordering and normalization of the Zernikes (see
+        `ZernikeSurface`); Noll by default, since a null phase needs
+        high radial orders beyond the 37 Fringe terms in common use.
+    centre : (x0, y0), optional
+        Centre of the Zernikes in the local frame.
+    order : int, optional
+        Diffraction order m that is traced.
+    """
+
+    has_seidel = False
+
+    def __init__(self, R=np.inf, thickness=0.0, carrier=(0.0, 0.0), zernike=None,
+                 norm_radius=1.0, ordering="noll", centre=(0.0, 0.0), order=1, **kwargs):
+        super().__init__(R, thickness, **kwargs)
+        if not norm_radius > 0:
+            raise ValueError("norm_radius must be positive.")
+        self.carrier = (float(carrier[0]), float(carrier[1]))
+        self.norm_radius = float(norm_radius)
+        ordering = ordering.lower()
+        self.ordering = "noll" if ordering == "standard" else ordering
+        self.centre = (float(centre[0]), float(centre[1]))
+        self.order = int(order)
+        self.set_zernike(zernike or {}, replace=True)
+
+    def set_zernike(self, coefficients, replace=False):
+        """Change Zernike phase coefficients (in place).
+
+        Parameters
+        ----------
+        coefficients : dict
+            {j: c_j}, Zernike index in `ordering` and coefficient (radians).
+        replace : bool, optional
+            Replace all coefficients instead of updating them.
+        """
+
+        terms = {} if replace else dict(self.zernike)
+        terms.update({int(j): float(c) for j, c in coefficients.items()})
+        self.zernike = tuple(sorted(terms.items()))
+        self._terms = tuple((n, m, scale*c) for (n, m, scale), c in
+                            ((zernike_indices(j, self.ordering), c) for j, c in self.zernike))
+
+    def __repr__(self):
+        return ("ZernikePhaseSurface(R={}, thickness={}, carrier={}, {} Zernike terms, "
+                "norm_radius={}, ordering={!r}, order={})".format(
+                    self.R, self.thickness, self.carrier, len(self.zernike), self.norm_radius,
+                    self.ordering, self.order))
+
+    def with_order(self, order):
+        """Copy of the surface that diffracts into another order."""
+
+        other = copy.copy(self)
+        other.order = int(order)
+
+        return other
+
+    @property
+    def _sign(self):
+        return -1.0 if self.mirror else 1.0
+
+    def _normalized(self, x, y):
+        x0, y0 = self.centre
+
+        return ((np.asarray(x, dtype=float) - x0)/self.norm_radius,
+                (np.asarray(y, dtype=float) - y0)/self.norm_radius)
+
+    def phase_at(self, x, y, carrier=True):
+        """Phase phi(x, y) in radians (not wrapped) at points of the local
+        frame; carrier=False leaves out the linear carrier."""
+
+        u, v = self._normalized(x, y)
+        phi = np.zeros(np.broadcast(u, v).shape)
+        for n, m, c in self._terms:
+            phi = phi + c*zernike_nm(n, m, u, v)
+        if carrier:
+            phi = phi + 2*pi*(self.carrier[0]*np.asarray(x) + self.carrier[1]*np.asarray(y))
+
+        return phi
+
+    def phase_gradient(self, x, y, carrier=True):
+        """Analytic (dphi/dx, dphi/dy) in radians per length unit."""
+
+        u, v = self._normalized(x, y)
+        gx = np.zeros(np.broadcast(u, v).shape)
+        gy = np.zeros_like(gx)
+        for n, m, c in self._terms:
+            zx, zy = zernike_nm_gradient(n, m, u, v)
+            gx, gy = gx + c*zx, gy + c*zy
+        gx, gy = gx/self.norm_radius, gy/self.norm_radius
+        if carrier:
+            gx, gy = gx + 2*pi*self.carrier[0], gy + 2*pi*self.carrier[1]
+
+        return gx, gy
+
+    def local_period(self, x, y):
+        """Local period ``2*pi/abs(grad phi)`` of the fringes (infinite where the
+        phase is stationary); its smallest value over the aperture decides
+        whether the hologram can be written."""
+
+        gx, gy = self.phase_gradient(x, y)
+        with np.errstate(divide="ignore"):
+            return 2*pi/np.hypot(gx, gy)
+
+    def deflect(self, Q, d, n1, n2, wavelength=None):
+        """Diffract the directions d at the points Q into the order m.
+
+        Parameters
+        ----------
+        Q : (N, 3) array
+            Intersection points in the local frame of the surface.
+        d : (N, 3) array
+            Unit directions of the incident rays.
+        n1, n2 : numbers
+            Refractive indices in front of and behind the surface.
+        wavelength : number
+            Vacuum wavelength in the length unit of the system (passed by
+            `System.trace()`).
+
+        Returns
+        -------
+        d2 : array
+            New unit directions, NaN where the local order is evanescent.
+        dopl : array
+            Optical path m*lambda*phi/(2*pi) of the phase.
+        """
+
+        if wavelength is None:
+            raise ValueError("A diffractive surface needs the wavelength.")
+        N = self.normal(Q)
+        mu = self._sign*self.order*wavelength/(2*pi)
+        gx, gy = self.phase_gradient(Q[:, 0], Q[:, 1])
+        G = np.stack([gx, gy, np.zeros(len(Q))], axis=-1)
+        G_t = G - _dot(G, N)[:, None]*N
+        cos_i = _dot(d, N)
+        t_out = n1*(d - cos_i[:, None]*N) + mu*G_t
+        n_out = n1 if self.mirror else n2
+        with np.errstate(invalid="ignore"):
+            normal = np.sqrt(n_out**2 - _dot(t_out, t_out))
+        side = np.sign(cos_i)*(-1.0 if self.mirror else 1.0)
+        d2 = (t_out + (side*normal)[:, None]*N)/n_out
+        dopl = mu*self.phase_at(Q[:, 0], Q[:, 1])
+
+        return d2, dopl
+
+
 class _SweattSurface(Surface):
     """Front surface of the Sweatt layer of `System.sweatt_model()`: the base
     surface moved along its normal by the polynomial sum_k b_k r**(2k), to
@@ -1407,7 +2244,22 @@ class CoordinateBreak(Surface):
 
 
 # polarization ray tracing matrices:
-_KERNEL_TYPES = (Surface, IdealLens, Axicon, CoordinateBreak)
+_KERNEL_TYPES = None
+
+
+def _kernel_types():
+    """{kernel code: class} of the surfaces that the compiled kernel traces."""
+
+    global _KERNEL_TYPES
+    if _KERNEL_TYPES is None:
+        from .qaspheres import Q2DSurface, QbfsSurface, QconQ2DSurface, QconSurface
+
+        k = _raytrace_numba
+        _KERNEL_TYPES = {k.STANDARD: Surface, k.BREAK: CoordinateBreak, k.IDEAL: IdealLens,
+                         k.AXICON: Axicon, k.TOROID: ToroidalSurface, k.BICONIC: BiconicSurface,
+                         k.QBFS: QbfsSurface, k.QCON: QconSurface, k.Q2D: Q2DSurface,
+                         k.QCONQ2D: QconQ2DSurface}
+    return _KERNEL_TYPES
 
 
 def _sp_basis(k1, k2, normal):
@@ -1863,7 +2715,17 @@ class System:
 
     The surfaces are copied, later changes to the Surface objects passed in
     do not affect the system.
+
+    Aimed rays are cached (shared by the copies of a system) and returned
+    again for the same field, pupil points and state of the system. With
+    ``aim_warm_start = True`` (an attribute, default False) the cached rays
+    of a changed system are also the start of Newton's method, which saves
+    most of the aiming in an optimizer; the aimed rays then depend on the
+    history at the level of the convergence tolerance, which finite
+    differences with very small steps can resolve.
     """
+
+    aim_warm_start = False
 
     def __init__(self, surfaces, stop_index, wavelength, object_distance=np.inf, field_angle=0.0,
                  object_height=0.0, n_object=1.0, units="mm", entrance_pupil_radius=None,
@@ -2927,18 +3789,61 @@ class System:
 
         The surface frames and indices are computed once for all traces."""
 
+        # aimed rays of the same field and pupil points: returned again for
+        # the same state of the system; with aim_warm_start also the start
+        # of Newton's method for a changed system (an optimizer aims the
+        # same rays of slightly changed systems over and over). The cache
+        # is shared by the copies of the system.
+        cache = self.__dict__.get("_aim_cache")
+        if cache is None:
+            cache = self.__dict__["_aim_cache"] = _SharedCache()
+        key = (tuple(float(v) for v in _field_xy(field)), px.tobytes(), py.tobytes())
+        state = self._state_key()
+        entry = cache.get(key)
+        if entry is not None and entry[0] == state:
+            return entry[1].copy(), entry[2].copy()
         self._constants = None
         self._constants = self.frames(), self.n, self._pupils()[0]
         try:
-            return self._aim_rays(field, a, b, px, py)
+            warm = entry[1:] if entry is not None and self.aim_warm_start else None
+            a, b = self._aim_rays(field, a, b, px, py, warm)
         finally:
             self._constants = None
+        if len(cache) >= 256:
+            cache.pop(next(iter(cache)))
+        cache.pop(key, None)
+        cache[key] = (state, a.copy(), b.copy())
 
-    def _aim_rays(self, field, a, b, px, py):
+        return a, b
+
+    def _aim_rays(self, field, a, b, px, py, warm=None):
         a_s = self.surfaces[self.stop_index].semi_diameter
         sign = np.sign(self._ep_matrix()[0]) if self.infinite_object else 1.0
         tx, ty = sign*px*a_s, sign*py*a_s
-        a, b, done = self._newton_aim(field, a, b, tx, ty, iterations=6)
+        a0, b0 = np.asarray(a, float), np.asarray(b, float)
+        if warm is not None:
+            # from the aimed rays of a nearby system; where they fail, from the paraxial guess
+            a_w, b_w = (np.where(np.isfinite(w), w, g) for w, g in zip(warm, (a0, b0)))
+            a, b, done = self._newton_aim(field, a_w, b_w, tx, ty, iterations=6, polish=True)
+            if not np.all(done):
+                a_p, b_p, done_p = self._newton_aim(field, a0[~done], b0[~done], tx[~done], ty[~done],
+                                                    iterations=6)
+                a, b = a.copy(), b.copy()
+                a[~done], b[~done] = a_p, b_p
+                done = done.copy()
+                done[~done] = done_p
+        else:
+            a, b, done = self._newton_aim(field, a, b, tx, ty, iterations=6)
+        # a solution far from the paraxial guess (more than twice the spread
+        # of the guesses over the pupil away) passes the stop on a folded
+        # path: aim it by continuation instead
+        spread = np.max(np.hypot(a0 - np.mean(a0), b0 - np.mean(b0)), initial=0.0)
+        if not self.infinite_object:
+            spread = max(spread, abs(self._object_slopes()[0]))
+        if spread > 0:
+            with np.errstate(invalid="ignore"):
+                done = done & (np.hypot(a - a0, b - b0) <= 2*spread)
+        done = done & ~self._aim_outliers(a, b, tx, ty, done, a_s)
         if np.all(done):
             return a, b
         a, b = a.copy(), b.copy()
@@ -2985,6 +3890,31 @@ class System:
 
         return a, b
 
+    @staticmethod
+    def _aim_outliers(a, b, tx, ty, done, a_s):
+        """Rays whose launch parameters leave the smooth map from stop hits
+        to launch parameters of the others: a folded path that reaches the
+        stop point through another part of a surface in front of it, close
+        enough to the paraxial guess to pass the spread test. The map is a
+        least squares cubic over the converged rays (twice, without the
+        outliers of the first fit); a ray is an outlier when it is more than
+        20 times the median residual and 1e-6 off."""
+
+        out = np.zeros(len(a), bool)
+        idx = np.flatnonzero(done & np.isfinite(a + b))
+        if len(idx) < 30:
+            return out
+        u, v = tx[idx]/a_s, ty[idx]/a_s
+        M = np.stack([u**i*v**j for i in range(4) for j in range(4 - i)], axis=-1)
+        keep = np.ones(len(idx), bool)
+        for _ in range(2):
+            coef = np.linalg.lstsq(M[keep], np.stack([a[idx], b[idx]], -1)[keep], rcond=None)[0]
+            res = np.hypot(*(M @ coef - np.stack([a[idx], b[idx]], -1)).T)
+            keep = res <= max(20*np.median(res[keep]), 1e-6)
+        out[idx[~keep]] = True
+
+        return out
+
     def _continue_aim(self, field, a, b, tx0, ty0, tx1, ty1, s0, s1, depth=0):
         """Aim from the solutions (a, b) for the stop hits t0 + s0*(t1 - t0)
         to those for t0 + s1*(t1 - t0), bisecting the step for the rays that
@@ -3009,7 +3939,7 @@ class System:
 
         return a_n, b_n
 
-    def _newton_aim(self, field, a, b, tx, ty, iterations=30):
+    def _newton_aim(self, field, a, b, tx, ty, iterations=30, polish=False):
         """Newton's method for the stop hits (tx, ty); also returns which
         rays converged. Rays that converged (or failed) drop out of the
         iteration; the finite difference rays are traced together with the
@@ -3038,7 +3968,9 @@ class System:
             res = np.hypot(rx, ry)
             hit[active] = res < 1e-9*scale
             # converged, or no finite residual: done iterating
-            stop = ~np.isfinite(rx + ry) | (res < 1e-13*scale)
+            # (polish: at least one step, from a start that is already close,
+            # so that the result is as accurate as from a far start)
+            stop = ~np.isfinite(rx + ry) | ((res < 1e-13*scale) & (it > 0 or not polish))
             if last:
                 break
             h1x, h1y, h2x, h2y = h_x[n:2*n], h_y[n:2*n], h_x[2*n:], h_y[2*n:]
@@ -3105,7 +4037,7 @@ class System:
         valid = np.ones(len(P), dtype=bool)
         points, directions, opls = [P], [d], [opl]
         n_surf = len(self.surfaces) if last is None else last + 1
-        kinds = [_raytrace_numba.surface_kind(s, _KERNEL_TYPES) for s in self.surfaces[:n_surf]]
+        kinds = [_raytrace_numba.surface_kind(s, _kernel_types()) for s in self.surfaces[:n_surf]]
         if use_numba and _raytrace_numba.available and None not in kinds:
             points, directions, opls, valid = _raytrace_numba.trace(
                 P, d, opl, frames[:n_surf], self.surfaces[:n_surf], kinds, n, clip)
@@ -3127,7 +4059,7 @@ class System:
             opl = opl + n[i]*t
             if clip and s.semi_diameter is not None:
                 valid &= np.hypot(Q[:, 0], Q[:, 1]) <= s.semi_diameter*(1 + 1e-9)
-            if isinstance(s, (GratingSurface, DiffractiveSurface)):
+            if isinstance(s, (GratingSurface, DiffractiveSurface, ZernikePhaseSurface)):
                 d_l, dopl = s.deflect(Q, d_l, n[i], n[i + 1], self.wavelength)
             else:
                 d_l, dopl = s.deflect(Q, d_l, n[i], n[i + 1])
@@ -3160,6 +4092,49 @@ class System:
         opl[~valid] = np.nan
 
         return P, d, opl
+
+    def _energy_surfaces(self):
+        return [i for i, s in enumerate(self.surfaces)
+                if getattr(s, "energy_map", None) is not None and not isinstance(s, CoordinateBreak)]
+
+    def ray_power(self, bundle):
+        """Power fractions of traced rays from the energy maps of the
+        surfaces (``energy_map`` of `Surface`).
+
+        Every surface with an energy map multiplies the power of a ray by
+        the value of its map where the ray hits it (local coordinates). Other
+        losses (Fresnel, coatings, absorption) are those of
+        `trace_polarization()`, which includes the energy maps as well.
+
+        Parameters
+        ----------
+        bundle : RayBundle
+            From `trace()`.
+
+        Returns
+        -------
+        power : (S + 2, N) array
+            1 at the start, then the power behind each surface and at the
+            image plane; NaN for lost rays.
+        """
+
+        frames = self.frames()[0]
+        n_planes, N = bundle.points.shape[:2]
+        T = np.ones(N)
+        planes = [T.copy()]
+        for i, s in enumerate(self.surfaces[:n_planes - 1]):
+            m = getattr(s, "energy_map", None)
+            if m is not None and not isinstance(s, CoordinateBreak):
+                o, R = frames[i]
+                Q = (bundle.points[i + 1] - o) @ R
+                T = T*np.clip(m(Q[:, 0], Q[:, 1]), 0.0, None)
+            planes.append(T.copy())
+        if len(planes) < n_planes:
+            planes.append(T.copy())
+        power = np.array(planes)
+        power[:, ~bundle.valid] = np.nan
+
+        return power
 
     def trace_pupil(self, field=None, px=0.0, py=0.0, clip=True):
         """Trace rays through the pupil points (px, py) at field.
@@ -3241,6 +4216,11 @@ class System:
                 M = None
             if M is not None:
                 P[ok] = M @ P[ok]
+            emap = getattr(s, "energy_map", None)
+            if emap is not None and not isinstance(s, CoordinateBreak):
+                o, R = frames[i]
+                Q = (bundle.points[i + 1][ok] - o) @ R
+                P[ok] = np.sqrt(np.clip(emap(Q[:, 0], Q[:, 1]), 0.0, None))[:, None, None]*P[ok]
             if i in media:
                 medium, R_medium = media[i], R
             elif s.changes_medium and not isinstance(s, CoordinateBreak):
@@ -3405,10 +4385,13 @@ class System:
         Returns
         -------
         rms : number
-            RMS OPD in waves.
+            RMS OPD in waves; NaN if no ray reaches the image (e.g. all
+            rays miss a surface).
         """
 
         W = self._valid_opd(field, N, remove_tilt)
+        if W.size == 0:
+            return np.nan
 
         return np.sqrt(np.mean((W - W.mean())**2))
 
@@ -3431,9 +4414,12 @@ class System:
         Returns
         -------
         strehl : number
+            NaN if no ray reaches the image.
         """
 
         W = self._valid_opd(field, N, remove_tilt)
+        if W.size == 0:
+            return np.nan
 
         return np.abs(np.mean(np.exp(2j*pi*W)))**2
 
@@ -3445,7 +4431,9 @@ class System:
         (P_x, P_y) = n' (d_x, d_y)/NA with the image space ray directions d
         taken relative to the chief ray. The OPD of the traced rays is
         interpolated there; vignetted and unsampled regions are masked. NA is
-        the largest ``n'|d - d_chief|`` of all rays.
+        the largest ``n'|d - d_chief|`` of all rays. If surfaces have energy
+        maps, the mask is the amplitude sqrt(`ray_power()`) of the rays
+        (apodization), interpolated likewise; otherwise it is 0 or 1.
 
         Parameters
         ----------
@@ -3477,12 +4465,18 @@ class System:
         NA = np.max(_norm(q))
         q = q/NA
         phase_rays = 2*pi*W[ok]/self.wavelength
+        if self._energy_surfaces():
+            amplitude = np.sqrt(self.ray_power(bundle)[-1, ok])
+        else:
+            amplitude = None
 
         def phase(P_x, P_y):
             val = griddata(q, phase_rays, (P_x, P_y), method="linear")
             return np.nan_to_num(val)
 
         def mask(P_x, P_y):
+            if amplitude is not None:
+                return np.nan_to_num(griddata(q, amplitude, (P_x, P_y), method="linear"))
             val = griddata(q, phase_rays, (P_x, P_y), method="linear")
             return np.isfinite(val).astype(float)
 
@@ -3777,6 +4771,11 @@ class System:
             q = np.stack([0*yy, yy, zz] if a == 1 else [yy, 0*yy, zz], axis=-1) @ R.T + o
             return q[..., 2], q[..., a]
 
+        def section(s, yy):
+            if isinstance(s, _AnamorphicSurface):  # the drawn section of x and y
+                return s.sag_xy(0*yy, yy) if a == 1 else s.sag_xy(yy, 0*yy)
+            return s.sag(yy**2)
+
         heights = []
         for i, s in enumerate(self.surfaces):
             h = s.semi_diameter if s.semi_diameter is not None else 1.05*r_max[i]
@@ -3787,7 +4786,7 @@ class System:
                 yy, zz = s.section(h)
             else:
                 yy = np.linspace(-h, h, 101)
-                zz = s.sag(yy**2)
+                zz = section(s, yy)
             ax.plot(*to_global(i, yy, zz), color="k", lw=2.5 if s.mirror else 1.2)
         # lens edges between surfaces in glass (not in air or the background gas):
         for i in range(len(self.surfaces) - 1):
@@ -3796,8 +4795,8 @@ class System:
                 # rims joined by a flat bevel on the smaller surface:
                 h1, h2 = heights[i], heights[i + 1]
                 for sgn in (-1, 1):
-                    z1, y1 = to_global(i, np.array([sgn*h1]), s1.sag(np.array([h1**2])))
-                    z2, y2 = to_global(i + 1, np.array([sgn*h2]), s2.sag(np.array([h2**2])))
+                    z1, y1 = to_global(i, np.array([sgn*h1]), section(s1, np.array([sgn*h1])))
+                    z2, y2 = to_global(i + 1, np.array([sgn*h2]), section(s2, np.array([sgn*h2])))
                     corner = (z2, y1) if h1 > h2 else (z1, y2)
                     ax.plot([z1[0], corner[0][0], z2[0]], [y1[0], corner[1][0], y2[0]], color="k",
                             lw=1.2)

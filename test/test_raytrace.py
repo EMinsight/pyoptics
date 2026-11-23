@@ -873,3 +873,92 @@ def test_hyperbolic_lens_is_stigmatic():
     coeffs = system.zernike(0.0, n_terms=25)
     assert np.max(np.abs(coeffs[1:])) < 1e-8
     assert system.surfaces[1].conic == pytest.approx(-1.6**2)
+
+
+# --- toroidal and biconic surfaces -------------------------------------------
+
+def _random_points(n=200, r=4.0, seed=1):
+    rng = np.random.default_rng(seed)
+    return rng.uniform(-r, r, n), rng.uniform(-r, r, n)
+
+
+@pytest.mark.parametrize("surface", [
+    rt.ToroidalSurface(12.0, R_x=-20.0, conic=-0.5, aspheric=(1e-4, 2e-6)),
+    rt.ToroidalSurface(np.inf, R_x=8.0),
+    rt.BiconicSurface(12.0, R_x=-20.0, conic=-0.5, conic_x=1.3, aspheric=(1e-4,),
+                      aspheric_x=(-2e-4, 3e-6))])
+def test_anamorphic_gradient_and_hessian(surface):
+    x, y = _random_points()
+    h = 1e-5
+    z, zx, zy, zxx, zxy, zyy = surface._sag_derivatives(x, y, 2)
+    sag = surface.sag_xy
+    assert np.allclose(zx, (sag(x + h, y) - sag(x - h, y))/(2*h), atol=1e-9)
+    assert np.allclose(zy, (sag(x, y + h) - sag(x, y - h))/(2*h), atol=1e-9)
+    gp, gm = surface._gradient(x + h, y), surface._gradient(x - h, y)
+    assert np.allclose(zxx, (gp[0] - gm[0])/(2*h), atol=1e-8)
+    gp, gm = surface._gradient(x, y + h), surface._gradient(x, y - h)
+    assert np.allclose(zxy, (gp[0] - gm[0])/(2*h), atol=1e-8)
+    assert np.allclose(zyy, (gp[1] - gm[1])/(2*h), atol=1e-8)
+
+
+def test_toroid_sections_are_circles_and_special_cases():
+    x, y = _random_points(r=3.0)
+    # equal radii: a sphere; equal conic sections: a conic of revolution
+    assert np.allclose(rt.ToroidalSurface(15.0, R_x=15.0).sag_xy(x, y),
+                       rt.Surface(15.0).sag(x**2 + y**2), atol=1e-14)
+    b = rt.BiconicSurface(15.0, R_x=15.0, conic=-0.7, conic_x=-0.7)
+    assert np.allclose(b.sag_xy(x, y), rt.Surface(15.0, conic=-0.7).sag(x**2 + y**2),
+                       atol=1e-14)
+    # every section y = const of a toroid is a circle about the axis z = R_x
+    t = rt.ToroidalSurface(-25.0, R_x=10.0, conic=-1.0)
+    for y0 in (0.0, 2.0, -3.0):
+        zy = rt.Surface(-25.0, conic=-1.0).sag(np.array([y0**2]))[0]
+        z = t.sag_xy(x, y0 + 0*x)
+        assert np.allclose(x**2 + (z - 10.0)**2, (10.0 - zy)**2, atol=1e-10)
+    # the y-z section is that of Surface (paraxial data, drawings)
+    assert np.allclose(t.sag_xy(0*y, y), t.sag(y**2), atol=1e-15)
+
+
+@pytest.mark.parametrize("surface", [rt.ToroidalSurface(12.0, R_x=-20.0),
+                                     rt.ToroidalSurface(np.inf, R_x=6.0),
+                                     rt.BiconicSurface(-9.0, R_x=30.0, conic_x=-2.0)])
+def test_anamorphic_intersections(surface):
+    rng = np.random.default_rng(2)
+    x, y = _random_points(r=3.0)
+    P = np.c_[x, y, np.full(len(x), -5.0)]
+    d = np.c_[rng.normal(0, 0.15, (len(x), 2)), np.ones(len(x))]
+    d /= np.linalg.norm(d, axis=1)[:, None]
+    t = surface.intersect(P, d)
+    Q = P + t[:, None]*d
+    assert np.all(np.isfinite(t))
+    assert np.allclose(Q[:, 2], surface.sag_xy(Q[:, 0], Q[:, 1]), atol=1e-12)
+
+
+def test_cylinder_and_toric_lenses_focus_each_section():
+    n, wl = 1.5168, 0.55e-3
+    # plano-convex cylinder lens with power in y: a line focus along x at the
+    # focal length R/(n - 1), and no power in x
+    R = 51.68
+    cyl = rt.System([rt.ToroidalSurface(R, 3.0, R_x=np.inf, n_after=n, semi_diameter=5.0),
+                     rt.Surface(np.inf, 98.0, n_after=1.0)], 0, wl)
+    f = R/(n - 1)
+    cyl.surfaces[-1].thickness = f - 3.0/n
+    b = cyl.trace_pupil(0.0, np.array([0.0, 0.0, 0.3, 0.6]), np.array([0.05, 0.1, 0.0, 0.0]))
+    I = b.points[-1]
+    assert np.allclose(I[:2, 1], 0.0, atol=3e-5)          # y rays focus (+ spherical)
+    assert np.allclose(I[2:, 0], [0.3*5, 0.6*5], rtol=1e-12)  # x rays go straight
+    # the same as a rotated cylinder (R = inf, R_x = R) with the tilt a_z
+    # (behind an unrotated stop: ray aiming works in the local frame of the stop)
+    rot = rt.System([rt.Surface(np.inf, 0.0, semi_diameter=5.0),
+                     rt.ToroidalSurface(np.inf, 3.0, R_x=R, n_after=n, tilt=(0.0, 0.0, np.pi/2)),
+                     rt.Surface(np.inf, f - 3.0/n, n_after=1.0)], 0, wl)
+    b2 = rot.trace_pupil(0.0, np.array([0.0, 0.3]), np.array([0.1, 0.0]))
+    assert np.allclose(b2.points[-1], b.points[-1][[1, 2]], atol=1e-12)
+    # a toric lens has two line foci at the focal lengths of its sections
+    toric = rt.System([rt.ToroidalSurface(50.0, 3.0, R_x=40.0, n_after=n, semi_diameter=5.0),
+                       rt.Surface(np.inf, 90.0, n_after=1.0)], 0, wl)
+    for rx, ry, fs in ((0.0, 0.05, 50.0), (0.05, 0.0, 40.0)):
+        b = toric.trace_pupil(0.0, np.array([rx]), np.array([ry]))
+        P, d = b.points[-2][0], b.directions[-1][0]
+        z_focus = P[2] - P[0 if rx else 1]*d[2]/d[0 if rx else 1]
+        assert np.isclose(z_focus, 3.0 + fs/(n - 1) - 3.0/n, rtol=1e-3)
