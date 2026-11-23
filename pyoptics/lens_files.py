@@ -31,8 +31,11 @@ handle three formats:
   text; UTF-16 or UTF-8): surface types STANDARD, EVENASPH, TOROIDAL,
   BICONIC, COORDBRK and PARAXIAL, glasses by catalogue name
   (``GLAS N-BK7 ...``) or as model glasses (``GLAS ___BLANK 1 0 n_d V_d``),
-  mirrors (``GLAS MIRROR``), the entrance pupil diameter (ENPD) or "float
-  by stop size" (FLOA), field angles or object heights and wavelengths.
+  mirrors (``GLAS MIRROR``), the entrance pupil diameter (ENPD), the image
+  space F-number (FNUM) or "float by stop size" (FLOA), field angles,
+  object heights or paraxial or real image heights, and wavelengths.
+  Tested on files exported by OpticStudio (Thorlabs and Edmund catalogue
+  lenses, prescriptions from patents).
 - CODE V sequence files (`read_seq()`, `write_seq()`, ``.seq``): the
   commands S, SO, SI, STO, CIR, ASP/CON with K and A ... J, YTO with RDX
   or CUX, REFL, the decentres XDE, YDE, ADE, BDE, CDE with DAR (decentre
@@ -53,7 +56,13 @@ model of `materials.abbe_dispersion()`) with a warning. ``use_catalog=False``
 always uses n_d and V_d. V_d = 0 marks a medium without dispersion (an
 index n_after; a pyoptics convention, other programs may not accept it).
 CODE V model glasses are glass codes ``nnnnnn.vvvvvv``: n_d = 1.nnnnnn,
-V_d = vv.vvvv.
+V_d = vv.vvvv. Names of obsolete glasses that are not in the catalogues
+("BK7", "SF11") fall back to their lead free successors ("N-BK7",
+"N-SF11"), with a warning; a suffix such as "_MOLD" (molded lenses) is
+dropped; fused silica under its usual names ("F_SILICA", "C79-80", "UVFS",
+...) is `raytrace.fused_silica`. Placeholder indices that some programs
+write for glasses they could not find (n_d = 1.5, V_d = 40) are only used
+when nothing else is known.
 
 The writers name catalogue glasses (`glasses.Glass`) by name, give (n_d,
 V_d) materials as model glasses and constant indices with V_d = 0. Other
@@ -136,6 +145,9 @@ class _Medium:
 
         if self.kind == "glass":
             return self.glass.n_d, self.glass.V_d
+        if self.kind == "function":
+            nd, nF, nC = (float(self.glass(w)) for w in (LAMBDA_d, LAMBDA_F, LAMBDA_C))
+            return nd, (nd - 1)/(nF - nC)
         return self.n, (self.vd if self.kind == "model" else 0.0)
 
     def surface_kwargs(self):
@@ -145,7 +157,7 @@ class _Medium:
             return {"n_after": self.n}
         if self.kind == "model":
             return {"material": (self.n, self.vd)}
-        if self.kind == "glass":
+        if self.kind in ("glass", "function"):
             return {"material": self.glass}
         return {}
 
@@ -248,16 +260,46 @@ def find_glass(name, vendors=None):
     return _glasses.load(v)[k]
 
 
+def _special_material(name):
+    """Materials that are not in the glass catalogues: fused silica (by
+    its usual names in lens files) as `raytrace.fused_silica`."""
+
+    from .raytrace import fused_silica
+    key = _norm_name(name)
+    if key in ("FSILICA", "SILICA", "FUSEDSILICA", "C7980", "C7980UV", "C7980IR", "CORNING7980",
+               "UVFS", "SIO2", "LITHOSIL", "SUPRASIL", "HPFS7980", "QUARTZFUSED"):
+        return fused_silica
+    if key == "B270":     # SCHOTT B 270 crown (condenser lenses, windows)
+        return (1.5230, 58.5)
+    return None
+
+
 def _resolve_medium(name, nd, vd, use_catalog, vendors=None, where=""):
     """_Medium from a glass name and/or n_d, V_d read from a file."""
 
     if name:
         if name.upper() in ("MIRROR", "REFL"):
             return MIRROR
+        special = _special_material(name) if use_catalog else None
+        if callable(special):
+            return _Medium("function", glass=special)
+        if special is not None:
+            warnings.warn("{}: {} as the model glass n_d = {}, V_d = {}.".format(where, name,
+                                                                                *special))
+            return _Medium("model", *special)
         if use_catalog:
             g = find_glass(name, vendors)
+            if g is None and "_" in name:   # "L-TIM28_MOLD": the glass of a molded lens
+                g = find_glass(name.split("_")[0], vendors)
+            if g is None and not name.upper().startswith("N-"):
+                # obsolete lead containing glasses: their lead free successors
+                g = find_glass("N-" + name, vendors)
+                if g is not None:
+                    warnings.warn("{}: glass {!r} is not in the catalogues, using {} instead."
+                                  .format(where, name, g.name))
+                    return _Medium("glass", glass=g)
             if g is not None:
-                if nd and abs(nd - g.n_d) > 5e-4:
+                if nd and abs(nd - g.n_d) > 5e-4 and (nd, vd) != (1.5, 40.0):
                     warnings.warn("{}: glass {} has n_d = {:.5f} in the catalogue, {:.5f} in the "
                                   "file.".format(where, name, g.n_d, nd))
                 return _Medium("glass", glass=g)
@@ -804,7 +846,7 @@ def read_patent(source, units=None, wavelengths_nm=None, epd=None, fields=None, 
     for i, row in enumerate(rows):
         label = row["label"].strip()
         where = "surface {}".format(label)
-        numbers.append(re.sub(r"\D", "", label) or str(i + 1))
+        numbers.append(re.sub(r"\D", "", label) or None)
         if re.search(r"(?i)sto", label):
             stop_index = i
         R = _num(row.get("R", "")) if row.get("R") is not None else np.inf
@@ -831,8 +873,10 @@ def read_patent(source, units=None, wavelengths_nm=None, epd=None, fields=None, 
         if row.get("K"):
             kw["conic"] = _num(row["K"]) or 0.0
         kwargs.append(kw)
+    if not any(numbers):  # no numbers in the surface column: count the rows
+        numbers = [str(i + 1) for i in range(len(rows))]
     for i, number in enumerate(numbers):
-        a = asph.get(number) or asph.get(rows[i]["label"].strip())
+        a = (asph.get(number) if number else None) or asph.get(rows[i]["label"].strip())
         if not a:
             continue
         if "eps" in a:
@@ -1002,11 +1046,14 @@ def read_zmx(source, use_catalog=True, aperture_margin=1.0):
     use_catalog : bool, optional
         Look glass names up in the catalogues of `pyoptics.glasses` (else
         their n_d, V_d in the file).
-    aperture_margin : number, optional
+    aperture_margin : number or None, optional
         The semi-diameters (DIAM) of the surfaces times this factor are
         their apertures. Zemax computes automatic semi-diameters from the
         marginal rays of the fields; a margin slightly above 1 keeps those
-        rays from being vignetted by rounding.
+        rays from being vignetted by rounding. In Zemax, semi-diameters do
+        not vignette (only explicit surface apertures do); None keeps only
+        the semi-diameter of the stop, so that no other surface clips rays
+        (e.g. off-axis mirrors whose DIAM is not centred on the beam).
 
     Returns
     -------
@@ -1088,18 +1135,21 @@ def read_zmx(source, use_catalog=True, aperture_margin=1.0):
     field_type = ftyp[0] if ftyp else 0
     if field_type == 0:
         fields = [(math.radians(a), math.radians(b)) for a, b in zip(xf, yf)]
-    elif field_type == 1:
-        fields = list(zip(xf, yf))
+    elif field_type in (1, 2, 3):
+        fields = list(zip(xf, yf))   # object heights, or image heights converted below
     else:
-        raise NotImplementedError("Field type {} (only angles 0 and object heights 1)."
-                                  .format(field_type))
+        raise NotImplementedError("Field type {} (only angles 0, object heights 1 and "
+                                  "paraxial or real image heights 2, 3).".format(field_type))
 
+    f_number = None
     if "ENPD" in header:
         epd = float(h("ENPD"))
     elif "FLOA" in header:
         epd = None
+    elif "FNUM" in header:
+        epd, f_number = None, float(h("FNUM"))
     else:
-        raise NotImplementedError("Only the system apertures ENPD and FLOA are supported.")
+        raise NotImplementedError("Only the system apertures ENPD, FNUM and FLOA are supported.")
 
     obj, image, body = surfs[0], surfs[-1], surfs[1:-1]
     object_distance = obj["disz"]
@@ -1119,7 +1169,8 @@ def read_zmx(source, use_catalog=True, aperture_margin=1.0):
                   if s["glas"] else AIR)
         P = s["parm"]
         R = np.inf if s["curv"] == 0 else 1/s["curv"]
-        sd = None if s["diam"] is None else s["diam"]*(1.0 if s["stop"] else aperture_margin)
+        sd = None if s["diam"] is None or (aperture_margin is None and not s["stop"]) \
+            else s["diam"]*(1.0 if s["stop"] else aperture_margin)
         kw = dict(thickness=s["disz"], semi_diameter=sd, label=s["label"])
         typ = s["type"]
         order = None
@@ -1175,8 +1226,55 @@ def read_zmx(source, use_catalog=True, aperture_margin=1.0):
     _set_media(surfaces, media, n_object)
     name = " ".join(header["NAME"][0]) if header.get("NAME") and header["NAME"][0] else ""
 
-    return Prescription(surfaces, stop_index, [w*1e3/NM_PER_UNIT[units] for w in wl_um], primary,
-                        object_distance, fields, epd, n_object, units, name)
+    p = Prescription(surfaces, stop_index, [w*1e3/NM_PER_UNIT[units] for w in wl_um], primary,
+                     object_distance, fields, epd, n_object, units, name)
+    if f_number is not None:   # image space F/# (object at infinity): EPD = f'/F#
+        if not p.infinite_object:
+            raise NotImplementedError("FNUM needs an object at infinity.")
+        if p.surfaces[p.stop_index].semi_diameter is None:
+            p.surfaces[p.stop_index].semi_diameter = 1.0
+        p.epd = abs(p.system().paraxial().efl)/f_number
+    if field_type in (2, 3):
+        p.fields = _fields_from_image_heights(p, fields, real=field_type == 3)
+
+    return p
+
+
+def _fields_from_image_heights(p, heights, real):
+    """Fields (angles or object heights) whose chief rays reach the given
+    paraxial or real image heights (Zemax field types 2 and 3)."""
+
+    out = []
+    probe = 1e-3 if p.infinite_object else 1e-3*max(1.0, abs(p.object_distance))
+    for hx, hy in heights:
+        h = math.hypot(hx, hy)
+        if h == 0:
+            out.append((0.0, 0.0))
+            continue
+        p.fields = [(0.0, probe)]
+        system = p.system()
+        k = system.paraxial(probe).image_height/(math.tan(probe) if p.infinite_object
+                                                    else probe)   # per tan(angle) or height
+        f = h/k
+        if p.infinite_object:
+            f = math.atan(f)       # paraxial: image height proportional to tan(angle)
+        if real:
+            def height(field):
+                bundle = system.trace_pupil(field, 0.0, 0.0)
+                return system._image_hits(bundle)[0][0][1]
+            f0, h0 = f, height(f)
+            f1 = f*h/h0 if h0 else f*1.01
+            for _ in range(30):
+                h1 = height(f1)
+                if not np.isfinite(h1) or abs(h1 - h) < 1e-12*max(1.0, h):
+                    break
+                f0, h0, f1 = f1, h1, f1 + (h - h1)*(f1 - f0)/(h1 - h0)
+            if not np.isfinite(height(f1)):
+                raise ValueError("No real chief ray reaches the image height {}.".format(h))
+            f = f1
+        out.append((f*hx/h, f*hy/h))
+
+    return out
 
 
 def _set_media(surfaces, media, n_object):
